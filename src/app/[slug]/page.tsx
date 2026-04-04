@@ -177,17 +177,39 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
       if (uploadError) throw uploadError;
 
-      // 3. Insert into DB
-      const newToken = generateToken();
-      const { error: dbError } = await supabase.from("jobs").insert({
-        token: newToken,
-        customer_name: customerName || "Guest",
-        file_path: storagePath,
-        file_name: finalFileName,
-        preferences: preferences,
-        shop_id: shop.id,
-        expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      });
+      // 3. Insert into DB (with Retry Logic for collisions)
+      let newToken = "";
+      let dbError: any = null;
+      let retries = 3;
+
+      while (retries > 0) {
+        newToken = generateToken();
+        const { error } = await supabase.from("jobs").insert({
+          token: newToken,
+          customer_name: customerName || "Guest",
+          file_path: storagePath,
+          file_name: finalFileName,
+          preferences: preferences,
+          shop_id: shop.id,
+          expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        });
+
+        if (!error) {
+          dbError = null;
+          break;
+        }
+
+        dbError = error;
+        // Only retry if it's a unique constraint violation on the token
+        if (error.code === "23505" && error.message?.includes("jobs_token_key")) {
+          retries--;
+          console.warn(`[Portal] Token Collision (${newToken}). Retrying... (${retries} left)`);
+          continue;
+        }
+        
+        // If it's a different error, break and throw
+        break;
+      }
 
       if (dbError) throw dbError;
 
@@ -470,7 +492,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             </div>
 
             <p className="text-[14px] font-medium text-auth-slate-50 leading-relaxed mb-10 max-w-[320px] mx-auto">
-               Tell me your name (<span className="text-black font-black uppercase">{customerName}</span>) and verify with this 2-digit code at the counter, yaar.
+               Tell me your name (<span className="text-black font-black uppercase">{customerName}</span>) and verify with this 4-character code at the counter, yaar.
             </p>
 
             <button 
