@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Block admin and API routes from being indexed
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://xeroxq.arkio.in/sitemap.xml

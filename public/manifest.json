@@ -1,21 +1,25 @@
 {
   "name": "XeroxQ - Privacy-First Print",
   "short_name": "XeroxQ",
-  "description": "Secure, anonymous cloud printing for local Xerox shops.",
-  "start_url": "/",
+  "description": "Secure, anonymous cloud printing for local Xerox shops. No WhatsApp required.",
+  "start_url": "https://xeroxq.arkio.in/",
+  "scope": "https://xeroxq.arkio.in/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
     {
       "src": "/xeroxq_logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/xeroxq_logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -5,7 +5,7 @@ import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-export const maxDuration = 300; // 5 min timeout for Vercel Pro / hobby
+export const maxDuration = 60; // Vercel Hobby = 60s max. Upgrade to Pro for 300s.
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,15 +27,27 @@ export async function POST(req: NextRequest) {
     await writeFile(inputPath, buffer);
 
     // --- Serverless-safe Chromium launch ---
-    // On production (Vercel/cloud): uses @sparticuz/chromium bundled binary
-    // On localhost: falls back to detecting a local Chrome install
-    let executablePath: string | undefined;
-    try {
+    // On production (Vercel): Uses @sparticuz/chromium dedicated binary
+    // On localhost: Detects local Chrome/Edge install or specific bin path
+    let executablePath: string;
+    
+    if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+      // In production (Vercel), we MUST use the @sparticuz/chromium binary
       executablePath = await chromium.executablePath();
-    } catch {
-      // Local dev fallback — puppeteer-core will throw if path is wrong,
-      // but on local machines chromium.executablePath() may still work
-      executablePath = undefined;
+    } else {
+      // Local dev fallback
+      // On Windows/Mac/Linux, we try to find a local browser.
+      // If chromium.executablePath() fails locally, we provide common local paths.
+      try {
+        executablePath = await chromium.executablePath();
+      } catch (e) {
+        // Fallback for Windows local dev (most common for this user)
+        executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+      }
+    }
+
+    if (!executablePath) {
+      throw new Error("Critical Protocol Breach: Chromium signal path (executablePath) not found.");
     }
 
     const browser = await puppeteerCore.launch({
