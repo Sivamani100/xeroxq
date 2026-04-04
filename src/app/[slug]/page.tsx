@@ -201,7 +201,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
         dbError = error;
         // Only retry if it's a unique constraint violation on the token
-        if (error.code === "23505" && error.message?.includes("jobs_token_key")) {
+        if (error.code === "23505" && error.message?.includes("jobs_shop_token_unique")) {
           retries--;
           console.warn(`[Portal] Token Collision (${newToken}). Retrying... (${retries} left)`);
           continue;
@@ -492,7 +492,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             </div>
 
             <p className="text-[14px] font-medium text-auth-slate-50 leading-relaxed mb-10 max-w-[320px] mx-auto">
-               Tell me your name (<span className="text-black font-black uppercase">{customerName}</span>) and verify with this 4-character code at the counter, yaar.
+               Tell me your name (<span className="text-black font-black uppercase">{customerName}</span>) and verify with this 2-digit code at the counter, yaar.
             </p>
 
             <button 
