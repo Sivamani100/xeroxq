@@ -227,7 +227,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           file_name: finalFileName,
           preferences: preferences,
           shop_id: shop.id,
-          expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
         });
 
         if (!error) {
@@ -247,8 +247,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         break;
       }
 
-      if (dbError) throw dbError;
-
+      if (dbError) {
+        // ROLLBACK: Delete the uploaded file from storage if DB record generation failed
+        console.error("[Portal] DB Insertion Protocol Failure. Initiating Storage Rollback...", dbError);
+        await supabase.storage.from("documents").remove([storagePath]);
+        throw new Error(`Database Protocol Failure: ${dbError.message || "Unknown Error"}`);
+      }
+      
       // 4. Save to History (Local)
       const historyItem: HistoryItem = {
         token: newToken,
@@ -263,13 +268,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       setToken(newToken);
       setJobStatus("pending");
     } catch (error: any) {
-      console.error("Upload failed details:", {
+      console.error("Mercury Upload Terminal Error:", {
         message: error.message,
-        name: error.name,
-        status: error.status || error.statusCode,
-        raw: error
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        context: error
       });
-      alert(error.message || "Upload failed. Please check your connection and try again.");
+      alert(error.message || "Upload protocol failed. Please check your connection and try again.");
     } finally {
       setUploading(false);
       setIsConverting(false);
