@@ -14,11 +14,13 @@ import {
   Trash2,
   Smartphone,
   RefreshCw,
-  History
+  History,
+  Crop
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { generateToken, cn } from "@/lib/utils";
+import { ImageCropper } from "@/components/editing/image-cropper";
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button";
@@ -78,6 +80,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   });
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [jobStatus, setJobStatus] = useState<string>("pending");
+  const [cropperImage, setCropperImage] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +132,38 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
     return () => { supabase.removeChannel(channel); };
   }, [token]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    if (selectedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropperImage(reader.result as string);
+        setShowCropper(true);
+        // We set the file temporarily to keep the UI state consistent
+        setFile(selectedFile);
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      setFile(selectedFile);
+    }
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    if (!cropperImage || !file) return;
+    
+    // Create new file from blob
+    const croppedFile = new File([croppedBlob], file.name, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    
+    setFile(croppedFile);
+    setShowCropper(false);
+    setCropperImage(null);
+  };
 
   const handleUpload = async () => {
     if (!file || !shop) return;
@@ -394,9 +430,18 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   </SheetHeader>
                   <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar pb-10">
                     {historyItems.length === 0 ? (
-                      <div className="py-20 flex flex-col items-center gap-4 text-center border-2 border-dashed border-black/5 rounded-[12px]">
-                        <Clock className="w-8 h-8 text-auth-slate-20" />
-                        <p className="text-[14px] font-bold text-auth-slate-30">No Active Data</p>
+                      <div className="py-24 flex flex-col items-center justify-center gap-8 text-center border-2 border-dashed border-black/5 rounded-[24px] bg-[#F9F9F9] w-full">
+                        <div className="relative">
+                          <img 
+                            src="/hot-air-balloon.svg" 
+                            alt="No Jobs Yet" 
+                            className="w-48 h-48 drop-shadow-2xl"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                           <p className="text-[18px] font-black text-black tracking-tight uppercase">History Clear</p>
+                           <p className="text-[12px] font-bold text-auth-slate-30 uppercase tracking-[0.15em] max-w-[240px] px-4">Ready for your first high-fidelity print job?</p>
+                        </div>
                       </div>
                     ) : historyItems.map((item) => (
                       <motion.div 
@@ -543,27 +588,27 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                    className="w-full min-h-[340px] border-2 border-dashed border-black/10 rounded-[18px] flex flex-col items-center justify-center gap-6 bg-[#F9F9F9]/50 hover:bg-[#F9F9F9] transition-all cursor-pointer p-8 group relative overflow-hidden"
                    onClick={() => fileInputRef.current?.click()}
                  >
-                   <input
-                     type="file"
-                     ref={fileInputRef}
-                     className="hidden"
-                     onChange={(e) => setFile(e.target.files?.[0] || null)}
-                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                   />
-                   <motion.div 
-                     whileHover={{ y: -5 }}
-                     className="w-20 h-20 bg-white border border-black/5 shadow-2xl rounded-[20px] flex items-center justify-center relative z-10"
-                   >
-                      <Upload className="w-8 h-8 text-black" />
-                   </motion.div>
-                   <div className="text-center relative z-10">
-                      <p className="text-[20px] font-black text-black tracking-tight">Upload Document</p>
-                      <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: PDF/DOCX/IMG</p>
-                   </div>
-                   
-                   {/* Background visual cues */}
-                   <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
-                   <div className="absolute -top-8 -left-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    />
+                    <motion.div 
+                      whileHover={{ y: -5 }}
+                      className="w-20 h-20 bg-white border border-black/5 shadow-2xl rounded-[20px] flex items-center justify-center relative z-10"
+                    >
+                       <Upload className="w-8 h-8 text-black" />
+                    </motion.div>
+                    <div className="text-center relative z-10">
+                       <p className="text-[20px] font-black text-black tracking-tight">Upload Document</p>
+                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: PDF/DOCX/IMG</p>
+                    </div>
+                    
+                    {/* Background visual cues */}
+                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
+                    <div className="absolute -top-8 -left-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
                  </motion.div>
                ) : (
                  <motion.div 
@@ -661,6 +706,18 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showCropper && cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            setCropperImage(null);
+            setFile(null);
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -1636,13 +1636,21 @@ export default function AdminDashboard() {
                <tbody className="bg-white">
                   {filteredJobs.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-32 text-center">
-                         <div className="flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-[5.57px] bg-[#F8FAFC] flex items-center justify-center border border-[#E2E8F0] mb-2">
-                              <Clock className="w-5 h-5 text-auth-slate-50" />
+                      <td colSpan={6} className="py-32 text-center border-none">
+                         <div className="flex flex-col items-center justify-center gap-8 w-full max-w-[400px] mx-auto">
+                            <div className="relative">
+                              <img 
+                                src="/hot-air-balloon.svg" 
+                                alt="Queue Empty" 
+                                className="w-48 h-48 drop-shadow-2xl"
+                              />
                             </div>
-                            <p className="text-[14px] font-bold text-black tracking-tight">Queue Empty</p>
-                            <p className="text-[12.27px] font-medium text-auth-slate-50">Customer print jobs will appear here.</p>
+                            <div className="space-y-2">
+                               <p className="text-[20px] font-black text-black tracking-tight uppercase">Terminal Clear</p>
+                               <p className="text-[12px] font-bold text-auth-slate-30 uppercase tracking-[0.15em] leading-relaxed">
+                                 The network is silent. Customer print jobs will appear here in real-time.
+                               </p>
+                            </div>
                          </div>
                       </td>
                     </tr>
