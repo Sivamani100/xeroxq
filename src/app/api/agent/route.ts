@@ -26,22 +26,27 @@ export async function POST(req: NextRequest) {
     const inputPath = join(tempDir, file.name);
     await writeFile(inputPath, buffer);
 
-    // --- Serverless-safe Chromium launch ---
-    // On production (Vercel): Uses @sparticuz/chromium dedicated binary
-    // On localhost: Detects local Chrome/Edge install or specific bin path
+    // --- Serverless-safe Chromium launch (Vercel-hardened) ---
     let executablePath: string;
     
     if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-      // In production (Vercel), we MUST use the @sparticuz/chromium binary
-      executablePath = await chromium.executablePath();
+      try {
+        // 1. Try local path first (if bundled successfully by Next.js)
+        executablePath = await chromium.executablePath();
+      } catch (e) {
+        // 2. CRITICAL FALLBACK: Use Remote Chromium Binary if local bin is missing.
+        // This resolves the "/var/task/node_modules/@sparticuz/chromium/bin does not exist" error.
+        // We use the stable v123 binary tarball.
+        executablePath = await (chromium as any).executablePath(
+          `https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar`
+        );
+        console.warn("[Agent] Local signal missing. Diverting to Remote binary signal.");
+      }
     } else {
-      // Local dev fallback
-      // On Windows/Mac/Linux, we try to find a local browser.
-      // If chromium.executablePath() fails locally, we provide common local paths.
+      // Local dev fallback (Windows)
       try {
         executablePath = await chromium.executablePath();
       } catch (e) {
-        // Fallback for Windows local dev (most common for this user)
         executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
       }
     }
@@ -63,7 +68,14 @@ export async function POST(req: NextRequest) {
         "--no-zygote",
         "--single-process",
         "--disable-extensions",
+        "--hide-scrollbars",
+        "--disable-notifications",
       ],
+      defaultViewport: {
+        width: 1280,
+        height: 720,
+        deviceScaleFactor: 1,
+      },
     });
 
     const page = await browser.newPage();
