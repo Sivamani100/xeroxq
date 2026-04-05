@@ -82,6 +82,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const [jobStatus, setJobStatus] = useState<string>("pending");
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
+  const [docxFileToProcess, setDocxFileToProcess] = useState<File | null>(null);
+  const [showDocxChoice, setShowDocxChoice] = useState(false);
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,20 +145,26 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       reader.onload = () => {
         setCropperImage(reader.result as string);
         setShowCropper(true);
-        // We set the file temporarily to keep the UI state consistent
         setFile(selectedFile);
       };
       reader.readAsDataURL(selectedFile);
+    } else if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
+      setDocxFileToProcess(selectedFile);
+      setShowDocxChoice(true);
     } else {
       setFile(selectedFile);
     }
   };
 
-  const handleCropComplete = (croppedBlob: Blob) => {
+
+  const handleCropComplete = async (croppedDataUrl: string) => {
     if (!cropperImage || !file) return;
     
-    // Create new file from blob
-    const croppedFile = new File([croppedBlob], file.name, {
+    // Convert dataURL to blob
+    const res = await fetch(croppedDataUrl);
+    const blob = await res.blob();
+    
+    const croppedFile = new File([blob], file.name, {
       type: "image/jpeg",
       lastModified: Date.now(),
     });
@@ -165,26 +174,31 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     setCropperImage(null);
   };
 
-  const handleUpload = async () => {
-    if (!file || !shop) return;
+
+  const handleUpload = async (forceFileType?: 'raw' | 'pdf') => {
+    if (!file && !docxFileToProcess) return;
+    const activeFile = forceFileType === 'raw' ? docxFileToProcess : (docxFileToProcess || file);
+    if (!activeFile || !shop) return;
     
-    const fileExt = file.name.split(".").pop()?.toLowerCase();
-    const needsConversion = ["docx", "doc", "xlsx"].includes(fileExt || "");
+    const fileExt = activeFile.name.split(".").pop()?.toLowerCase();
+    const needsConversion = forceFileType === 'pdf' && ["docx", "doc"].includes(fileExt || "");
     
     setUploading(true);
     if (needsConversion) setIsConverting(true);
 
     try {
-      let finalFile: File | Blob = file;
-      let finalFileName = file.name;
+      let finalFile: File | Blob = activeFile;
+      let finalFileName = activeFile.name;
+
       
       // 1. Preparing the document
       if (needsConversion) {
         setConversionStep(1); // Optimizing Signal
         const convFormData = new FormData();
-        convFormData.append("file", file);
+        convFormData.append("file", activeFile as Blob);
         
         // Minor delay to show the first step
+
         await new Promise(r => setTimeout(r, 800));
         setConversionStep(2); // Connecting to Agent
 
@@ -200,16 +214,23 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
         setConversionStep(3); // Wrapping Payload
         finalFile = await response.blob();
-        finalFileName = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+        if (activeFile) {
+          finalFileName = `${activeFile.name.replace(/\.[^/.]+$/, "")}.pdf`;
+        }
+
       }
 
       const finalExt = finalFileName.split(".").pop();
       const storagePath = `${Math.random().toString(36).substring(2)}.${finalExt}`;
 
       // 2. Upload to Storage
+      if (!finalFile) throw new Error("File preparation failed - no payload generated");
+      
       const { error: uploadError } = await supabase.storage
         .from("documents")
-        .upload(storagePath, finalFile);
+        .upload(storagePath, finalFile as Blob);
+
+
 
       if (uploadError) throw uploadError;
 
@@ -280,8 +301,10 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       setUploading(false);
       setIsConverting(false);
       setConversionStep(0);
+      setDocxFileToProcess(null);
     }
   };
+
 
   const deleteHistoryItem = (tokenToDelete: string) => {
     const updated = historyItems.filter(item => item.token !== tokenToDelete);
@@ -687,7 +710,15 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     </div>
 
                     <button 
-                       onClick={handleUpload}
+                       onClick={() => {
+                          const active = docxFileToProcess || file;
+                          if (active?.name.toLowerCase().endsWith('.docx')) {
+                            setShowDocxChoice(true);
+                          } else {
+                            handleUpload();
+                          }
+                       }}
+
                        disabled={uploading || !customerName.trim()}
                        className="w-full h-14 bg-black text-white hover:bg-black/90 disabled:bg-black/10 disabled:text-black/20 font-black text-[15px] tracking-tight rounded-[16px] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-black/20 transform hover:scale-[1.01] active:scale-[0.99]"
                     >
@@ -713,17 +744,47 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         )}
       </AnimatePresence>
 
-      {showCropper && cropperImage && (
+       {showCropper && cropperImage && (
         <ImageCropper
           image={cropperImage}
-          onCropComplete={handleCropComplete}
-          onCancel={() => {
-            setShowCropper(false);
-            setCropperImage(null);
-            setFile(null);
-          }}
+          onCropComplete={(img) => handleCropComplete(img)}
+          onCancel={() => { setShowCropper(false); setCropperImage(null); }}
         />
       )}
+
+      <Dialog open={showDocxChoice} onOpenChange={setShowDocxChoice}>
+        <DialogContent className="sm:max-w-[425px] bg-white rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+          <div className="p-8">
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+              <FileText className="w-8 h-8 text-blue-600" />
+            </div>
+            <DialogHeader className="text-left p-0">
+              <DialogTitle className="text-2xl font-black text-black">Optimize Document?</DialogTitle>
+              <DialogDescription className="text-[15px] font-medium text-auth-slate-30 mt-2">
+                We can convert your Word document to a professional PDF to ensure pixel-perfect printing at the shop.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          
+          <div className="flex flex-col gap-3 p-8 pt-0">
+            <Button 
+              onClick={() => { setShowDocxChoice(false); handleUpload('pdf'); }}
+              className="w-full h-14 bg-black text-white hover:bg-black/90 font-black text-[15px] rounded-2xl transition-all shadow-xl shadow-black/10"
+            >
+              <Zap className="w-5 h-5 mr-2 text-yellow-400 fill-yellow-400" /> 
+              Convert to PDF (Recommended)
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => { setShowDocxChoice(false); handleUpload('raw'); }}
+              className="w-full h-14 border-2 border-black/5 bg-white text-black hover:bg-black/5 font-black text-[15px] rounded-2xl transition-all"
+            >
+              Send Original Docx
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
+

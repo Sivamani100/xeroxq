@@ -28,7 +28,9 @@ import {
   Grid,
   ArrowUpToLine,
   ArrowDownToLine,
-  Palette
+  Palette,
+  History,
+  Crop
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,8 +49,10 @@ import {
   DialogTitle, 
   DialogTrigger,
   DialogDescription,
-  DialogFooter
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
+import { ImageCropper } from "@/components/editing/image-cropper";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Shop {
@@ -116,6 +120,7 @@ export default function AdminDashboard() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
   const [isCompositing, setIsCompositing] = useState(false);
+  const [croppingItemId, setCroppingItemId] = useState<string | null>(null);
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [viewportWidth, setViewportWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 0);
   const [viewportHeight, setViewportHeight] = useState(typeof window !== "undefined" ? window.innerHeight : 0);
@@ -434,17 +439,22 @@ export default function AdminDashboard() {
                  y: 50, 
                  width: initialWidth, 
                  height: initialHeight, 
-                 pageIndex: 0 
+                 pageIndex: 0,
+                 payloadUrl: localUrl
               }]);
               setPageCount(1);
               setActivePageIndex(0);
            };
         } else if (ext === 'pdf') {
            try {
-             const { pdfjs } = await import("react-pdf");
-             pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-             
-             const loadingTask = pdfjs.getDocument(localUrl);
+              const { pdfjs } = await import("react-pdf");
+              pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+                'pdfjs-dist/build/pdf.worker.min.mjs',
+                import.meta.url,
+              ).toString();
+              
+              const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+
              const pdf = await loadingTask.promise;
              const numPages = pdf.numPages;
              
@@ -480,8 +490,21 @@ export default function AdminDashboard() {
              setActivePageIndex(0);
            } catch(e) {
              console.error("PDF Parse error", e);
-             window.open(localUrl, "_blank");
-             setActivePrintJob(null);
+             setPrintPreviewUrl(null);
+             setCanvasItems([{
+                id: `pdf-error-${Date.now()}`,
+                x: 0,
+                y: 0,
+                width: 794,
+                height: 1123,
+                pageIndex: 0,
+                rawHtml: `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #FFF1F2; border: 2px dashed #FECACA; color: #991B1B; padding: 40px; text-align: center;">
+                  <h3 style="margin: 0 0 10px 0;">PDF Render Error</h3>
+                  <p style="font-size: 14px; margin: 0;">We couldn't render this PDF in the canvas. You can still use the "Transmit to Printer" button to attempt a native browser print.</p>
+                </div>`
+             }]);
+             setPageCount(1);
+             setActivePageIndex(0);
            }
         } else if (ext === 'docx' || ext === 'doc') {
            try {
@@ -501,14 +524,44 @@ export default function AdminDashboard() {
              setActivePageIndex(0);
            } catch(e) {
              console.error("DOCX Parse error", e);
-             window.open(localUrl, "_blank");
-             setActivePrintJob(null);
+             setPrintPreviewUrl(null);
+             setCanvasItems([{
+                id: `docx-error-${Date.now()}`,
+                x: 0,
+                y: 0,
+                width: 794,
+                height: 1123,
+                pageIndex: 0,
+                rawHtml: `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #FFF1F2; border: 2px dashed #FECACA; color: #991B1B; padding: 40px; text-align: center;">
+                  <h3 style="margin: 0 0 10px 0;">DOCX Render Error</h3>
+                  <p style="font-size: 14px; margin: 0;">We couldn't render this Word document. Please ensure it is not password protected or corrupted.</p>
+                </div>`
+             }]);
+             setPageCount(1);
+             setActivePageIndex(0);
            }
         } else {
-           // Native Mode fallback
-           window.open(localUrl, "_blank");
-           setActivePrintJob(null);
-        }
+            // Native Mode / Unknown format - Still open the editor with a placeholder
+            setPrintPreviewUrl(null);
+            setCanvasItems([{
+               id: `unknown-${Date.now()}`,
+               x: 50,
+               y: 50,
+               width: 300,
+               height: 400,
+               pageIndex: 0,
+               rawHtml: `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #F8FAFC; border: 2px dashed #E2E8F0; border-radius: 12px; color: #64748B; font-family: sans-serif; gap: 12px; padding: 20px; text-align: center;">
+                 <div style="background: white; border-radius: 50%; padding: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                 </div>
+                 <div style="font-weight: 700; color: #1E293B;">Universal Print Container</div>
+                 <div style="font-size: 12px; line-height: 1.4;">${job.file_name}<br/>Format: ${ext.toUpperCase() || 'RAW'}</div>
+                 <div style="font-size: 10px; opacity: 0.7;">Native rendering not supported. Print as a placeholder or add items.</div>
+               </div>`
+            }]);
+            setPageCount(1);
+            setActivePageIndex(0);
+         }
       }
     } catch (error: any) {
       console.error("Payload decryption failed:", error);
@@ -553,7 +606,7 @@ export default function AdminDashboard() {
    };
 
   const executeCanvasPrint = async () => {
-    if (!activePrintJob || !printPreviewUrl) return;
+    if (!activePrintJob) return;
     
     const imgWindow = window.open("", "_blank");
     if (imgWindow) {
@@ -574,7 +627,7 @@ export default function AdminDashboard() {
           if (item.rawHtml) {
              imagesHtml += `<div style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; ${filterCss} ${zIndexCss}">${item.rawHtml}</div>`;
           } else {
-             const src = item.payloadUrl || printPreviewUrl;
+             const src = item.payloadUrl || "";
              imagesHtml += `<img src="${src}" style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; object-fit: contain; ${filterCss} ${zIndexCss}" />`;
           }
         });
@@ -1143,6 +1196,13 @@ export default function AdminDashboard() {
                        <Palette className="w-3 h-3" /> Toggle B&W (Grayscale)
                      </button>
                      <button 
+                       disabled={selectedCanvasIds.length === 0}
+                       onClick={() => setCroppingItemId(selectedCanvasIds[0])}
+                       className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
+                     >
+                       <Crop className="w-3 h-3" /> Crop Selected
+                     </button>
+                     <button 
                        onClick={() => {
                           setCanvasItems(canvasItems.filter(i => !selectedCanvasIds.includes(i.id)));
                           setSelectedCanvasIds([]);
@@ -1338,7 +1398,7 @@ export default function AdminDashboard() {
                            />
                         ) : (
                            <img 
-                             src={item.payloadUrl || printPreviewUrl!} 
+                             src={item.payloadUrl || ""} 
                              className="w-full h-full object-contain pointer-events-none" 
                              style={{ filter: item.isGrayscale ? "grayscale(100%)" : "none" }}
                              alt="Canvas segment" 
