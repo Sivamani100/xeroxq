@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 
 import * as mammoth from "mammoth";
 import html2canvas from "html2canvas-pro";
+import { QRCodeSVG } from "qrcode.react";
 
 // Dialog components for modals
 import { 
@@ -1548,9 +1549,30 @@ export default function AdminDashboard() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex flex-col items-center gap-4 mt-2">
-                        <div className="p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[24px] w-full flex justify-center shadow-inner group relative">
+                        <div className="p-6 bg-white border border-[#E2E8F0] rounded-[24px] w-full flex justify-center shadow-inner group relative">
                            <div className="absolute inset-4 border border-dashed border-black/5 rounded-[20px] group-hover:border-black/10 transition-colors" />
-                           <img src={qrImageUrl} alt="QR" className="w-[160px] h-[160px] mix-blend-multiply relative z-10 transition-transform duration-500 group-hover:scale-105" />
+                           <div className="relative z-10 p-2 bg-white rounded-xl transition-transform duration-500 group-hover:scale-105">
+                             {qrUrl ? (
+                               <QRCodeSVG 
+                                 value={qrUrl} 
+                                 size={160}
+                                 level="H"
+                                 includeMargin={false}
+                                 imageSettings={{
+                                   src: "/logo.png",
+                                   x: undefined,
+                                   y: undefined,
+                                   height: 24,
+                                   width: 24,
+                                   excavate: true,
+                                 }}
+                               />
+                             ) : (
+                               <div className="w-[160px] h-[160px] flex items-center justify-center text-slate-400">
+                                 Generating...
+                               </div>
+                             )}
+                           </div>
                         </div>
                         
                         <div className="w-full space-y-4">

@@ -30,6 +30,7 @@
     "next-pwa": "^5.6.0",
     "puppeteer": "^24.40.0",
     "puppeteer-core": "^24.40.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-easy-crop": "^5.5.7",

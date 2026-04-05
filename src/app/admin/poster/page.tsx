@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Printer, ShieldCheck, Zap, Scissors } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QRCodeSVG } from "qrcode.react";
 
 function PosterContent() {
   const searchParams = useSearchParams();
@@ -121,13 +122,29 @@ function PosterContent() {
              <div className="absolute -bottom-3 -left-3 w-10 h-10 border-b-[6px] border-l-[6px] border-black rounded-bl-xl" />
              <div className="absolute -bottom-3 -right-3 w-10 h-10 border-b-[6px] border-r-[6px] border-black rounded-br-xl" />
              
-             <div className="bg-white p-2 rounded-[24px]">
-                <img 
-                   src={qrImageUrl} 
-                   alt="Shop QR Code" 
-                   className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px]"
-                />
-             </div>
+              <div className="bg-white p-2 rounded-[24px] flex items-center justify-center">
+                 {qrUrl ? (
+                   <QRCodeSVG 
+                     value={qrUrl} 
+                     size={320}
+                     level="H"
+                     includeMargin={false}
+                     className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px]"
+                     imageSettings={{
+                       src: "/logo.png",
+                       x: undefined,
+                       y: undefined,
+                       height: 48,
+                       width: 48,
+                       excavate: true,
+                     }}
+                   />
+                 ) : (
+                   <div className="w-[320px] h-[320px] flex items-center justify-center text-slate-400">
+                     Generating...
+                   </div>
+                 )}
+              </div>
              
              <div className="mt-6 flex flex-col items-center">
                 <span className="text-[12px] font-black tracking-[0.2em] uppercase text-black/30 mb-2">Shop Link</span>
