@@ -43,11 +43,14 @@ export async function POST(req: NextRequest) {
         console.warn("[Agent] Local signal missing. Diverting to Remote binary signal.");
       }
     } else {
-      // Local dev fallback (Windows)
-      try {
-        executablePath = await chromium.executablePath();
-      } catch (e) {
+      // Local dev fallback
+      const platform = process.platform;
+      if (platform === "win32") {
         executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+      } else if (platform === "darwin") {
+        executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+      } else {
+        executablePath = "/usr/bin/google-chrome";
       }
     }
 
