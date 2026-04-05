@@ -74,15 +74,15 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
 
   return (
     <Dialog open={true} onOpenChange={() => onCancel()}>
-      <DialogContent className="sm:max-w-[600px] bg-[#1A1D21] border-white/10 text-white">
+      <DialogContent className="sm:max-w-[600px] bg-white border-black/5 shadow-2xl rounded-3xl p-6 text-black overflow-hidden border-none">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Crop className="w-5 h-5 text-[#FF591E]" />
-            Crop Image
+          <DialogTitle className="flex items-center gap-3 text-2xl font-black tracking-tight text-black">
+            <Crop className="w-6 h-6 text-black" />
+            Adjust Image
           </DialogTitle>
         </DialogHeader>
         
-        <div className="relative h-[400px] w-full bg-black rounded-lg overflow-hidden mt-4">
+        <div className="relative h-[400px] w-full bg-[#f8f8f8] border border-black/5 rounded-2xl overflow-hidden mt-4">
           <Cropper
             image={image}
             crop={crop}
@@ -95,8 +95,8 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
         </div>
 
         <div className="mt-6 flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <span className="text-[12px] font-bold text-white/50 uppercase">Zoom</span>
+          <div className="flex items-center gap-4 px-2">
+            <span className="text-[11px] font-black tracking-widest text-auth-slate-50 uppercase">Zoom</span>
             <Slider
               value={[zoom]}
               min={1}
@@ -108,19 +108,19 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
           </div>
         </div>
 
-        <DialogFooter className="mt-6 gap-2">
+        <DialogFooter className="mt-8 gap-3 sm:gap-2">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             onClick={onCancel}
-            className="text-white/60 hover:text-white hover:bg-white/10 border-white/10"
+            className="border-2 border-black/5 bg-white text-black hover:bg-black/5 font-black text-[15px] h-12 rounded-xl transition-all flex-1 sm:flex-none"
           >
-            <X className="mr-2 w-4 h-4" /> Cancel
+            Cancel
           </Button>
           <Button 
             onClick={handleApply}
-            className="bg-[#FF591E] hover:bg-[#FF591E]/90 text-white font-bold"
+            className="bg-black hover:bg-black/90 text-white font-black text-[15px] h-12 rounded-xl transition-all shadow-xl shadow-black/10 flex-1 sm:flex-none"
           >
-            <Check className="mr-2 w-4 h-4" /> Apply Crop
+            Confirm Crop
           </Button>
         </DialogFooter>
       </DialogContent>
