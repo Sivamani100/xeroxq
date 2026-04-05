@@ -254,10 +254,38 @@ export default function AdminDashboard() {
     };
   }, [canvasItems, selectedCanvasIds, history, historyIndex]);
   
-  // Persist sound settings
+  // Persist sound settings & Auto-Resume Audio Protocol
   useEffect(() => {
     const saved = localStorage.getItem("xeroxq_admin_sound");
-    if (saved === "true") setIsSoundEnabled(true);
+    if (saved === "true") {
+      setIsSoundEnabled(true);
+      
+      // Browser Auto-play Policy Bypass: 
+      // Initialize/Resume AudioContext on the very first user interaction anywhere on the document.
+      const unlockAudio = async () => {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+        // Cleanup after first interaction
+        window.removeEventListener('mousedown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+        console.log("XeroxQ Alert Engine: Unlocked via interaction");
+      };
+
+      window.addEventListener('mousedown', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+
+      return () => {
+        window.removeEventListener('mousedown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+      };
+    }
   }, []);
 
   const requestNotificationPermission = async () => {
@@ -293,6 +321,12 @@ export default function AdminDashboard() {
     const newVal = !isSoundEnabled;
     setIsSoundEnabled(newVal);
     localStorage.setItem("xeroxq_admin_sound", newVal.toString());
+    
+    // If we're enabling, also try to initialize/resume immediately 
+    // since this toggle is a user-initiated gesture.
+    if (newVal) {
+        requestNotificationPermission();
+    }
   };
 
   const stats = {
@@ -347,13 +381,19 @@ export default function AdminDashboard() {
     checkUser();
   }, [router]);
 
-  const playNotificationPing = () => {
+  const playNotificationPing = async () => {
     try {
       const audioCtx = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
       if (!audioContextRef.current) audioContextRef.current = audioCtx;
       
+      // Final fallback resume in case the interaction listener hasn't fired yet
       if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
+          await audioCtx.resume();
+      }
+
+      if (audioCtx.state !== 'running') {
+          console.warn("XeroxQ Alert Engine: State is blocked by browser policy. Interaction required.");
+          return;
       }
 
       const osc1 = audioCtx.createOscillator();
