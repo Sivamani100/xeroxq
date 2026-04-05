@@ -3,205 +3,176 @@
 import { motion } from "framer-motion";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { 
-  ShieldCheck, 
-  Zap, 
-  Network, 
-  Printer, 
-  ArrowRight, 
+  ArrowRight,
+  Smartphone,
   Lock,
-  Search,
+  Printer,
+  QrCode,
+  Zap,
   Globe,
-  Cpu,
-  RefreshCw
+  FileCheck2
 } from "lucide-react";
 
-export default function HowItWorks() {
-  const steps = [
+export default function HowItWorksPage() {
+  const customSteps = [
     { 
-      title: "Local Signal Generation", 
-      desc: "Your document is encrypted using high-grade AES-256 directly on your device. The 'Signal' is born private.", 
-      icon: Zap,
-      color: "text-amber-500"
+      title: "Scan & Connect", 
+      description: "Walk into any partner Xerox shop in AP and scan their unique XeroxQ QR code. No app downloads required.", 
+      icon: <QrCode className="h-6 w-6" />,
+      benefits: ["No WhatsApp required", "Instant connection", "Works on any phone"]
     },
     { 
-      title: "Decentralized Routing", 
-      desc: "The XeroxQ mesh routes your signal to the most optimal verified shop node based on proximity and load.", 
-      icon: Network,
-      color: "text-blue-500"
+      title: "Upload Document", 
+      description: "Select the document from your phone. It is instantly encrypted before it even leaves your device.", 
+      icon: <Smartphone className="h-6 w-6" />,
+      benefits: ["AES-256 encryption", "PDF/DOCX support", "Zero local trace"]
     },
     { 
-      title: "Encrypted Handshake", 
-      desc: "The Shop Node receives the signal but cannot decrypt it without the one-time ephemeral key shared during arrival.", 
-      icon: Lock,
-      color: "text-purple-500"
+      title: "Secure Transfer", 
+      description: "The file is routed directly to the shop's terminal. The shop owner cannot download or save your file locally.", 
+      icon: <Lock className="h-6 w-6" />,
+      benefits: ["Direct to printer", "Shop owner isolation", "End-to-End verified"]
     },
     { 
-      title: "Autonomous Physicalization", 
-      desc: "The hardware processes your document. Once printed, the transient fragment is purged with a 7-pass military-grade erasure.", 
-      icon: Printer,
-      color: "text-[#FB432C]"
+      title: "Print & Vanish", 
+      description: "The document prints immediately. Once the job is done, the file is permanently deleted from the network.", 
+      icon: <Printer className="h-6 w-6" />,
+      benefits: ["7-pass erasure", "Instant physicalization", "Complete privacy"]
     }
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-brand-primary selection:text-white overflow-hidden">
+    <div className="min-h-screen bg-white selection:bg-[#FB432C] selection:text-white overflow-x-hidden font-sans flex flex-col">
       <SiteHeader />
       
-      <main className="pt-32 pb-16">
-        {/* How It Works Hero */}
-        <section className="relative pb-24 text-center">
-          <div className="max-w-[1280px] mx-auto px-6 space-y-12 relative z-10">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md shadow-sm mb-6"
+      <main className="flex-1 pt-32 pb-0">
+
+        {/* Hero Section styled like the landing page component header */}
+        <section className="relative pt-12 pb-16 text-center overflow-hidden">
+          <div className="max-w-[1280px] mx-auto px-6 relative z-10">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+              }}
+              initial="hidden"
+              animate="visible"
+              className="mx-auto mb-16 max-w-2xl text-center"
             >
-              <Cpu className="w-3.5 h-3.5 text-black" />
-              <span className="text-[10px] font-black tracking-[0.2em] text-black uppercase">The XeroxQ Architecture</span>
+              <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
+                <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+                <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">The XeroxQ Protocol</span>
+              </div>
+              <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
+                Privacy-First Printing <br/> In 4 Steps
+              </h2>
+              <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+                We re-engineered how printing works from the ground up. Protect your personal documents without sacrificing convenience.
+              </p>
             </motion.div>
-            
-            <div className="space-y-6 max-w-4xl mx-auto">
-              <motion.h1 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-                className="text-[64px] lg:text-[100px] font-bold text-black tracking-tighter leading-[0.85] uppercase"
-              >
-                The Science Of <br /> Secure Output.
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-2xl text-[#64748B] font-medium max-w-3xl mx-auto leading-relaxed"
-              >
-                A decentralized document physicalization protocol designed for the post-privacy era. Engineering the bridge between the digital and physical.
-              </motion.p>
+
+            {/* Step Indicators with Connecting Line (Identical to Landing Page) */}
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { delay: 0.4, duration: 0.8 } }
+              }}
+              initial="hidden"
+              animate="visible"
+              className="relative mx-auto mb-16 w-full max-w-4xl hidden md:block"
+            >
+              <div
+                aria-hidden="true"
+                className="absolute left-[12.5%] top-1/2 h-[1px] w-[75%] -translate-y-1/2 bg-gray-100"
+              ></div>
+              <div className="relative grid grid-cols-4">
+                {customSteps.map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex h-10 w-10 items-center justify-center justify-self-center rounded-full bg-white border border-gray-100 font-bold text-black text-sm shadow-sm ring-8 ring-white transition-all duration-300 hover:border-[#FB432C] hover:text-[#FB432C] hover:scale-110"
+                  >
+                    0{index + 1}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Steps Grid (Identical to StepCard in how-it-works.tsx) */}
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 mb-24">
+              {customSteps.map((step, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: index * 0.15, duration: 0.8, type: 'spring', bounce: 0.3 }}
+                  className={cn(
+                    "relative rounded-2xl border bg-white p-6 lg:p-8 text-black transition-all duration-500 ease-in-out group text-left",
+                    "hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/5 hover:border-[#FB432C]/30"
+                  )}
+                >
+                  {/* Icon */}
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-lg shadow-black/20 group-hover:bg-[#FB432C] group-hover:scale-110 transition-all duration-500">
+                    {step.icon}
+                  </div>
+                  {/* Title and Description */}
+                  <h3 className="mb-3 text-lg font-bold tracking-tight uppercase">{step.title}</h3>
+                  <p className="mb-8 text-xs font-medium text-gray-500 leading-relaxed">{step.description}</p>
+                  {/* Benefits List */}
+                  <ul className="space-y-4">
+                    {step.benefits.map((benefit, bIndex) => (
+                      <li key={bIndex} className="flex items-center gap-3">
+                        <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-black/5 group-hover:bg-[#FB432C]/10 transition-colors">
+                          <div className="h-1.5 w-1.5 rounded-full bg-black group-hover:bg-[#FB432C] transition-colors"></div>
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              ))}
             </div>
+
           </div>
         </section>
 
-        {/* The 4-Step Process Flow */}
+        {/* Global CTA matching landing page style */}
         <motion.section 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="py-16 border-y border-[#E2E8F0] bg-[#F8FAFC]"
+          className="pb-32 px-6"
         >
-           <div className="max-w-[1280px] mx-auto px-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-left relative">
-                 {/* Decorative connecting line */}
-                 <div className="hidden lg:block absolute top-[80px] left-[100px] right-[100px] h-[1px] bg-black/5 z-0" />
+           <div className="max-w-[1280px] mx-auto p-12 lg:p-20 bg-black rounded-[32px] relative overflow-hidden text-center group shadow-2xl">
+              <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" 
+                   style={{ backgroundImage: 'radial-gradient(circle_at_100%_100%, #FB432C 0%, transparent 40%)' }} />
+              
+              <div className="relative z-10 flex flex-col items-center gap-8">
                  
-                 {steps.map((step, i) => (
-                    <motion.div 
-                      key={step.title}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.15 }}
-                      className="group relative z-10"
-                    >
-                       <div className="w-12 h-12 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm group-hover:border-black">
-                          <step.icon className={`w-6 h-6 ${step.color}`} />
-                       </div>
-                       <div className="space-y-3">
-                          <div className="text-[9px] font-black text-black uppercase tracking-[0.3em]">Module 0{i+1}</div>
-                          <h3 className="text-lg font-bold text-black tracking-tight leading-none group-hover:text-black transition-colors uppercase">{step.title}</h3>
-                          <p className="text-[13px] text-[#64748B] font-medium leading-relaxed">{step.desc}</p>
-                       </div>
-                    </motion.div>
-                 ))}
-              </div>
-           </div>
-        </motion.section>
-
-        {/* Technical Deep Dive */}
-        <section className="py-20 bg-white overflow-hidden">
-           <div className="max-w-[1280px] mx-auto px-6 flex flex-col lg:flex-row items-center gap-16">
-              <motion.div 
-                initial={{ opacity: 0, x: -40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="flex-1 space-y-10 text-left"
-              >
                  <div className="space-y-4">
-                    <span className="text-[10px] font-black text-black uppercase tracking-[0.3em]">Technical Authority</span>
-                    <h2 className="text-4xl lg:text-5xl font-bold text-black tracking-tight leading-[0.95] uppercase">Root Volatility.</h2>
-                    <p className="text-sm text-[#64748B] font-medium leading-relaxed max-w-lg italic">
-                       "Infrastructure designed for zero persistence. Transient data physicalization across the mesh."
+                    <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tighter uppercase leading-none">
+                       Ready to Print Securely?
+                    </h2>
+                    <p className="text-white/60 font-medium max-w-lg mx-auto leading-relaxed">
+                       Find a XeroxQ enabled shop near you and experience true privacy. Free for users. Free for shops.
                     </p>
                  </div>
-                 
-                 <div className="space-y-0 border border-[#E2E8F0] rounded-lg overflow-hidden bg-[#F8FAFC]">
-                    {[
-                      { l: "End-to-End Handshake", r: "Verified" },
-                      { l: "Payload Volatility", r: "100%" },
-                      { l: "Network Latency", r: "< 400ms" },
-                      { l: "Encryption Standard", r: "AES-256" }
-                    ].map((row, i) => (
-                       <motion.div 
-                         key={row.l} 
-                         initial={{ opacity: 0 }}
-                         whileInView={{ opacity: 1 }}
-                         viewport={{ once: true }}
-                         transition={{ delay: i * 0.1 }}
-                         className="flex items-center justify-between px-5 py-3 border-b border-[#E2E8F0] last:border-0 hover:bg-white transition-colors"
-                       >
-                          <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">{row.l}</span>
-                          <span className="text-[10px] font-black text-black tracking-widest uppercase leading-none">{row.r}</span>
-                       </motion.div>
-                    ))}
-                 </div>
-              </motion.div>
 
-              <motion.div 
-                initial={{ opacity: 0, x: 40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="flex-1 w-full relative"
-              >
-                 <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-black/90 to-transparent z-10" />
-                    <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" 
-                         style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-                    <div className="absolute inset-0 flex items-center justify-center z-20">
-                       <div className="w-[85%] h-[85%] border border-white/10 rounded-lg flex flex-col items-center justify-center p-6 text-center group-hover:scale-105 transition-transform duration-700">
-                          <RefreshCw className="w-12 h-12 text-white opacity-20 mb-6 animate-spin-slow" />
-                          <h4 className="text-lg font-bold text-white tracking-tight leading-none mb-3 uppercase">Sync Logic</h4>
-                          <p className="text-[#94A3B8] font-medium text-[11px] leading-relaxed italic max-w-[240px]">Real-time node health monitoring across the global mesh infrastructure.</p>
-                       </div>
-                    </div>
-                 </div>
-              </motion.div>
-           </div>
-        </section>
-
-        {/* Try the protocol CTA */}
-        <motion.section 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="py-20 px-6"
-        >
-           <div className="max-w-[1280px] mx-auto p-12 bg-[#F8FAFC] rounded-xl relative overflow-hidden text-center group border border-[#E2E8F0]">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-black opacity-[0.02] blur-[120px] rounded-full" />
-              <div className="relative z-10 space-y-8">
-                 <h2 className="text-4xl lg:text-6xl font-bold text-black tracking-tighter leading-none uppercase">Initiate Physicalization.</h2>
-                 <p className="text-sm text-[#64748B] font-medium max-w-lg mx-auto leading-relaxed">Ready to send your first transient signal through the global physicalization mesh?</p>
-                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <button className="h-11 px-8 bg-black text-white hover:bg-black/90 font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl shadow-black/10">
-                       LAUNCH PROTOCOL
-                    </button>
-                    <button className="h-11 px-8 border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                       CORE ARCHITECTURE
-                    </button>
+                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <Link href="/shops">
+                       <button className="h-14 px-10 bg-[#FB432C] hover:bg-white hover:text-black text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all shadow-xl shadow-[#FB432C]/20 flex items-center gap-2">
+                          Find A Shop <ArrowRight className="w-4 h-4" />
+                       </button>
+                    </Link>
+                    <Link href="/register">
+                       <button className="h-14 px-10 bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all flex items-center gap-2">
+                          <Globe className="w-4 h-4" /> Register Shop
+                       </button>
+                    </Link>
                  </div>
               </div>
            </div>

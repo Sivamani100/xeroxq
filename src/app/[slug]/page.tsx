@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { generateToken, cn } from "@/lib/utils";
 import { ImageCropper } from "@/components/editing/image-cropper";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         .single();
       
       if (error) {
-        console.error("Shop Connection Error:", error);
+        if (error.code !== "PGRST116") {
+          console.error("Shop Connection Error:", error.message || error);
+        }
         setNotFound(true);
       } else if (!data) {
         setNotFound(true);
@@ -420,7 +423,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   }
 
   return (
-    <main className="min-h-screen bg-[#FDFDFD] flex flex-col items-center overflow-x-hidden px-4 sm:px-6 pb-12 font-sans selection:bg-black selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
+      <main className="flex-1 flex flex-col items-center overflow-x-hidden px-4 sm:px-6 pb-12 font-sans selection:bg-black selection:text-white">
       {/* Target App Bar / Command Strip */}
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
@@ -789,7 +793,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </div>
         </DialogContent>
       </Dialog>
-    </main>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }
 

@@ -10,149 +10,280 @@ import {
   Heart, 
   ArrowRight, 
   Network,
-  Zap,
+  MessageCircle,
   Printer,
-  Scale,
-  Users2
+  Users2,
+  Code2,
+  AtSign,
+  Megaphone
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function Community() {
+export default function CommunityPage() {
   const values = [
-    { title: "Privacy as a Right", desc: "Encryption isn't an option; it's the default state of the protocol. We believe your physical documents are your business alone.", icon: ShieldCheck },
-    { title: "Distributed Power", desc: "By decentralizing print shops, we remove single points of failure and surveillance, empowering local entrepreneurs global network access.", icon: Network },
+    { title: "Privacy as a Right", desc: "Encryption isn't an option—it's the default state of the protocol. Your physical documents are strictly your business, nobody else's.", icon: ShieldCheck },
+    { title: "Distributed Power", desc: "By decentralizing print shops, we remove single points of failure and surveillance, empowering local entrepreneurs with global protocol access.", icon: Network },
     { title: "Open Source Vision", desc: "The XeroxQ protocol is built by the community, for the community. Transparent code for a transparent world of document physicalization.", icon: Globe }
   ];
 
-  const teamValues = [
-    { title: "Innovation", desc: "Pushing the boundaries of decentralized hardware protocols." },
-    { title: "Reliability", desc: "Building the world's most stable autonomous print mesh." },
-    { title: "Community", desc: "Empowering 10,000+ local shop owners worldwide." },
-    { title: "Inclusion", desc: "Making professional document delivery accessible to everyone." }
+  const stats = [
+    { value: "500+", label: "Verified Shop Nodes", sub: "across Andhra Pradesh" },
+    { value: "26", label: "Districts Covered", sub: "in Phase 1" },
+    { value: "99.9%", label: "Mesh Uptime", sub: "since launch" }
+  ];
+
+  const channels = [
+    {
+      title: "Discord Server",
+      desc: "Real-time discussions with fellow developers, shop owners, and the core team. Get help, share feedback, and collaborate on protocol improvements.",
+      members: "1,200+",
+      icon: MessageCircle,
+      color: "bg-indigo-500",
+      cta: "Join Discord"
+    },
+    {
+      title: "GitHub Repository",
+      desc: "Browse the codebase, report issues, and submit pull requests. Every contribution strengthens the mesh for everyone.",
+      members: "340+",
+      icon: Code2,
+      color: "bg-gray-800",
+      cta: "View Repo"
+    },
+    {
+      title: "Twitter / X",
+      desc: "Follow us for real-time network status updates, product launches, and privacy-first thought leadership from the core team.",
+      members: "5,600+",
+      icon: AtSign,
+      color: "bg-sky-500",
+      cta: "Follow Us"
+    }
+  ];
+
+  const voices = [
+    {
+      name: "Ravi K.",
+      role: "Shop Owner, Guntur",
+      quote: "XeroxQ doubled my daily footfall. Customers love the QR system—no more WhatsApp hassle.",
+      initials: "RK"
+    },
+    {
+      name: "Priya S.",
+      role: "CS Student, Vijayawada",
+      quote: "I contributed to the contrast-AI module as my first open-source PR. The mentorship from the core team was incredible.",
+      initials: "PS"
+    },
+    {
+      name: "Anand M.",
+      role: "Field Affiliate, Visakhapatnam",
+      quote: "Onboarded 30 shops in my district in 2 weeks. The partner program is genuinely rewarding.",
+      initials: "AM"
+    },
+    {
+      name: "Lakshmi R.",
+      role: "Shop Owner, Tirupati",
+      quote: "My customers feel safe printing Aadhaar and medical reports here now. That trust is priceless.",
+      initials: "LR"
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-brand-primary selection:text-white overflow-hidden">
+    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
       <SiteHeader />
       
-      <main className="pt-32 pb-16">
+      <main className="flex-1 pt-32 pb-0">
+        
         {/* Community Hero */}
-        <section className="relative pb-24 text-center">
-          <div className="max-w-[1280px] mx-auto px-6 space-y-12 relative z-10">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md shadow-sm mb-6"
-            >
-              <Users2 className="w-3.5 h-3.5 text-black" />
-              <span className="text-[10px] font-black tracking-[0.2em] text-black uppercase">The XeroxQ Community</span>
-            </motion.div>
-            
-            <div className="space-y-6 max-w-4xl mx-auto">
-              <motion.h1 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[64px] lg:text-[100px] font-bold text-black tracking-tighter leading-[0.85]"
-              >
-                A Global Mesh <br /> Of Trust.
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-2xl text-[#64748B] font-medium max-w-3xl mx-auto leading-relaxed"
-              >
-                XeroxQ is more than a protocol. It’s a decentralized movement of developers, shopkeepers, and privacy advocates physicalizing the digital world.
-              </motion.p>
-            </div>
+        <section className="relative pt-12 pb-16 text-center overflow-hidden">
+          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
+               style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
+               
+          <div className="max-w-[1280px] mx-auto px-6 relative z-10">
+             <motion.div 
+               variants={{
+                 hidden: { opacity: 0, y: 20 },
+                 visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+               }}
+               initial="hidden"
+               animate="visible"
+               className="max-w-4xl mx-auto"
+             >
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8">
+                 <Users2 className="w-3.5 h-3.5 text-black" />
+                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">The Community</span>
+               </div>
+               
+               <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
+                 A Growing Mesh <br /> Of Trust.
+               </h1>
+               <p className="text-lg md:text-xl font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+                 XeroxQ is more than a protocol. It's a movement of developers, shopkeepers, and privacy advocates physicalizing the digital world across Andhra Pradesh.
+               </p>
+             </motion.div>
           </div>
         </section>
 
-        {/* Vision & Values */}
-        <section className="py-20 border-y border-[#E2E8F0] bg-[#F8FAFC]">
-           <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-              {values.map((value, i) => (
-                <div 
-                  key={value.title}
-                  className="p-8 bg-white rounded-xl border border-[#E2E8F0] space-y-6 hover:shadow-xl transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center group-hover:scale-110 transition-transform">
-                     <value.icon className="w-6 h-6 text-black" />
-                  </div>
-                  <div className="space-y-3">
-                     <h3 className="text-xl font-bold tracking-tight text-black uppercase">{value.title}</h3>
-                     <p className="text-sm text-[#64748B] font-medium leading-relaxed">{value.desc}</p>
-                  </div>
-                </div>
+        {/* Live Stats Bar */}
+        <section className="py-12 border-y border-gray-100 bg-white">
+           <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              {stats.map((stat, i) => (
+                 <motion.div 
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="p-6 border border-gray-100 rounded-[24px] flex items-center justify-between group hover:border-[#FB432C]/30 hover:shadow-lg transition-all duration-300"
+                 >
+                    <div>
+                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1 group-hover:text-[#FB432C] transition-colors">{stat.label}</span>
+                       <span className="text-[11px] font-bold text-gray-400 italic">{stat.sub}</span>
+                    </div>
+                    <span className="text-3xl font-black text-black tracking-tight">{stat.value}</span>
+                 </motion.div>
               ))}
            </div>
         </section>
 
-        {/* The 'User' Focus */}
-        <section className="py-40">
-           <div className="max-w-[1280px] mx-auto px-6 flex flex-col lg:flex-row items-center gap-32">
-              <div className="flex-1 space-y-12 text-left">
-                 <div className="space-y-6">
-                    <span className="text-[11px] font-extrabold text-brand-primary uppercase tracking-[0.3em]">Our Philosophy</span>
-                    <h2 className="text-5xl lg:text-6xl font-bold text-black tracking-tight leading-[0.95]">By the people. <br /> For the people.</h2>
-                    <p className="text-xl text-[#64748B] font-medium leading-relaxed">
-                       At XeroxQ, every 'Shop' is an independent node. Every 'User' is a privacy champion. Together, we are building a world where physical document delivery is as secure as a blockchain transaction.
-                    </p>
-                 </div>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {teamValues.map((tv, i) => (
-                       <div key={i} className="p-6 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-1 group hover:bg-black transition-all">
-                          <h4 className="text-sm font-bold text-black group-hover:text-white transition-colors uppercase tracking-tight">{tv.title}</h4>
-                          <p className="text-[12px] text-[#64748B] font-medium group-hover:text-slate-400 transition-colors">{tv.desc}</p>
-                       </div>
-                    ))}
-                 </div>
-                 
-                 <button className="h-12 px-8 bg-black text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-xl transition-all flex items-center gap-3 group active:scale-95">
-                    Join Global Mesh <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                 </button>
+        {/* Core Values */}
+        <section className="py-24 bg-white relative z-20">
+           <div className="max-w-[1280px] mx-auto px-6">
+              <div className="text-center mb-16">
+                 <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">What We Stand For</h2>
+                 <p className="text-gray-500 font-medium">The principles that guide every line of code and every shop onboarded.</p>
               </div>
 
-              <div className="flex-1 w-full relative">
-                 <div className="aspect-square bg-slate-50 rounded-2xl overflow-hidden shadow-2xl border border-[#E2E8F0] relative group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent z-10" />
-                    <div className="absolute inset-0 flex items-center justify-center z-20">
-                       <div className="w-[85%] h-[85%] border border-[#E2E8F0] rounded-xl flex items-center justify-center relative bg-white/40 backdrop-blur-sm shadow-sm">
-                          <Users className="w-48 h-48 text-black opacity-10 group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute -top-4 -right-4 bg-black p-5 rounded-xl text-white shadow-2xl">
-                             <div className="text-2xl font-black tracking-tighter">10K+</div>
-                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Nodes</div>
-                          </div>
-                          <div className="absolute -bottom-6 -left-6 bg-black p-6 rounded-xl text-white shadow-2xl group-hover:-translate-y-2 transition-transform">
-                             <Heart className="w-8 h-8 fill-brand-primary text-brand-primary" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 {values.map((value, i) => (
+                    <motion.div 
+                       key={value.title}
+                       initial={{ opacity: 0, y: 30 }}
+                       whileInView={{ opacity: 1, y: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.15, duration: 0.5 }}
+                       className="p-10 bg-[#F8FAFC] rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 group text-center md:text-left"
+                    >
+                       <div className="w-16 h-16 rounded-[20px] bg-white border border-gray-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-black transition-all duration-500 shadow-sm mx-auto md:mx-0 mb-8">
+                          <div className="group-hover:invert transition-all duration-500 text-black">
+                             <value.icon className="w-7 h-7" />
                           </div>
                        </div>
-                    </div>
+                       <h3 className="text-2xl font-black text-black tracking-tighter uppercase leading-none mb-3 group-hover:text-[#FB432C] transition-colors">{value.title}</h3>
+                       <p className="text-[15px] text-gray-600 font-medium leading-relaxed">
+                          {value.desc}
+                       </p>
+                    </motion.div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
+        {/* Community Channels */}
+        <section className="py-32 bg-[#F8FAFC] border-y border-gray-100">
+           <div className="max-w-[1280px] mx-auto px-6">
+              <div className="text-center mb-20">
+                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Join The Conversation</h2>
+                 <p className="text-gray-500 font-medium max-w-lg mx-auto">Connect with shopkeepers, developers, and affiliates building the secure printing future.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 {channels.map((ch, i) => (
+                    <motion.div
+                       key={ch.title}
+                       initial={{ opacity: 0, y: 30 }}
+                       whileInView={{ opacity: 1, y: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.15, duration: 0.6 }}
+                       className="group bg-white p-10 rounded-[32px] border border-gray-200 hover:border-black hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between"
+                    >
+                       <div>
+                          <div className="flex items-center justify-between mb-8">
+                             <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-500", ch.color)}>
+                                <ch.icon className="w-6 h-6" />
+                             </div>
+                             <span className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest rounded-full">
+                                {ch.members} Members
+                             </span>
+                          </div>
+                          <h3 className="text-2xl font-black text-black tracking-tighter uppercase leading-none mb-4">{ch.title}</h3>
+                          <p className="text-[14px] font-medium text-gray-500 leading-relaxed">
+                             {ch.desc}
+                          </p>
+                       </div>
+                       
+                       <div className="mt-8 pt-6 border-t border-gray-100">
+                          <button className="w-full h-14 bg-black hover:bg-[#FB432C] text-white font-bold text-[12px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-lg shadow-black/10 flex items-center justify-center gap-3">
+                             {ch.cta} <ArrowRight className="w-4 h-4" />
+                          </button>
+                       </div>
+                    </motion.div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
+        {/* Community Voices */}
+        <section className="py-32 bg-white">
+           <div className="max-w-[1280px] mx-auto px-6">
+              <div className="text-center mb-20">
+                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Voices from the Mesh</h2>
+                 <p className="text-gray-500 font-medium">Real stories from the people making XeroxQ possible, every single day.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {voices.map((voice, i) => (
+                    <motion.div
+                       key={i}
+                       initial={{ opacity: 0, y: 20 }}
+                       whileInView={{ opacity: 1, y: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.1 }}
+                       className="group p-10 rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 transition-all duration-500 bg-white"
+                    >
+                       <p className="text-xl md:text-2xl font-bold text-black tracking-tight leading-snug mb-8 italic">
+                          "{voice.quote}"
+                       </p>
+                       <div className="flex items-center gap-4 pt-6 border-t border-gray-100">
+                          <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center font-black text-sm tracking-tighter shrink-0">
+                             {voice.initials}
+                          </div>
+                          <div>
+                             <span className="font-bold text-black block text-sm">{voice.name}</span>
+                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{voice.role}</span>
+                          </div>
+                       </div>
+                    </motion.div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
+        {/* CTA Banner */}
+        <section className="py-24 px-6 bg-[#F8FAFC] border-t border-gray-100">
+           <div className="max-w-[1280px] mx-auto p-12 md:p-20 bg-black rounded-[40px] relative overflow-hidden group shadow-2xl text-center">
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FB432C] opacity-[0.05] blur-[100px] rounded-full mix-blend-overlay pointer-events-none" />
+              
+              <div className="relative z-10 space-y-8 max-w-2xl mx-auto">
+                 <div className="w-20 h-20 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
+                    <Heart className="w-10 h-10 text-[#FB432C]" />
+                 </div>
+                 <h2 className="text-4xl md:text-6xl font-extrabold text-white tracking-tighter leading-none uppercase">
+                    Be Part of<br /> Something Real.
+                 </h2>
+                 <p className="text-lg text-gray-400 font-medium italic leading-relaxed max-w-lg mx-auto">
+                    Whether you're a developer, a shop owner, or simply someone who believes your documents should stay private—there's a place for you here.
+                 </p>
+                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <button className="h-16 px-10 bg-white text-black hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:-translate-y-1">
+                       Join the Community
+                    </button>
+                    <button className="h-16 px-10 bg-white/10 border border-white/20 text-white hover:bg-white/20 font-bold text-[12px] uppercase tracking-widest rounded-[16px] transition-all backdrop-blur-sm">
+                       Become a Partner
+                    </button>
                  </div>
               </div>
            </div>
         </section>
 
-        {/* Global Scalability Stats */}
-        <section className="pb-16 px-6">
-           <div className="max-w-[1280px] mx-auto p-12 bg-black rounded-xl relative overflow-hidden group">
-              <div className="absolute bottom-0 right-0 w-80 h-80 bg-white opacity-[0.03] blur-[120px] rounded-full" />
-              <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-12 text-center lg:text-left">
-                 <div className="space-y-2">
-                    <div className="text-5xl font-bold text-white tracking-tighter">150+</div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Countries Reached</div>
-                 </div>
-                 <div className="space-y-2">
-                    <div className="text-5xl font-bold text-white tracking-tighter">1.2M</div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Physicalized Signals</div>
-                 </div>
-                 <div className="space-y-2">
-                    <div className="text-5xl font-bold text-white tracking-tighter">99.9%</div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Network Uptime</div>
-                 </div>
-              </div>
-           </div>
-        </section>
       </main>
 
       <SiteFooter />

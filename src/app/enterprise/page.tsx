@@ -8,351 +8,275 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Zap, 
-  Globe, 
   Cpu, 
-  Database,
   Lock,
-  BarChart3,
   Network,
   Server,
-  CloudLightning,
-  Workflow,
   Fingerprint,
-  FileBadge
+  CheckCircle2,
+  Printer,
+  FileText
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function Enterprise() {
+export default function EnterprisePage() {
   const features = [
-    { title: "Mesh Protocol", desc: "Distributed document physicalization via sub-second cluster latency.", icon: Network, tag: "CORE" },
-    { title: "Zero-Knowledge", desc: "Hardware-level root of trust with 7-pass military-grade erasure.", icon: ShieldCheck, tag: "SECURITY" },
-    { title: "Autonomous Logic", desc: "Manage independent shop nodes with unified administrative authority.", icon: Cpu, tag: "OPS" },
-    { title: "Hyper-Scale", desc: "Horizontal node expansion supporting 1M+ physicalizations/month.", icon: CloudLightning, tag: "SCALE" }
+    { title: "Mesh Protocol", desc: "Distributed document physicalization via sub-second cluster latency across all 26 AP districts.", icon: Network, tag: "CORE" },
+    { title: "Zero-Knowledge", desc: "Hardware-level root of trust with 7-pass military-grade erasure. No file ever touches persistent storage.", icon: ShieldCheck, tag: "SECURITY" },
+    { title: "Fleet Management", desc: "Manage 500+ independent shop nodes with unified administrative authority from a single dashboard.", icon: Cpu, tag: "OPS" },
+    { title: "Bulk Routing", desc: "Push thousands of print jobs simultaneously across your approved shop fleet with guaranteed delivery.", icon: Zap, tag: "SCALE" }
+  ];
+
+  const useCases = [
+    {
+      title: "Hospital & Clinic Networks",
+      desc: "Route sensitive patient reports, prescriptions, and discharge summaries to verified print nodes near patients. Zero-retention ensures HIPAA-grade compliance.",
+      icon: FileText,
+      stat: "100% file volatility"
+    },
+    {
+      title: "Government Document Offices",
+      desc: "Enable citizens to print Aadhaar, PAN, and land records at verified XeroxQ shops without exposing their identity documents digitally.",
+      icon: Building2,
+      stat: "26 districts covered"
+    },
+    {
+      title: "Educational Institutions",
+      desc: "Allow students and faculty to securely print examination papers, assignments, and research to campus-adjacent shops on the mesh.",
+      icon: Printer,
+      stat: "Sub-second routing"
+    }
   ];
 
   const compliance = [
     { label: "ENCRYPTION", value: "AES-256-GCM / TLS 1.3", status: "VERIFIED" },
-    { label: "DATA PERSISTENCE", value: "VOLATILE / 60s PURGE", status: "ENFORCED" },
-    { label: "IP ADDRESSING", value: "FULLY MASKED / ONION", status: "ACTIVE" },
-    { label: "AUDIT LOGS", value: "IMMUTABLE LEDGER", status: "PENDING" }
+    { label: "DATA PERSISTENCE", value: "VOLATILE / 30s PURGE", status: "ENFORCED" },
+    { label: "SENDER IDENTITY", value: "FULLY ANONYMIZED", status: "ACTIVE" },
+    { label: "AUDIT LOGS", value: "IMMUTABLE LEDGER", status: "LIVE" }
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
       <SiteHeader />
       
-      <main className="pt-32 pb-16">
-        {/* Enterprise Hero - ULTRA DENSITY */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative py-20 border-b border-[#E2E8F0]"
-        >
-          <div className="max-w-[1280px] mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7 space-y-6 text-left">
-              <div className="space-y-3">
-                 <motion.div 
-                   initial={{ opacity: 0, x: -10 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   transition={{ delay: 0.2 }}
-                   className="inline-flex items-center gap-2 px-2.5 py-1 bg-black text-white rounded-md border border-black/10"
-                 >
-                    <Fingerprint className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-black tracking-[0.25em] uppercase">Protocol v4.2.0</span>
-                 </motion.div>
-                 <motion.h1 
-                   initial={{ opacity: 0, y: 20 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: 0.3 }}
-                   className="text-5xl lg:text-7xl font-bold text-black tracking-tighter leading-[0.95] uppercase"
-                 >
-                   Institutional <br /> Protocols.
-                 </motion.h1>
-                 <motion.p 
-                   initial={{ opacity: 0, y: 20 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: 0.4 }}
-                   className="text-[11px] text-[#64748B] font-medium max-w-xs leading-relaxed italic"
-                 >
-                   "Decentralized hardware bridging with hardware-level data autonomy. Scale institutional nodes via the Mercury Mesh."
-                 </motion.p>
-              </div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="flex items-center gap-3"
-              >
-                 <button className="h-11 px-8 bg-black text-white font-black text-[10px] uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-xl shadow-black/10">
-                    INTEGRATE
-                 </button>
-                 <button className="h-11 px-6 border border-[#E2E8F0] hover:bg-[#F8FAFC] text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                    DOCS
-                 </button>
-              </motion.div>
-            </div>
-
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-              className="lg:col-span-5"
-            >
-               <div className="p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg shadow-2xl space-y-6">
-                  <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
-                     <span className="text-[9px] font-black tracking-[0.3em] text-black uppercase">Internal Telemetry</span>
-                     <div className="flex items-center gap-1.5">
-                        <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">LIVE</span>
-                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                     {[
-                       { l: "LATENCY", v: "8.4MS" },
-                       { l: "MESH NODES", v: "14,892" },
-                       { l: "PURGE RATE", v: "100.0%" },
-                       { l: "PROTOCOL", v: "ISO-Q" }
-                     ].map((item, i) => (
-                       <div key={i} className="space-y-0.5">
-                          <div className="text-[8px] font-black text-[#94A3B8] uppercase tracking-widest">{item.l}</div>
-                          <div className="text-lg font-black text-black tracking-tight uppercase">{item.v}</div>
-                       </div>
-                     ))}
-                  </div>
-                  <div className="pt-4 border-t border-[#E2E8F0] flex items-center justify-between">
-                     <span className="text-[9px] font-black text-[#64748B] uppercase tracking-widest">UPTIME: 99.9%</span>
-                     <button className="text-[9px] font-black text-black uppercase tracking-widest border-b border-black/20 pb-0.5">Health Registry</button>
-                  </div>
+      <main className="flex-1 pt-32 pb-0">
+        
+        {/* Enterprise Hero */}
+        <section className="relative pt-12 pb-16 overflow-hidden">
+          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
+               style={{ backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
+               
+          <div className="max-w-[1280px] mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+             <motion.div 
+               variants={{
+                 hidden: { opacity: 0, x: -20 },
+                 visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
+               }}
+               initial="hidden"
+               animate="visible"
+               className="space-y-8"
+             >
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5">
+                 <Fingerprint className="w-3.5 h-3.5 text-black" />
+                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Enterprise Protocol v4.2</span>
                </div>
-            </motion.div>
-          </div>
-        </motion.section>
+               
+               <h1 className="text-[40px] md:text-[64px] font-extrabold tracking-tighter text-black leading-[0.95] uppercase">
+                 Institutional <br /> Grade Printing.
+               </h1>
+               <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-lg">
+                 "Integrate XeroxQ's zero-knowledge routing directly into your hospital EHR, government portal, or campus intranet. Deploy secure physicalization at scale."
+               </p>
+               
+               <div className="flex flex-wrap items-center gap-4 pt-4">
+                  <button className="h-14 px-8 bg-black text-white hover:bg-[#FB432C] font-bold text-[12px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-xl shadow-black/10">
+                     Request Demo
+                  </button>
+                  <button className="h-14 px-8 border border-gray-200 hover:border-black text-black font-bold text-[12px] uppercase tracking-widest rounded-xl transition-all">
+                     View API Docs
+                  </button>
+               </div>
+             </motion.div>
 
-        {/* Global Distribution Registry */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="py-16 bg-[#F8FAFC] border-b border-[#E2E8F0] lg:rounded-xl mx-0"
-        >
-           <div className="max-w-[1280px] mx-auto px-8">
-              <div className="flex flex-col md:flex-row items-center justify-between mb-10 text-left gap-6">
-                 <div className="space-y-1">
-                    <span className="text-[10px] font-black text-black uppercase tracking-[0.3em]">Network Topology</span>
-                    <h2 className="text-2xl font-bold text-black tracking-tight uppercase leading-none">Global Node Registry</h2>
-                 </div>
-                 <div className="hidden md:block h-[1px] flex-1 bg-[#E2E8F0] mx-10" />
-                 <button className="flex items-center gap-2 text-[10px] font-black text-black uppercase tracking-widest border-b border-black/20 pb-1 flex-shrink-0">
-                    Registry Logs <ArrowRight className="w-3 h-3" />
-                 </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                 {[
-                   { region: "NORTH AMERICA", nodes: "6,402", status: "OPTIMIZED", color: "bg-black" },
-                   { region: "EUROPE / UK", nodes: "4,120", status: "STABLE", color: "bg-black" },
-                   { region: "ASIA PACIFIC", nodes: "3,892", status: "EXPANDING", color: "bg-black" },
-                   { region: "LATAM / AFRICA", nodes: "478", status: "GROWING", color: "bg-black" }
-                 ].map((reg, i) => (
-                   <motion.div 
-                     key={reg.region} 
-                     initial={{ opacity: 0, scale: 0.9 }}
-                     whileInView={{ opacity: 1, scale: 1 }}
-                     viewport={{ once: true }}
-                     transition={{ delay: i * 0.1 }}
-                     className="p-4 bg-white border border-[#E2E8F0] rounded-lg hover:shadow-xl transition-all space-y-4 text-left"
-                   >
+             {/* Live Telemetry Card */}
+             <motion.div 
+               variants={{
+                 hidden: { opacity: 0, x: 20 },
+                 visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: 0.2 } }
+               }}
+               initial="hidden"
+               animate="visible"
+             >
+                <div className="p-8 md:p-10 bg-black rounded-[32px] border border-black/20 shadow-2xl space-y-8 text-white">
+                   <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                      <span className="text-[10px] font-black tracking-widest text-white/60 uppercase">Internal Telemetry</span>
                       <div className="flex items-center gap-2">
-                         <div className={`w-1 h-1 rounded-full ${reg.color}`} />
-                         <span className="text-[9px] font-black text-black tracking-widest uppercase">{reg.region}</span>
+                         <div className="relative flex h-6 w-6 items-center justify-center">
+                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                         </div>
+                         <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Live</span>
                       </div>
-                      <div className="space-y-0.5">
-                         <div className="text-[8px] font-black text-[#94A3B8] uppercase tracking-widest px-0.5 opacity-60">ACTIVE NODES</div>
-                         <div className="text-2xl font-black text-black tracking-tighter uppercase">{reg.nodes}</div>
-                      </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-[#F8FAFC]">
-                         <span className="text-[8px] font-black text-[#94A3B8] tracking-[0.2em] uppercase">{reg.status}</span>
-                         <Server className="w-3 h-3 text-[#94A3B8]" />
-                      </div>
-                   </motion.div>
-                 ))}
-              </div>
-           </div>
-        </motion.section>
+                   </div>
+                   <div className="grid grid-cols-2 gap-6">
+                      {[
+                        { l: "Routing Latency", v: "42ms" },
+                        { l: "Active Nodes", v: "542" },
+                        { l: "Purge Rate", v: "100%" },
+                        { l: "Protocol", v: "v4.2" }
+                      ].map((item, i) => (
+                        <div key={i} className="space-y-1">
+                           <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{item.l}</div>
+                           <div className="text-3xl font-black text-white tracking-tighter">{item.v}</div>
+                        </div>
+                      ))}
+                   </div>
+                   <div className="pt-6 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">90-Day Uptime: 99.99%</span>
+                      <span className="text-[10px] font-bold text-[#FB432C] uppercase tracking-widest cursor-pointer hover:underline">Health Registry →</span>
+                   </div>
+                </div>
+             </motion.div>
+          </div>
+        </section>
 
-        {/* Technical Features - High Density 4-col */}
-        <section className="py-16">
-           <div className="max-w-[1280px] mx-auto px-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* 4 Feature Cards */}
+        <section className="py-24 bg-white border-y border-gray-100 relative z-20">
+           <div className="max-w-[1280px] mx-auto px-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  {features.map((feature, i) => (
-                   <motion.div 
-                     key={i} 
-                     initial={{ opacity: 0, y: 20 }}
-                     whileInView={{ opacity: 1, y: 0 }}
-                     viewport={{ once: true }}
-                     transition={{ delay: i * 0.12 }}
-                     className="group p-5 bg-white border border-[#E2E8F0] rounded-lg hover:bg-[#F8FAFC] transition-all text-left shadow-sm hover:shadow-xl"
-                   >
-                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                           <div className="w-9 h-9 rounded bg-black text-white flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-                              <feature.icon className="w-4.5 h-4.5" />
-                           </div>
-                           <span className="text-[8px] font-black tracking-[0.2em] text-[#94A3B8] uppercase">{feature.tag}</span>
-                        </div>
-                        <div className="space-y-1.5">
-                           <h3 className="text-[14px] font-black text-black tracking-tight uppercase leading-none">{feature.title}</h3>
-                           <p className="text-[11px] text-[#64748B] font-medium leading-relaxed italic opacity-80">"{feature.desc}"</p>
-                        </div>
-                     </div>
-                   </motion.div>
+                    <motion.div 
+                       key={feature.title}
+                       initial={{ opacity: 0, y: 30 }}
+                       whileInView={{ opacity: 1, y: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.1, duration: 0.6 }}
+                       className="group p-8 bg-[#F8FAFC] rounded-[28px] border border-gray-200 hover:bg-black hover:border-black hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-2 transition-all duration-500"
+                    >
+                       <div className="flex items-center justify-between mb-6">
+                          <div className="w-12 h-12 rounded-[14px] bg-white group-hover:bg-white/10 border border-gray-100 group-hover:border-white/10 flex items-center justify-center shadow-sm transition-all duration-500">
+                             <feature.icon className="w-5 h-5 text-black group-hover:text-white transition-colors duration-500" />
+                          </div>
+                          <span className="px-2.5 py-1 bg-white group-hover:bg-white/10 border border-gray-100 group-hover:border-white/10 rounded-full text-[9px] font-black text-gray-400 group-hover:text-white/50 uppercase tracking-widest transition-all duration-500">
+                             {feature.tag}
+                          </span>
+                       </div>
+                       <h3 className="text-xl font-black text-black group-hover:text-white tracking-tighter uppercase leading-none mb-3 transition-colors duration-500">{feature.title}</h3>
+                       <p className="text-[13px] font-medium text-gray-500 group-hover:text-gray-400 leading-relaxed transition-colors duration-500">
+                          {feature.desc}
+                       </p>
+                    </motion.div>
                  ))}
               </div>
            </div>
         </section>
 
-        {/* Workflow Section */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="py-20 bg-black border-y border-white/10 lg:rounded-xl mx-0"
-        >
-           <div className="max-w-[1280px] mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-              <div className="space-y-10 text-left">
-                 <div className="space-y-4">
-                    <span className="text-[10px] font-black text-[#64748B] uppercase tracking-[0.3em]">Operational Flow</span>
-                    <h2 className="text-4xl font-bold text-white tracking-tight leading-[1.1] uppercase">Bridge the Digital <br /> Gap.</h2>
-                 </div>
-                 
-                 <div className="space-y-8">
-                    {[
-                      { step: "01", title: "Handshake", desc: "Encryption bridge established between terminal and target printer." },
-                      { step: "02", title: "Physicalization", desc: "High-fidelity document rendering on local mesh hardware." },
-                      { step: "03", title: "Purge Phase", desc: "Automatic military-grade erasure of all transient data fragments." }
-                    ].map((step, i) => (
-                       <motion.div 
-                         key={step.title} 
-                         initial={{ opacity: 0, x: -20 }}
-                         whileInView={{ opacity: 1, x: 0 }}
-                         viewport={{ once: true }}
-                         transition={{ delay: i * 0.15 }}
-                         className="flex gap-6 items-start group"
-                       >
-                          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] pt-1">{step.step}</span>
-                          <div className="space-y-1">
-                             <h4 className="text-lg font-bold text-white tracking-tight group-hover:text-white transition-colors uppercase leading-none">{step.title}</h4>
-                             <p className="text-sm text-slate-400 font-medium leading-relaxed italic opacity-80">"{step.desc}"</p>
-                          </div>
-                       </motion.div>
-                    ))}
-                 </div>
+        {/* Use Cases */}
+        <section className="py-32 bg-[#F8FAFC]">
+           <div className="max-w-[1280px] mx-auto px-6">
+              <div className="text-center mb-20">
+                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Built For Institutions</h2>
+                 <p className="text-gray-500 font-medium max-w-lg mx-auto">From hospitals to government offices, XeroxQ's enterprise API enables secure document physicalization at any scale.</p>
               </div>
 
-              <div className="relative group">
-                 <div className="absolute inset-0 bg-white/5 blur-[120px] rounded-full" />
-                 <motion.div 
-                   initial={{ opacity: 0, scale: 0.95 }}
-                   whileInView={{ opacity: 1, scale: 1 }}
-                   viewport={{ once: true }}
-                   className="p-10 bg-[#1A1D23] border border-white/10 rounded-lg relative z-10 space-y-8 text-center shadow-2xl"
-                 >
-                    <div className="w-14 h-14 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
-                       <Workflow className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="space-y-4">
-                       <h3 className="text-xl font-bold text-white tracking-tight uppercase">Protocol Bridge</h3>
-                       <div className="flex flex-wrap items-center justify-center gap-1.5">
-                          {["SSL", "TLS 1.3", "AES-256", "MESH", "P2P"].map(tag => (
-                             <span key={tag} className="px-2 py-0.5 bg-white/5 border border-white/10 text-[8px] font-black text-white uppercase tracking-widest rounded">{tag}</span>
-                          ))}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 {useCases.map((uc, i) => (
+                    <motion.div
+                       key={uc.title}
+                       initial={{ opacity: 0, y: 30 }}
+                       whileInView={{ opacity: 1, y: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.15, duration: 0.6 }}
+                       className="group bg-white p-10 rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500"
+                    >
+                       <div className="w-16 h-16 rounded-[20px] bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:scale-110 transition-all duration-500 shadow-sm text-black mb-8">
+                          <uc.icon className="w-7 h-7" />
                        </div>
-                    </div>
-                    <button className="w-full h-10 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-white/90 transition-all">
-                       DEPLOY API HOOKS
-                    </button>
-                 </motion.div>
-              </div>
-           </div>
-        </motion.section>
-
-        {/* Compliance Table-Grid */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="py-20 text-left"
-        >
-           <div className="max-w-[1280px] mx-auto px-8">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
-                 <div className="lg:col-span-4 space-y-6">
-                    <div className="space-y-4">
-                       <span className="text-[10px] font-bold text-black uppercase tracking-[0.3em]">Governance & Trust</span>
-                       <h2 className="text-4xl font-bold text-black tracking-tight uppercase leading-none">Audit Ledger.</h2>
-                       <p className="text-sm text-[#64748B] font-medium leading-relaxed">
-                          Institutional-grade transparency with immutable protocol logs and hardware-level isolation.
+                       <h3 className="text-2xl font-black text-black tracking-tighter uppercase leading-none mb-4 group-hover:text-[#FB432C] transition-colors">{uc.title}</h3>
+                       <p className="text-[14px] font-medium text-gray-500 leading-relaxed mb-6">
+                          {uc.desc}
                        </p>
-                    </div>
-                    <div className="p-5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg flex items-center gap-5 group">
-                       <div className="w-10 h-10 rounded bg-black text-white flex items-center justify-center flex-shrink-0 group-hover:rotate-12 transition-transform">
-                          <FileBadge className="w-5 h-5" />
+                       <div className="pt-6 border-t border-gray-100">
+                          <span className="text-[10px] font-black text-[#FB432C] uppercase tracking-widest">{uc.stat}</span>
                        </div>
-                       <div>
-                          <div className="text-[10px] font-black text-black uppercase tracking-widest">ISO-27001 ALIGNED</div>
-                          <div className="text-[9px] font-bold text-[#64748B] uppercase tracking-widest leading-none">PROTOCOL COMPLIANCE</div>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="lg:col-span-8 flex flex-col gap-px bg-[#E2E8F0] border border-[#E2E8F0] rounded-lg overflow-hidden shadow-sm">
-                    {compliance.map((c, i) => (
-                       <motion.div 
-                         key={i} 
-                         initial={{ opacity: 0 }}
-                         whileInView={{ opacity: 1 }}
-                         viewport={{ once: true }}
-                         transition={{ delay: i * 0.1 }}
-                         className="grid grid-cols-3 bg-white p-5 items-center"
-                       >
-                          <span className="text-[9px] font-black text-[#94A3B8] uppercase tracking-[0.25em]">{c.label}</span>
-                          <span className="text-sm font-bold text-black tracking-tight text-center">{c.value}</span>
-                          <div className="flex justify-end">
-                             <span className="px-2.5 py-0.5 bg-black text-white text-[8px] font-black uppercase tracking-widest rounded-md">{c.status}</span>
-                          </div>
-                       </motion.div>
-                    ))}
-                 </div>
+                    </motion.div>
+                 ))}
               </div>
            </div>
-        </motion.section>
+        </section>
 
-        {/* Fast Action Footer Banner */}
-        <motion.section 
-          initial={{ opacity: 0, scale: 0.98 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="py-12 px-8"
-        >
-           <div className="max-w-[1280px] mx-auto p-10 bg-black rounded-lg border border-white/10 flex flex-col md:flex-row items-center justify-between gap-8 group">
-              <div className="text-left space-y-2">
-                 <h2 className="text-xl font-bold text-white tracking-tight uppercase leading-none">Expand Coverage</h2>
-                 <p className="text-sm text-slate-400 font-medium leading-relaxed italic opacity-80">"Join 500+ enterprises leveraging the institutional Mercury Protocol."</p>
+        {/* Compliance Audit Section */}
+        <section className="py-32 bg-white border-y border-gray-100">
+           <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+              <div className="lg:col-span-4 space-y-8">
+                 <div>
+                    <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Audit Ledger</h2>
+                    <p className="text-gray-500 font-medium leading-relaxed">
+                       Institutional-grade transparency with immutable protocol logs and hardware-level isolation verified continuously.
+                    </p>
+                 </div>
+                 <div className="p-8 bg-[#F8FAFC] rounded-[32px] border border-gray-200">
+                    <div className="w-12 h-12 rounded-[16px] bg-white border border-gray-100 flex items-center justify-center shadow-sm mb-6">
+                       <ShieldCheck className="w-5 h-5 text-black" />
+                    </div>
+                    <h4 className="text-sm font-black text-black tracking-tight uppercase mb-2">ISO-27001 Aligned</h4>
+                    <p className="text-[13px] text-gray-500 font-medium leading-relaxed italic">
+                       "Protocol compliance audited quarterly by independent third-party penetration testing firms."
+                    </p>
+                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                 <button className="h-10 px-8 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-xl shadow-black/10">
-                    Integration Inquiry
+
+              <div className="lg:col-span-8 space-y-4">
+                 {compliance.map((c, i) => (
+                    <motion.div 
+                       key={i}
+                       initial={{ opacity: 0, x: 20 }}
+                       whileInView={{ opacity: 1, x: 0 }}
+                       viewport={{ once: true }}
+                       transition={{ delay: i * 0.1 }}
+                       className="p-6 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:shadow-md transition-shadow"
+                    >
+                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest w-40">{c.label}</span>
+                       <span className="text-sm font-bold text-black tracking-tight flex-1">{c.value}</span>
+                       <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">{c.status}</span>
+                       </div>
+                    </motion.div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
+        {/* CTA Banner */}
+        <section className="py-24 px-6 bg-[#F8FAFC] border-t border-gray-100">
+           <div className="max-w-[1280px] mx-auto p-12 md:p-20 bg-black rounded-[40px] relative overflow-hidden group shadow-2xl text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12">
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white opacity-[0.03] blur-[100px] rounded-full mix-blend-overlay pointer-events-none" />
+              
+              <div className="relative z-10 max-w-2xl">
+                 <div className="flex items-center gap-3 mb-6 justify-center md:justify-start">
+                    <Lock className="w-6 h-6 text-white/50" />
+                    <span className="text-[12px] font-black uppercase tracking-widest text-[#FB432C]">Enterprise Inquiry</span>
+                 </div>
+                 <h2 className="text-4xl lg:text-6xl font-extrabold text-white tracking-tighter leading-none uppercase mb-6">
+                    Scale Your Fleet.
+                 </h2>
+                 <p className="text-lg text-gray-400 font-medium leading-relaxed italic opacity-80">
+                    Whether you're a hospital network, a university, or a government body—XeroxQ's enterprise API is designed for your compliance requirements.
+                 </p>
+              </div>
+
+              <div className="relative z-10 shrink-0 flex flex-col gap-4">
+                 <button className="h-16 px-10 bg-white text-black hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:-translate-y-1">
+                    Request Integration
                  </button>
-                 <button className="h-10 px-6 border border-white/20 hover:bg-white/5 text-white font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
-                    Global SLA
+                 <button className="h-14 px-10 bg-white/10 border border-white/20 text-white hover:bg-white/20 font-bold text-[12px] uppercase tracking-widest rounded-[16px] transition-all backdrop-blur-sm">
+                    Download SLA
                  </button>
               </div>
            </div>
-        </motion.section>
+        </section>
+
       </main>
 
       <SiteFooter />
