@@ -18,6 +18,7 @@ import { ContactCard } from "@/components/ui/contact-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SeoKeywordsSection } from "@/components/seo/seo-keywords-section";
 
 // Custom Premium Accordion for "Super Duper" feel (Light Mode)
 const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
@@ -172,6 +173,9 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+
+      {/* SEO Content Section — keyword-rich prose for search engines */}
+      <SeoKeywordsSection />
 
       <SiteFooter />
     </div>
