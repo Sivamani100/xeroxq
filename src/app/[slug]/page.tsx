@@ -151,8 +151,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       reader.readAsDataURL(selectedFile);
     } else if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
       setDocxFileToProcess(selectedFile);
-      setFile(null);
-      setShowDocxChoice(true);
+      setFile(selectedFile);
     } else {
       setFile(selectedFile);
       setDocxFileToProcess(null);
