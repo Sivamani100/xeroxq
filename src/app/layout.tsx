@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen antialiased selection:bg-blue-500/30`}>
+      <body className={`${inter.className} min-h-screen antialiased selection:bg-brand-primary/30`}>
         {children}
         <CookieConsent />
       </body>

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -76,6 +77,7 @@
 @theme inline {
   --font-sans: "Outfit", "Inter", var(--font-geist-sans);
   --font-satoshi: "Satoshi", "Inter", sans-serif;
+  --font-instrument-serif: "Instrument Serif", Georgia, serif;
   
   /* Custom Color Scale */
   --color-brand-primary: var(--primary);
@@ -110,6 +112,9 @@
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-mesh: mesh 15s ease-in-out infinite alternate;
   --animate-glow: glow 4s ease-in-out infinite;
+  --animate-marquee: marquee var(--duration) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  --animate-fade-in-up: fade-in-up 1s ease-out forwards;
 }
 
 @layer base {
@@ -253,6 +258,27 @@
   to { transform: rotate(0deg); }
 }
 
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes marquee-vertical {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Custom Selection */
 ::selection {
   background: var(--primary);
@@ -273,3 +299,8 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #bbb;
 }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-slide-in-1 { animation: fadeSlideIn 0.8s ease-out forwards; opacity: 0; }
+.animate-fade-slide-in-2 { animation: fadeSlideIn 0.8s ease-out 0.2s forwards; opacity: 0; }
+.animate-fade-slide-in-3 { animation: fadeSlideIn 0.8s ease-out 0.3s forwards; opacity: 0; }
+.animate-fade-slide-in-4 { animation: fadeSlideIn 0.8s ease-out 0.4s forwards; opacity: 0; }

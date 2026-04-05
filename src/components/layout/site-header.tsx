@@ -92,13 +92,14 @@ export function SiteHeader() {
       >
         <div className="w-full flex items-center justify-between">
           <div 
-            className="flex items-center gap-3 group cursor-pointer" 
+            className="flex items-center group cursor-pointer" 
             onClick={() => router.push('/')}
           >
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-black/10">
-              <Printer className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold tracking-tighter text-black">XeroxQ</span>
+            <img 
+              src="/xeroxqlogo.svg" 
+              alt="XeroxQ" 
+              className="h-8 md:h-10 w-auto transition-transform group-hover:scale-105"
+            />
           </div>
 
           <div className="hidden lg:flex items-center gap-10">

@@ -30,7 +30,9 @@ import {
   ArrowDownToLine,
   Palette,
   History,
-  Crop
+  Crop,
+  Bell,
+  BellOff
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "framer-motion";
@@ -116,6 +118,8 @@ export default function AdminDashboard() {
   const [activeDownloadId, setActiveDownloadId] = useState<string | null>(null);
   const [purgedJob, setPurgedJob] = useState<Job | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
@@ -249,6 +253,47 @@ export default function AdminDashboard() {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [canvasItems, selectedCanvasIds, history, historyIndex]);
+  
+  // Persist sound settings
+  useEffect(() => {
+    const saved = localStorage.getItem("xeroxq_admin_sound");
+    if (saved === "true") setIsSoundEnabled(true);
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    // 1. Initialize AudioContext (requires user gesture)
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    
+    if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+    }
+
+    // 2. Request Browser Permission
+    if ("Notification" in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+          setIsSoundEnabled(true);
+          localStorage.setItem("xeroxq_admin_sound", "true");
+          // Play a small test sound to confirm
+          playNotificationPing();
+      } else {
+          alert("Permission denied. Desktop notifications will not be shown, but sound may still play if active.");
+          setIsSoundEnabled(true);
+          localStorage.setItem("xeroxq_admin_sound", "true");
+      }
+    } else {
+        setIsSoundEnabled(true);
+        localStorage.setItem("xeroxq_admin_sound", "true");
+    }
+  };
+
+  const toggleSound = () => {
+    const newVal = !isSoundEnabled;
+    setIsSoundEnabled(newVal);
+    localStorage.setItem("xeroxq_admin_sound", newVal.toString());
+  };
 
   const stats = {
     total: jobs.length,
@@ -281,7 +326,13 @@ export default function AdminDashboard() {
             "postgres_changes",
             { event: "*", schema: "public", table: "jobs", filter: `shop_id=eq.${shopData.id}` },
             (payload) => {
-              if (payload.eventType === 'INSERT') playNotificationPing();
+              if (payload.eventType === 'INSERT') {
+                  const newJob = payload.new as Job;
+                  if (localStorage.getItem("xeroxq_admin_sound") === "true") {
+                      playNotificationPing();
+                      sendDesktopNotification(newJob);
+                  }
+              }
               fetchJobs(shopData.id);
             }
           )
@@ -298,21 +349,48 @@ export default function AdminDashboard() {
 
   const playNotificationPing = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
+      const audioCtx = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (!audioContextRef.current) audioContextRef.current = audioCtx;
+      
+      if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+      }
+
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High-pitched clean ping
-      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Subtle volume
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); // Quick fade
+      // "WhatsApp Web" style dual-tone notification
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+      
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // C6
 
-      oscillator.connect(gainNode);
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.1);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(audioCtx.currentTime + 0.5);
+      osc2.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
-      console.warn("Audio Context Heartbeat failed:", e);
+      console.warn("Notification Audio Protocol failed:", e);
+    }
+  };
+
+  const sendDesktopNotification = (job: Job) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("XeroxQ: New Job Signal", {
+            body: `Customer ${job.customer_name || 'Anonymous'} transmitted a new document for physicalization.`,
+            icon: "/xeroxq_logo.png",
+            tag: job.id // Avoid duplicate alerts for same job
+        });
     }
   };
 
@@ -1515,6 +1593,20 @@ export default function AdminDashboard() {
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                     <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Secure Printing Active</span>
                   </div>
+
+                   <button 
+                     onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
+                     className={cn(
+                        "h-[36px] px-3 font-bold text-[12px] border transition-all rounded-[5.57px] flex items-center justify-center gap-2 shadow-sm",
+                        isSoundEnabled 
+                          ? "bg-orange-50 border-orange-100 text-[#FF591E]" 
+                          : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC] animate-pulse"
+                     )}
+                     title={isSoundEnabled ? "Alerts Active" : "Enable Sound Notifications"}
+                   >
+                     {isSoundEnabled ? <Bell className="w-[14px] h-[14px]" /> : <BellOff className="w-[14px] h-[14px]" />}
+                     {isSoundEnabled ? "Active" : "Alerts"}
+                   </button>
 
                   <Dialog open={showingSettings} onOpenChange={setShowingSettings}>
                      <DialogTrigger asChild>
