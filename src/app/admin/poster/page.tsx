@@ -124,21 +124,18 @@ function PosterContent() {
              
               <div className="bg-white p-2 rounded-[24px] flex items-center justify-center">
                  {qrUrl ? (
-                   <QRCodeSVG 
-                     value={qrUrl} 
-                     size={320}
-                     level="H"
-                     includeMargin={false}
-                     className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px]"
-                     imageSettings={{
-                       src: "/logo.png",
-                       x: undefined,
-                       y: undefined,
-                       height: 48,
-                       width: 48,
-                       excavate: true,
-                     }}
-                   />
+                   <div className="relative">
+                     <QRCodeSVG 
+                       value={qrUrl} 
+                       size={320}
+                       level="H"
+                       includeMargin={false}
+                       className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px]"
+                     />
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl flex items-center justify-center border-[4px] border-black px-3 py-1.5 shadow-xl">
+                       <span className="text-[18px] sm:text-[22px] font-black tracking-tighter text-black leading-none">XeroxQ</span>
+                     </div>
+                   </div>
                  ) : (
                    <div className="w-[320px] h-[320px] flex items-center justify-center text-slate-400">
                      Generating...
@@ -180,7 +177,7 @@ function PosterContent() {
           </div>
           <div className="text-right">
             <p className="text-[9px] font-black text-black/20 uppercase tracking-widest leading-none mb-1">Powered by</p>
-            <p className="text-[16px] font-black text-black tracking-tighter">XeroxQ.OpenSource</p>
+            <p className="text-[16px] font-black text-black tracking-tighter">XeroxQ.Arkio.in</p>
           </div>
         </footer>
 
