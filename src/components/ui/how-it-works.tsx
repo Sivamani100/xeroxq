@@ -1,11 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Layers, Search, Zap, Printer, Shield, Globe } from "lucide-react";
+import { Layers, Search, Zap, Printer, Shield, Globe, Users, ShieldCheck } from "lucide-react";
 import type React from "react";
+import { motion } from "framer-motion";
 
 // The main props for the HowItWorks component
-interface HowItWorksProps extends React.HTMLAttributes<HTMLElement> {}
+interface HowItWorksProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 // The props for a single step card
 interface StepCardProps {
@@ -25,9 +26,18 @@ const StepCard: React.FC<StepCardProps> = ({
   description,
   benefits,
 }) => (
-  <div
+  <motion.div
+    variants={{
+      hidden: { opacity: 0, y: 30, filter: 'blur(8px)' },
+      visible: { 
+        opacity: 1, 
+        y: 0, 
+        filter: 'blur(0px)',
+        transition: { type: 'spring', bounce: 0.3, duration: 0.8 }
+      }
+    }}
     className={cn(
-      "relative rounded-2xl border bg-white p-8 text-black transition-all duration-500 ease-in-out group",
+      "relative rounded-2xl border bg-white p-6 md:p-8 text-black transition-all duration-500 ease-in-out group",
       "hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-primary/5 hover:border-[#FB432C]/30"
     )}
   >
@@ -36,8 +46,8 @@ const StepCard: React.FC<StepCardProps> = ({
       {icon}
     </div>
     {/* Title and Description */}
-    <h3 className="mb-3 text-xl font-bold tracking-tight">{title}</h3>
-    <p className="mb-8 text-sm font-medium text-gray-500 leading-relaxed">{description}</p>
+    <h3 className="mb-3 text-lg md:text-xl font-bold tracking-tight">{title}</h3>
+    <p className="mb-8 text-xs md:text-sm font-medium text-gray-500 leading-relaxed">{description}</p>
     {/* Benefits List */}
     <ul className="space-y-4">
       {benefits.map((benefit, index) => (
@@ -49,7 +59,7 @@ const StepCard: React.FC<StepCardProps> = ({
         </li>
       ))}
     </ul>
-  </div>
+  </motion.div>
 );
 
 /**
@@ -62,45 +72,51 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
 }) => {
   const stepsData = [
     {
-      icon: <Zap className="h-6 w-6" />,
-      title: "Transmit Document",
-      description:
-        "Securely upload your document via the XeroxQ protocol. Every byte is shard-encrypted and distributed across our secure mesh.",
+      icon: <Globe className="h-6 w-6" />,
+      title: "Register Your Shop",
+      description: "Join our digital network in minutes. Add your shop name, location in AP, and printer details to get started.",
       benefits: [
-        "End-to-end shard encryption",
-        "Instant mesh distribution",
-        "Zero-knowledge storage",
+        "Instant registration",
+        "AP-wide visibility",
+        "Free shop listing",
       ],
     },
     {
-      icon: <Search className="h-6 w-6" />,
-      title: "Select Mesh Node",
-      description:
-        "Locate the nearest high-fidelity printer node. Compare hardware density, uptime, and pricing for optimal results.",
+      icon: <Users className="h-6 w-6" />,
+      title: "Get Your QR Code",
+      description: "We generate a unique QR code for your shop. Print it and place it at your counter for customers to scan.",
       benefits: [
-        "Real-time node availability",
-        "Global printer network access",
-        "Transparent credit pricing",
+        "Unique shop identity",
+        "Easy for customers",
+        "Modern counter look",
       ],
     },
     {
-      icon: <Printer className="h-6 w-6" />,
-      title: "Hardware Bridge",
-      description:
-        "Use your unique security token at the physical node to initiate the print. No digital footprint left behind.",
+      icon: <ShieldCheck className="h-6 w-6" />,
+      title: "Receive Orders",
+      description: "Customers scan the code and upload files. You receive them instantly on your screen and start printing.",
       benefits: [
-        "Physical token verification",
-        "Instant hardware syncing",
-        "Automatic file purge on completion",
+        "Zero WhatsApp mess",
+        "Instant file access",
+        "Happy customers",
       ],
     },
   ];
 
   return (
-    <section
+    <motion.section
       id="how-it-works"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      variants={{
+        visible: {
+          transition: {
+            staggerChildren: 0.15
+          }
+        }
+      }}
       className={cn("w-full bg-white pt-[100px] pb-0 relative overflow-hidden", className)}
-      {...props}
     >
       {/* Background Decor */}
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
@@ -108,21 +124,33 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
       
       <div className="max-w-[1280px] mx-auto px-6 relative z-10">
         {/* Section Header */}
-        <div className="mx-auto mb-20 max-w-2xl text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/5 mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-            <span className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Operational Protocol</span>
+        <motion.div 
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+          }}
+          className="mx-auto mb-20 max-w-2xl text-center"
+        >
+          <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
+            <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+            <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Simple Process</span>
           </div>
-          <h2 className="text-[40px] md:text-[54px] font-bold tracking-tighter text-black leading-none mb-6">
-            How it works
+          <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
+            Grow Your Business in 3 Easy Steps
           </h2>
-          <p className="text-lg font-medium text-gray-500 leading-relaxed italic">
-            "Our service uses advanced mesh technologies for secure document delivery and high-fidelity printing."
+          <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+            Stop worrying about cables or WhatsApp. Modernize your xerox shop and serve more customers in Andhra Pradesh with these simple steps.
           </p>
-        </div>
+        </motion.div>
 
         {/* Step Indicators with Connecting Line */}
-        <div className="relative mx-auto mb-12 w-full max-w-4xl hidden md:block">
+        <motion.div 
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { delay: 0.4, duration: 0.8 } }
+          }}
+          className="relative mx-auto mb-12 w-full max-w-4xl hidden md:block"
+        >
           <div
             aria-hidden="true"
             className="absolute left-[16.6667%] top-1/2 h-[1px] w-[66.6667%] -translate-y-1/2 bg-gray-100"
@@ -137,7 +165,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Steps Grid */}
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-10 md:grid-cols-3">
@@ -152,6 +180,6 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };

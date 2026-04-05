@@ -17,86 +17,74 @@ type Testimonial = {
 
 const testimonials: Testimonial[] = [
   {
-    name: 'Jonathan Yombo',
-    role: 'Software Engineer',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'XeroxQ is really extraordinary and very practical, no need to break your head. A real gold mine for decentralized printing.',
+    name: "Samba Siva",
+    role: "Shop Owner, Guntur",
+    image: "https://i.pravatar.cc/150?u=samba",
+    quote: "XeroxQ has completely stopped the WhatsApp mess in my shop. Customers just scan the QR code and print. It saves me so much time every day!"
   },
   {
-    name: 'Yves Kalume',
-    role: 'GDE - Android',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'With no experience in decentralized protocols I just set up my entire shop node in a few minutes thanks to the XeroxQ mesh.',
+    name: "Venkatesh P.",
+    role: "Shop Owner, Vijayawada",
+    image: "https://i.pravatar.cc/150?u=venkat",
+    quote: "I've seen a 20% increase in customers since adding my shop to the XeroxQ network. Students love the privacy and speed."
   },
   {
-    name: 'Yucel Faruksahan',
-    role: 'Creator, Tailkits',
-    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'Great work on the Mercury protocol. This is one of the best privacy-first architectures I have seen so far!',
+    name: "Prakash Rao",
+    role: "Shop Owner, Vizag",
+    image: "https://i.pravatar.cc/150?u=prakash",
+    quote: "The setup was free and took only 5 minutes. Now my shop looks modern and I don't have to deal with cables or emails anymore."
   },
   {
-    name: 'Sarah Chen',
-    role: 'Security Consultant',
-    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'The AES-256 E2E encryption combined with zero data retention makes XeroxQ the gold standard for sensitive document physicalization.',
+    name: "Anand Kumar",
+    role: "Shop Owner, Nellore",
+    image: "https://i.pravatar.cc/150?u=anand",
+    quote: "The best part is that it's 100% free for us. No joining fees, and the QR code system is very easy for even basic users."
   },
   {
-    name: 'Shekinah Tshiokufila',
-    role: 'Senior Software Engineer',
-    image: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'XeroxQ is redefining the standard of secure document delivery. The shard-encrypted transmission is an incredible wonder of engineering.',
+    name: "Rajesh V.",
+    role: "Shop Owner, Tirupati",
+    image: "https://i.pravatar.cc/150?u=rajesh",
+    quote: "XeroxQ has given my local shop a premium feel. Customers are impressed by the technology, and I get more repeat orders now."
   },
   {
-    name: 'Oketa Fred',
-    role: 'Fullstack Developer',
-    image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'I absolutely love the mesh reliability! The autonomous shop nodes are perfectly designed and easy to use.',
+    name: "Srinivas Rao",
+    role: "Shop Owner, Kurnool",
+    image: "https://i.pravatar.cc/150?u=srinivas",
+    quote: "Managing huge volumes of student prints during exam season used to be a headache. XeroxQ's queue system is a lifesaver for my shop."
   },
   {
-    name: 'Zeki',
-    role: 'Founder, ChatExtend',
-    image: 'https://images.unsplash.com/photo-1501196356658-939db80463ef?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: "Using the Mercury Mesh has been like unlocking a secret privacy superpower. It's the perfect fusion of simplicity and absolute encryption.",
+    name: "Lakshmi Nara",
+    role: "Shop Owner, Nellore",
+    image: "https://i.pravatar.cc/150?u=lakshmi",
+    quote: "As a female shop owner, I value the safety XeroxQ provides. No more awkward WhatsApp exchanges with unknown numbers anymore."
   },
   {
-    name: 'Joseph Kitheka',
-    role: 'Protocol Architect',
-    image: 'https://images.unsplash.com/photo-1513910367299-bce8d8a0ebf6?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'XeroxQ has transformed the way I think about document lifecycle. The flexibility to purge transient data globally is a game-changer.',
+    name: "Murali Krishna",
+    role: "Shop Owner, Anantapur",
+    image: "https://i.pravatar.cc/150?u=murali",
+    quote: "With so many regular customers coming for quick document prints, XeroxQ makes the process 10x faster and much more organized."
   },
   {
-    name: 'Khatab Wedaa',
-    role: 'MerakiUI Creator',
-    image: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: "XeroxQ is an elegant, clean, and responsive protocol. It's very helpful to start fast with secure document physicalization.",
+    name: "Bhavani S.",
+    role: "Shop Owner, Vizianagaram",
+    image: "https://i.pravatar.cc/150?u=bhavani",
+    quote: "My shop is now known as the 'Smart Xerox Point' in my area. Technology has really helped me stand out from other local shops."
   },
   {
-    name: 'Rodrigo Aguilar',
-    role: 'TailwindAwesome Creator',
-    image: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'I love how structured the protocol logic is. Simple to use, and beautifully designed. Real professional grade hardware bridging.',
+    name: "Kiran Ch.",
+    role: "Shop Owner, Kakinada",
+    image: "https://i.pravatar.cc/150?u=kiran",
+    quote: "100% uptime and zero maintenance cost. It works perfectly with my existing machines. Best digital tool for shop keepers in AP."
   },
   {
-    name: 'Eric Ampire',
-    role: 'Mobile Engineer',
-    image: 'https://images.unsplash.com/photo-1504257432379-735520683e1c?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'The universal hardware bridging is the perfect solution for anyone. Driver independent and works across any territorial mesh sector.',
-  },
-  {
-    name: 'Roland Tubonge',
-    role: 'Security Engineer',
-    image: 'https://images.unsplash.com/photo-1492562080023-ab3dbdf5bb33?q=80&w=120&h=120&auto=format&fit=crop',
-    quote: 'The protocol is so well designed that even with minimal security knowledge you can perform absolute privacy-centric miracles.',
-  },
+    name: "Savitri M.",
+    role: "Shop Owner, Rajahmundry",
+    image: "https://i.pravatar.cc/150?u=savitri",
+    quote: "The QR code at my counter is now the most scanned thing in the shop! Modern, efficient, and definitely more profitable for me."
+  }
 ]
 
-const chunkArray = (array: Testimonial[], chunkSize: number): Testimonial[][] => {
-  const result: Testimonial[][] = []
-  for (let i = 0; i < array.length; i += chunkSize) {
-    result.push(array.slice(i, i + chunkSize))
-  }
-  return result
-}
+
 
 export default function WallOfLoveSection() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -105,56 +93,74 @@ export default function WallOfLoveSection() {
   // The user said "show only two or three". 
   // Given a 3-column grid, showing 3 works best (one per col).
   const displayedTestimonials = isExpanded ? testimonials : testimonials.slice(0, 3)
-  const testimonialChunks = chunkArray(displayedTestimonials, Math.ceil(displayedTestimonials.length / 3))
+  const columns = [0, 1, 2];
 
   return (
     <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
       <div className="mx-auto w-full max-w-[1280px] px-6">
         <div className="text-center space-y-4 mb-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/5">
-             <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-             <span className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Community Feedback</span>
+          <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
+             <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+             <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">User Stories</span>
           </div>
-          <h2 className="text-[40px] md:text-[54px] font-bold tracking-tighter text-black leading-none uppercase">Loved by the <br /> Community.</h2>
-          <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-lg mx-auto">
-             "The high-fidelity protocol for secure document delivery. Distributed, sharded, and verified by thousands."
+          <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
+            Hear from Xerox Shop Owners in AP
+          </h2>
+          <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+            See how xerox shop owners across Andhra Pradesh are growing their business and saving time with XeroxQ.
           </p>
         </div>
 
-        <div className="relative">
+        <motion.div 
+          key={isExpanded ? "expanded" : "collapsed"}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={{
+            visible: {
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+          className="relative"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {testimonialChunks.map((chunk, chunkIndex) => (
-              <div key={chunkIndex} className="space-y-6">
-                {chunk.map((testimonial) => (
-                  <motion.div
-                    key={testimonial.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <Card className="border-gray-100 bg-[#F8FAFC]/50 hover:bg-white hover:shadow-xl hover:shadow-black/[0.02] transition-all duration-300 group">
-                      <CardContent className="p-8 space-y-6">
-                        <blockquote className="text-base font-medium text-black leading-relaxed italic">
-                          "{testimonial.quote}"
-                        </blockquote>
-                        
-                        <div className="flex items-center gap-4 pt-6 border-t border-black/5">
-                          <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                            <AvatarImage src={testimonial.image} alt={testimonial.name} />
-                            <AvatarFallback className="bg-black text-white text-[10px] font-black">{testimonial.name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-black tracking-tight flex items-center gap-1.5">
-                              {testimonial.name}
-                              <ArrowUpRight className="w-3 h-3 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+            {columns.map((colIndex) => (
+              <div key={colIndex} className="space-y-6">
+                {displayedTestimonials
+                  .filter((_, i) => i % 3 === colIndex)
+                  .map((testimonial) => (
+                    <motion.div
+                      key={testimonial.name}
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+                      }}
+                    >
+                      <Card className="border-gray-100 bg-[#F8FAFC]/50 hover:bg-white hover:shadow-xl hover:shadow-black/[0.02] transition-all duration-300 group">
+                        <CardContent className="p-6 md:p-8 space-y-6">
+                          <blockquote className="text-sm md:text-base font-medium text-black leading-relaxed italic">
+                            "{testimonial.quote}"
+                          </blockquote>
+                          
+                          <div className="flex items-center gap-4 pt-6 border-t border-black/5">
+                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                              <AvatarImage src={testimonial.image} alt={testimonial.name} />
+                              <AvatarFallback className="bg-black text-white text-[10px] font-black">{testimonial.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-black tracking-tight flex items-center gap-1.5">
+                                {testimonial.name}
+                                <ArrowUpRight className="w-3 h-3 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{testimonial.role}</div>
                             </div>
-                            <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{testimonial.role}</div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
               </div>
             ))}
           </div>
@@ -162,7 +168,7 @@ export default function WallOfLoveSection() {
           {!isExpanded && testimonials.length > 3 && (
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-8 z-10" />
           )}
-        </div>
+        </motion.div>
 
         <div className="mt-12 flex justify-center">
           <button
@@ -175,12 +181,12 @@ export default function WallOfLoveSection() {
             {isExpanded ? (
               <>
                 <Minus className="w-4 h-4" />
-                <span>Show less signals</span>
+                <span>Show less</span>
               </>
             ) : (
               <>
                 <Plus className="w-4 h-4" />
-                <span>Load more signals</span>
+                <span>Load more reviews</span>
               </>
             )}
           </button>

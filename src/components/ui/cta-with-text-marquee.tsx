@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { ReactNode, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 interface VerticalMarqueeProps {
   children: ReactNode;
@@ -66,12 +67,14 @@ function VerticalMarquee({
 }
 
 const marqueeItems = [
-  "Students & Academic Labs",
-  "Legal & Notary Nodes",
-  "Logistics & Global Ports",
-  "Travel & Transit Hubs",
-  "Enterprise Security Teams",
-  "Open Source Contributors",
+  "Grow Your Business",
+  "Zero WhatsApp Mess",
+  "Instant QR Printing",
+  "More Customers",
+  "AP Shop Network",
+  "Easy Shop Management",
+  "Free Service",
+  "Modern Xerox Shop"
 ];
 
 export default function CTAWithVerticalMarquee() {
@@ -107,42 +110,84 @@ export default function CTAWithVerticalMarquee() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8 } }
+  };
+
   return (
     <section className="min-h-[70vh] bg-white text-black flex items-center justify-center px-6 pt-[100px] pb-0 overflow-hidden relative border-t border-gray-100">
       {/* Subtle Dot Grid Background */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none" 
            style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       
-      <div className="w-full max-w-7xl animate-fade-in-up relative z-10">
+      <motion.div 
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={{
+          visible: {
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+        className="w-full max-w-7xl relative z-10"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
           {/* Left Content */}
           <div className="space-y-10 max-w-xl text-left">
             <div className="space-y-4">
-               <div className="inline-flex items-center gap-2 px-3 py-1 bg-black/5 border border-black/5 rounded-full mb-4">
+               <motion.div 
+                 variants={{
+                   hidden: { opacity: 0, y: 10 },
+                   visible: { opacity: 1, y: 0 }
+                 }}
+                 className="inline-flex items-center gap-2 px-3 py-1 bg-black/5 border border-black/5 rounded-full mb-4"
+               >
                   <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-                  <span className="text-[10px] font-black text-black uppercase tracking-[0.3em]">Scale the Protocol</span>
-               </div>
-               <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-black animate-fade-in-up uppercase leading-[0.9]">
-                 Ready to Join <br /> the Mesh?
-               </h2>
+                  <span className="text-[10px] font-black text-black uppercase tracking-[0.3em]">Grow Your Business in AP</span>
+               </motion.div>
+               <motion.h2 
+                 variants={itemVariants}
+                 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-black uppercase leading-[0.9]"
+               >
+                 Ready to Grow <br /> Your Shop in AP?
+               </motion.h2>
             </div>
             
-            <p className="text-lg md:text-xl text-gray-500 font-medium leading-relaxed italic animate-fade-in-up [animation-delay:400ms]">
-              "Start physicalizing your documents with absolute privacy. Join thousands of users in the global XeroxQ protocol mesh today."
-            </p>
+            <motion.p 
+              variants={itemVariants}
+              className="text-lg md:text-xl text-gray-500 font-medium max-w-xl italic leading-relaxed"
+            >
+              Join hundreds of other xerox shop owners in Andhra Pradesh who are saving time and earning more with XeroxQ. It's 100% free.
+            </motion.p>
             
-            <div className="flex flex-wrap gap-4 animate-fade-in-up [animation-delay:600ms] pt-4 px-1">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.8 } }
+              }}
+              className="flex flex-wrap gap-4 pt-4 px-1"
+            >
               <button className="group relative h-12 px-8 bg-[#FB432C] text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-black hover:scale-[1.02] active:scale-[0.98]">
-                Register Your Node
+                Add Your Xerox Shop
               </button>
               <button className="group relative h-12 px-8 bg-black text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20 hover:bg-[#FB432C] hover:scale-[1.02] active:scale-[0.98]">
-                Protocol Documentation
+                See How It Works
               </button>
-            </div>
+            </motion.div>
           </div>
 
           {/* Right Marquee */}
-          <div ref={marqueeRef} className="relative h-[400px] lg:h-[500px] flex items-center justify-center animate-fade-in-up [animation-delay:400ms]">
+          <motion.div 
+            ref={marqueeRef} 
+            variants={{
+              hidden: { opacity: 0, scale: 0.95 },
+              visible: { opacity: 1, scale: 1, transition: { duration: 1 } }
+            }}
+            className="relative h-[400px] lg:h-[500px] flex items-center justify-center"
+          >
             <div className="relative w-full h-full">
               <VerticalMarquee speed={18} className="h-full">
                 {marqueeItems.map((item, idx) => (
@@ -161,9 +206,9 @@ export default function CTAWithVerticalMarquee() {
               {/* Bottom vignette */}
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-white via-white/50 to-transparent z-10"></div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

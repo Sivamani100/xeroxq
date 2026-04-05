@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronRight, Menu, X, Printer, Shield, Zap, Globe, Trash2, Activity, Sparkles, Cpu, Fingerprint, MousePointer2 } from 'lucide-react';
+import { ArrowRight, ChevronRight, Menu, X, Printer, Shield, Zap, Globe, Trash2, Activity, Sparkles, Cpu, Fingerprint, MousePointer2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { HowItWorks } from "@/components/ui/how-it-works";
@@ -16,17 +16,20 @@ import { type Variants } from 'framer-motion';
 const itemVariant: Variants = {
   hidden: {
     opacity: 0,
-    filter: 'blur(12px)',
-    y: 12,
+    filter: 'blur(10px)',
+    y: 20,
+    scale: 0.95,
   },
   visible: {
     opacity: 1,
     filter: 'blur(0px)',
     y: 0,
+    scale: 1,
     transition: {
-      type: 'spring' as const,
-      bounce: 0.3,
-      duration: 1.5,
+      type: 'spring',
+      bounce: 0.25,
+      duration: 1.2,
+      delay: 0.1,
     },
   },
 };
@@ -58,7 +61,7 @@ export function HeroSection() {
                 <AnimatedGroup variants={transitionVariants}>
                   {/* Badge */}
                   <div className="mx-auto flex w-fit items-center gap-4 rounded-full border border-gray-200 bg-gray-50 p-1 pl-6 shadow-md shadow-black/5 transition-all duration-300 group hover:bg-white">
-                    <span className="text-sm font-normal text-gray-700">Zero-Data. Zero-Trust. 100% Free.</span>
+                    <span className="text-sm font-normal text-gray-700">100% Free for Shop Owners</span>
                     <span className="block h-4 w-0.5 border-l border-gray-300 bg-white"></span>
                     <div className="bg-white group-hover:bg-gray-50 size-6 overflow-hidden rounded-full duration-500">
                       <div className="flex w-12 -translate-x-1/2 duration-500 ease-in-out group-hover:translate-x-0">
@@ -72,7 +75,6 @@ export function HeroSection() {
                     </div>
                   </div>
 
-                  {/* Headline */}
                   <h1 className="mt-8 max-w-4xl mx-auto text-balance text-6xl font-bold tracking-tight text-black md:text-7xl lg:mt-10 xl:text-[5rem] leading-[1.05]">
                     Privacy-First Printing,{' '}
                     <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(315deg,#FB432C 0%,#FF591E 100%)' }}>
@@ -81,8 +83,8 @@ export function HeroSection() {
                   </h1>
 
                   {/* Sub-headline */}
-                  <p className="mx-auto mt-6 max-w-2xl text-balance text-lg text-gray-500 font-medium leading-relaxed">
-                    Walk into any XeroxQ shop, scan the QR code, upload your document — it prints and vanishes. No accounts, no servers, no trace.
+                  <p className="mx-auto mt-6 max-w-3xl text-balance text-lg text-gray-500 font-medium leading-relaxed">
+                    Walk into any XeroxQ shop, scan the QR code, upload your document it prints and vanishes. No accounts, no servers, no trace.
                   </p>
                 </AnimatedGroup>
 
@@ -134,16 +136,16 @@ export function HeroSection() {
                   }}
                   className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
-                    <Shield className="size-4 text-brand-primary" />
-                    <span>AES-256 Encrypted</span>
+                    <Zap className="size-4 text-brand-primary" />
+                    <span>No Joining Fees</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Zap className="size-4 text-brand-primary" />
-                    <span>Zero Data Retention</span>
+                    <Sparkles className="size-4 text-brand-primary" />
+                    <span>Instant Shop Setup</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Printer className="size-4 text-brand-primary" />
-                    <span>14,892 Active Nodes</span>
+                    <span>Available Across AP</span>
                   </div>
                 </AnimatedGroup>
               </div>
@@ -155,18 +157,27 @@ export function HeroSection() {
                 container: {
                   visible: {
                     transition: {
-                      staggerChildren: 0.05,
-                      delayChildren: 0.75,
+                      staggerChildren: 0.1,
+                      delayChildren: 0.8,
                     },
                   },
                 },
                 ...transitionVariants,
               }}>
-              <div className="relative -mr-56 mt-10 overflow-hidden px-2 sm:mr-0 sm:mt-10 md:mt-10">
-
+              <motion.div 
+                animate={{ 
+                  y: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="relative mt-10 overflow-hidden px-2 sm:mt-10 md:mt-12 w-full flex justify-center"
+              >
                 <div className="ring-gray-200 bg-white relative mx-auto max-w-7xl overflow-hidden rounded-2xl border border-gray-200 p-3 shadow-2xl shadow-black/10 ring-1">
                   {/* Hero dashboard mockup — light */}
-                  <div className="aspect-[15/8] relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-gray-100 flex flex-col">
+                  <div className="aspect-[4/3] sm:aspect-[15/8] relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-gray-100 flex flex-col w-full shadow-inner">
                     {/* Fake browser chrome */}
                     <div className="h-10 bg-white border-b border-gray-100 flex items-center gap-3 px-4">
                       <div className="flex gap-1.5">
@@ -185,12 +196,12 @@ export function HeroSection() {
                       <img 
                         src="/demoscreen.png" 
                         alt="XeroxQ Dashboard Demo" 
-                        className="w-full h-full object-cover object-top"
+                        className="w-full h-full object-contain sm:object-cover object-top"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </AnimatedGroup>
           </div>
         </section>
@@ -218,34 +229,34 @@ const menuItems = [
 // ──────────────────────────────────────────────
 const features = [
   {
-    title: 'Mesh Performance',
-    icon: Zap,
-    description: 'Ultra-low latency document transmission across our secure distributed mesh network.',
+    title: 'Attract More Customers',
+    icon: Users,
+    description: 'Show your shop to thousands of people in Andhra Pradesh looking for a high-quality xerox shop near them.',
   },
   {
-    title: 'Zero-Knowledge',
-    icon: Shield,
-    description: 'Shard-encrypted document storage ensuring your files are never at rest in a readable state.',
-  },
-  {
-    title: 'Global Bridge',
-    icon: Globe,
-    description: 'Universal hardware compatibility. Connect any legacy printer to the XeroxQ mesh instantly.',
-  },
-  {
-    title: 'Protocol Purge',
+    title: 'Zero WhatsApp Mess',
     icon: Trash2,
-    description: '100% digital footprint elimination. Automatic file shredding at the hardware level on completion.',
+    description: 'No more checking for documents on WhatsApp or email. Let our system handle it for you.',
   },
   {
-    title: 'Institutional Grade',
-    icon: Activity,
-    description: 'Built for high-density, enterprise-scale demand with professional-grade uptime.',
-  },
-  {
-    title: 'High Fidelity',
+    title: 'Any Xerox Machine',
     icon: Printer,
-    description: 'Precision-calibrated print output using our proprietary hardware bridge drivers.',
+    description: 'Our software works with every printer and xerox machine in AP without any new hardware.',
+  },
+  {
+    title: 'Instant File Delete',
+    icon: Shield,
+    description: 'Files are deleted right after printing. Your customers will feel very safe using your xerox shop.',
+  },
+  {
+    title: 'Modern Shop Image',
+    icon: Sparkles,
+    description: 'Make your shop look like a premium brand in your neighborhood. Show people you use the latest tech.',
+  },
+  {
+    title: 'Extra Earnings',
+    icon: Activity,
+    description: 'Get more print orders from mobile users every day and increase your shop profit in Andhra Pradesh.',
   },
 ];
 
@@ -256,13 +267,13 @@ function HeroFeatures() {
         <AnimatedContainer className="mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/5 mb-6">
             <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-            <span className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Protocol Specifications</span>
+            <span className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Service Features</span>
           </div>
           <h2 className="text-[40px] md:text-[54px] font-bold tracking-tighter text-black leading-none mb-6 text-balance">
-            Power. Speed. Control.
+            Modernize Your Shop.
           </h2>
           <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
-            Everything you need to transmit and print documents with absolute security and precision across the global mesh.
+            Everything you need to grow your xerox business and managing printing efficiently in Andhra Pradesh.
           </p>
         </AnimatedContainer>
 

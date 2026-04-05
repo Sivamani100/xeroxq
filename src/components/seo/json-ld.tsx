@@ -47,7 +47,7 @@ export function OrganizationJsonLd() {
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
-      email: "support@xeroxq.arkio.in",
+      email: "support@arkio.in",
       availableLanguage: ["English", "Hindi"],
     },
     sameAs: [
