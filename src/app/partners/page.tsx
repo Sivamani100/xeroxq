@@ -17,8 +17,7 @@ import {
   Award,
   TrendingUp,
   GraduationCap,
-  GithubIcon,
-  TwitterIcon,
+  AtSign,
   Medal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
