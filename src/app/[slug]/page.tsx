@@ -146,13 +146,16 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         setCropperImage(reader.result as string);
         setShowCropper(true);
         setFile(selectedFile);
+        setDocxFileToProcess(null);
       };
       reader.readAsDataURL(selectedFile);
     } else if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
       setDocxFileToProcess(selectedFile);
+      setFile(null);
       setShowDocxChoice(true);
     } else {
       setFile(selectedFile);
+      setDocxFileToProcess(null);
     }
   };
 
@@ -208,8 +211,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Agent conversion failed");
+          let errorMsg = "Agent conversion failed";
+          try {
+            const errData = await response.json();
+            errorMsg = errData.error || errorMsg;
+          } catch(e) {
+            errorMsg = `System Agent Protocol Failure (${response.status})`;
+          }
+          throw new Error(errorMsg);
         }
 
         setConversionStep(3); // Wrapping Payload
@@ -228,11 +237,12 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       
       const { error: uploadError } = await supabase.storage
         .from("documents")
-        .upload(storagePath, finalFile as Blob);
+        .upload(storagePath, finalFile as Blob, {
+          contentType: finalExt === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+          upsert: true
+        });
 
-
-
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(`Storage Error: ${uploadError.message || JSON.stringify(uploadError)}`);
 
       // 3. Insert into DB (with Retry Logic for collisions)
       let newToken = "";
@@ -289,14 +299,10 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       setToken(newToken);
       setJobStatus("pending");
     } catch (error: any) {
-      console.error("Mercury Upload Terminal Error:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        context: error
-      });
-      alert(error.message || "Upload protocol failed. Please check your connection and try again.");
+      console.error("Mercury Upload Terminal Error Snapshot:", error);
+      
+      const message = error?.message || (typeof error === 'string' ? error : "Upload protocol failed due to an unknown network or storage error.");
+      alert(`Mercury Terminal Alert: ${message}`);
     } finally {
       setUploading(false);
       setIsConverting(false);
