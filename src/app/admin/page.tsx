@@ -123,6 +123,8 @@ export default function AdminDashboard() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
+  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
+  const [initialPinchZoom, setInitialPinchZoom] = useState<number>(1.0);
   const [isCompositing, setIsCompositing] = useState(false);
   const [croppingItemId, setCroppingItemId] = useState<string | null>(null);
   const addImageInputRef = useRef<HTMLInputElement>(null);
@@ -1436,7 +1438,34 @@ export default function AdminDashboard() {
              className={`flex-1 relative overflow-auto bg-[#0A0B0D] ${isSpacePressed ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
              style={{
                backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)',
-               backgroundSize: '40px 40px'
+               backgroundSize: '40px 40px',
+               touchAction: 'pan-x pan-y' // Allows native scrolling but enables JS pinch-zoom
+             }}
+             onTouchStart={(e) => {
+               if (e.touches.length === 2) {
+                 // Two finger pinch start
+                 const touch1 = e.touches[0];
+                 const touch2 = e.touches[1];
+                 const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+                 setInitialPinchDistance(dist);
+                 setInitialPinchZoom(canvasZoom);
+               } else if (e.touches.length === 1 && (e.target === e.currentTarget || (e.target as HTMLElement).id === "canvas-scale-container")) {
+                 setSelectedCanvasIds([]);
+               }
+             }}
+             onTouchMove={(e) => {
+               if (e.touches.length === 2 && initialPinchDistance !== null) {
+                 // Prevent default browser zoom/scroll while pinching
+                 if (e.cancelable) e.preventDefault();
+                 const touch1 = e.touches[0];
+                 const touch2 = e.touches[1];
+                 const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+                 const scale = dist / initialPinchDistance;
+                 setCanvasZoom(Math.max(0.2, Math.min(3.0, initialPinchZoom * scale)));
+               }
+             }}
+             onTouchEnd={() => {
+               setInitialPinchDistance(null);
              }}
              onMouseDown={(e) => {
                if (isSpacePressed || e.button === 1) {
