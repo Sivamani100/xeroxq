@@ -1610,48 +1610,54 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      {/* TOP HEADER - IDENTITY, ACTIONS */}
+       {/* TOP HEADER - IDENTITY, ACTIONS */}
       <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
-         <div className="max-w-[1440px] mx-auto px-6 py-4 lg:px-[82px]">
-            
-            {/* Top Bar: Identity & Actions */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-               <div className="flex items-center gap-3">
-                 <div className="w-[40px] h-[40px] bg-black rounded-[5.57px] flex items-center justify-center shrink-0 shadow-lg shadow-black/20">
-                   <Printer className="text-white w-5 h-5" />
+         <div className="max-w-[1440px] mx-auto px-4 py-[22px] lg:py-6 lg:px-[82px]">
+            {/* Single row: logo + name on left, icon buttons on right */}
+            <div className="flex items-center justify-between gap-3">
+               {/* Left: logo + shop name */}
+               <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+                 <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md shadow-black/20">
+                   <Printer className="text-white w-4 h-4" />
                  </div>
                  <div className="flex flex-col">
-                   <h1 className="text-[20px] font-bold text-black leading-none tracking-tight mb-1">{shop.name}</h1>
-                   <p className="text-[12.27px] font-medium text-auth-slate-50 tracking-[0.01em] uppercase">Dashboard</p>
+                   <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>
+                   <p className="text-[9px] lg:text-[10px] font-bold text-[#7E8B9E] tracking-[0.12em] uppercase leading-none mt-0.5">Dashboard</p>
                  </div>
                </div>
 
-               {/* Actions & Status */}
-               <div className="flex items-center gap-3">
-                  {/* NEW PRIVACY HEARTBEAT */}
+               {/* Right: action buttons */}
+               <div className="flex items-center gap-2 shrink-0">
+                  {/* Live indicator - full text on desktop, hidden on mobile */}
                   <div className="hidden lg:flex items-center gap-2 px-3 h-[32px] bg-green-50 border border-green-100 rounded-[5.57px]">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                     <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Secure Printing Active</span>
                   </div>
 
-                   <button 
-                     onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
-                     className={cn(
-                        "h-[36px] px-3 font-bold text-[12px] border transition-all rounded-[5.57px] flex items-center justify-center gap-2 shadow-sm",
-                        isSoundEnabled 
-                          ? "bg-orange-50 border-orange-100 text-[#FF591E]" 
-                          : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC] animate-pulse"
-                     )}
-                     title={isSoundEnabled ? "Alerts Active" : "Enable Sound Notifications"}
-                   >
-                     {isSoundEnabled ? <Bell className="w-[14px] h-[14px]" /> : <BellOff className="w-[14px] h-[14px]" />}
-                     {isSoundEnabled ? "Active" : "Alerts"}
-                   </button>
+                  {/* Bell / Alerts — mobile: small icon-only | desktop: icon + text */}
+                  <button
+                    onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
+                    className={cn(
+                       "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]",
+                       isSoundEnabled
+                         ? "bg-orange-50 border-orange-100 text-[#FF591E]"
+                         : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                    )}
+                    title={isSoundEnabled ? "Alerts Active" : "Enable Sound Notifications"}
+                  >
+                    {isSoundEnabled ? <Bell className="w-4 h-4 lg:w-[14px] lg:h-[14px]" /> : <BellOff className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />}
+                    <span className="hidden lg:inline">{isSoundEnabled ? "Active" : "Alerts"}</span>
+                  </button>
 
+                  {/* Config — mobile: small icon-only | desktop: icon + text */}
                   <Dialog open={showingSettings} onOpenChange={setShowingSettings}>
                      <DialogTrigger asChild>
-                       <button className="h-[36px] px-3 font-bold text-[12px] border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-[5.57px] flex items-center justify-center gap-2 shadow-sm">
-                         <Settings2 className="w-[14px] h-[14px]" /> Config
+                       <button
+                         className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
+                         title="Shop Config"
+                       >
+                         <Settings2 className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
+                         <span className="hidden lg:inline">Config</span>
                        </button>
                      </DialogTrigger>
                      <DialogContent className="sm:max-w-md rounded-[32px] p-8 bg-white border border-[#E2E8F0] shadow-2xl">
@@ -1724,10 +1730,15 @@ export default function AdminDashboard() {
                      </DialogContent>
                   </Dialog>
 
+                  {/* QR — mobile: small icon-only | desktop: icon + text */}
                   <Dialog open={showQR} onOpenChange={setShowQR}>
                     <DialogTrigger asChild>
-                      <button className="h-[36px] px-3 font-bold text-[12px] border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-[5.57px] flex items-center justify-center gap-2 shadow-sm">
-                        <QrCode className="w-[14px] h-[14px]" /> QR
+                      <button
+                        className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
+                        title="Customer QR"
+                      >
+                        <QrCode className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
+                        <span className="hidden lg:inline">QR</span>
                       </button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md rounded-[32px] p-8 bg-white border border-[#E2E8F0] shadow-2xl">
@@ -1791,14 +1802,20 @@ export default function AdminDashboard() {
                     </DialogContent>
                   </Dialog>
 
-                  <div className="h-[20px] w-[1px] bg-[#E2E8F0] mx-1"></div>
-                  
-                  <button onClick={handleLogout} className="flex gap-2 items-center justify-center h-[36px] px-2 text-[12px] font-bold text-red-500 hover:text-red-600 transition-colors">
-                    <LogOut className="w-[14px] h-[14px]"/> <span className="hidden sm:block">Logout</span>
+                  {/* Separator */}
+                  <div className="h-6 w-[1px] bg-[#E2E8F0] mx-0.5" />
+
+                  {/* Logout — mobile: small icon-only | desktop: icon + text */}
+                  <button
+                    onClick={handleLogout}
+                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-2 flex items-center justify-center lg:gap-2 rounded-lg lg:rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors font-bold text-[12px]"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
+                    <span className="hidden lg:inline">Logout</span>
                   </button>
                </div>
             </div>
-
          </div>
       </div>
 
@@ -1832,156 +1849,225 @@ export default function AdminDashboard() {
          </div>
       </div>
 
-      {/* MAIN BODY - SCROLLING QUEUE TABLE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-6 lg:px-[82px] pb-6 flex flex-col overflow-hidden">
-        <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex flex-col overflow-hidden">
-           <div className="flex-1 min-w-full overflow-auto relative">
-             <table className="w-full text-left border-collapse whitespace-nowrap lg:whitespace-normal">
-               <thead className="bg-[#F8FAFC] sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#E2E8F0]">
+      {/* MAIN BODY - RESPONSIVE QUEUE */}
+      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto">
+
+        {/* ── EMPTY STATE ── */}
+        {filteredJobs.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 py-24">
+            <img src="/hot-air-balloon.svg" alt="Queue Empty" className="w-40 h-40 drop-shadow-2xl" />
+            <div className="text-center space-y-1">
+              <p className="text-[20px] font-black text-black tracking-tight uppercase">Terminal Clear</p>
+              <p className="text-[12px] font-bold text-[#7E8B9E] uppercase tracking-[0.15em] leading-relaxed max-w-xs">
+                The network is silent. Customer print jobs will appear here in real-time.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── MOBILE CARDS (shown below lg) ── */}
+        {filteredJobs.length > 0 && (
+          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto">
+            {filteredJobs.map((job) => {
+              const isExpired = new Date(job.expires_at) < currentTime;
+              const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
+              const minsLeft = Math.floor(diff / 60000);
+              return (
+                <div key={job.id} className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+                  {/* Row 1: Customer + Status badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-black text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</span>
+                    {job.status === "printed" ? (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Done
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-[10px] font-bold text-[#FF591E] uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#FF591E] animate-pulse" /> Pending
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 2: File info */}
+                  <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5">
+                    <div className="w-9 h-9 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-[#323A46]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[13px] text-black truncate">{job.file_name}</p>
+                      <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                    </div>
+                    <span className="text-[11px] font-black text-red-500 uppercase shrink-0">
+                      {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                    </span>
+                  </div>
+
+                  {/* Row 3: Print detail tags */}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                      {job.preferences.color ? '🎨 Color' : '⬛ Mono'}
+                    </span>
+                    <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                      {job.preferences.copies} {job.preferences.copies > 1 ? 'copies' : 'copy'}
+                    </span>
+                    {job.preferences.doubleSided && (
+                      <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">2-Sided</span>
+                    )}
+                  </div>
+
+                  {/* Row 4: Action buttons */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-[#F1F5F9]">
+                    {job.status !== "printed" ? (
+                      <>
+                        <button
+                          onClick={() => handlePrint(job)}
+                          className="flex-1 h-10 bg-black text-white rounded-xl text-[12px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest"
+                        >
+                          <Printer className="w-3.5 h-3.5" /> Print
+                        </button>
+                        <button
+                          onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
+                          className="flex-1 h-10 bg-white border border-[#E2E8F0] text-black rounded-xl text-[12px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
+                        className="flex-1 h-10 bg-white border border-green-200 text-green-700 rounded-xl text-[12px] font-bold hover:bg-green-50 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                      >
+                        <Printer className="w-3.5 h-3.5" /> Reprint
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDownload(job)}
+                      disabled={activeDownloadId === job.id}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20 transition-all"
+                    >
+                      {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirmJob(job)}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── DESKTOP TABLE (shown at lg+) ── */}
+        {filteredJobs.length > 0 && (
+          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden">
+            <div className="flex-1 min-w-full overflow-auto relative">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-[#F8FAFC] sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#E2E8F0]">
                   <tr>
-                    <th className="py-4 pl-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 w-[14%]">Customer</th>
-                    <th className="py-4 px-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 w-[26%]">File Info</th>
-                    <th className="py-4 px-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 text-center w-[16%]">Print Details</th>
-                    <th className="py-4 px-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 text-center w-[14%]">Format</th>
-                    <th className="py-4 px-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 text-center w-[15%]">Print</th>
-                    <th className="py-4 pr-6 text-[12px] font-bold uppercase tracking-[0.1em] text-auth-slate-50 text-right w-[15%]">Actions</th>
+                    <th className="py-4 pl-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%]">Customer</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[28%]">File Info</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%]">Print Details</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%]">Format</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%]">Print</th>
+                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-right w-[18%]">Actions</th>
                   </tr>
-               </thead>
-               <tbody className="bg-white">
-                  {filteredJobs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-32 text-center border-none">
-                         <div className="flex flex-col items-center justify-center gap-8 w-full max-w-[400px] mx-auto">
-                            <div className="relative">
-                              <img 
-                                src="/hot-air-balloon.svg" 
-                                alt="Queue Empty" 
-                                className="w-48 h-48 drop-shadow-2xl"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                               <p className="text-[20px] font-black text-black tracking-tight uppercase">Terminal Clear</p>
-                               <p className="text-[12px] font-bold text-auth-slate-30 uppercase tracking-[0.15em] leading-relaxed">
-                                 The network is silent. Customer print jobs will appear here in real-time.
-                               </p>
-                            </div>
-                         </div>
-                      </td>
-                    </tr>
-                  ) : filteredJobs.map((job) => {
-                     const isExpired = new Date(job.expires_at) < currentTime;
-                     const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
-                     const minsLeft = Math.floor(diff / 60000);
-                     
-                     return (
-                       <tr key={job.id} className="group border-b border-[#E2E8F0] last:border-b-0 hover:bg-[#F8FAFC]/50 transition-colors">
+                </thead>
+                <tbody className="bg-white">
+                  {filteredJobs.map((job) => {
+                    const isExpired = new Date(job.expires_at) < currentTime;
+                    const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
+                    const minsLeft = Math.floor(diff / 60000);
+                    return (
+                      <tr key={job.id} className="group border-b border-[#E2E8F0] last:border-b-0 hover:bg-[#F8FAFC]/50 transition-colors">
                         <td className="py-5 pl-6">
-                           <div className="flex flex-col">
-                              <p className="font-bold text-[12px] text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</p>
-                           </div>
+                          <p className="font-bold text-[12px] text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</p>
                         </td>
-                        <td className="py-5 px-6">
-                          <div className="flex items-center gap-4">
-                             <div className="w-10 h-10 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
-                                <FileText className="w-4 h-4 text-auth-slate-90" />
-                             </div>
-                             <div className="min-w-[120px] max-w-[200px]">
-                                 <p className="font-bold text-[14px] text-black truncate max-w-[180px]">{job.file_name}</p>
-                                 <p className="text-[12.27px] text-auth-slate-50 font-medium mt-0.5">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
-                             </div>
+                        <td className="py-5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
+                              <FileText className="w-4 h-4 text-[#323A46]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
+                              <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
-                           <div className="flex items-center justify-center gap-2">
-                              <span className="inline-flex items-center justify-center h-6 px-2 rounded-[5.57px] text-[10px] font-bold bg-white border border-[#E2E8F0] text-auth-slate-90 uppercase">
-                                {job.preferences.color ? 'COLOR' : 'MONO'}
-                              </span>
-                              <span className="inline-flex items-center justify-center h-6 px-2 rounded-[5.57px] text-[10px] font-bold bg-white border border-[#E2E8F0] text-auth-slate-90 uppercase">
-                                {job.preferences.copies}x
-                              </span>
-                           </div>
+                        <td className="py-5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                              {job.preferences.color ? 'COLOR' : 'MONO'}
+                            </span>
+                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                              {job.preferences.copies}x
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
-                           <div className="flex items-center justify-center">
-                                <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em] leading-none">
-                                  {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                                </span>
-                           </div>
+                        <td className="py-5 px-4 text-center">
+                          <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
+                            {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                          </span>
                         </td>
-                        <td className="py-5 px-6 text-center text-black">
-                           <div className="flex items-center justify-center">
-                              {job.status !== "printed" ? (
-                                <button 
-                                  onClick={() => handlePrint(job)}
-                                  className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                  Print
-                                </button>
-                              ) : (
-                                <button 
-                                  onClick={() => {
-                                    setVerifyingJobId(job.id);
-                                    setVerificationMode('reprint');
-                                  }}
-                                  className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                  Print
-                                </button>
-                              )}
-                           </div>
+                        <td className="py-5 px-4 text-center">
+                          {job.status !== "printed" ? (
+                            <button
+                              onClick={() => handlePrint(job)}
+                              className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest mx-auto"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
+                              className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
+                            </button>
+                          )}
                         </td>
                         <td className="py-5 pr-6 text-right">
-                           <div className="flex items-center justify-end gap-6">
-                              {job.status !== "printed" ? (
-                                <button 
-                                  onClick={() => {
-                                    setVerifyingJobId(job.id);
-                                    setVerificationMode('complete');
-                                  }}
-                                  className="h-[34px] px-4 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
-                                  Complete
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                   <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Completed</span>
-                                </div>
-                              )}
-                               <button
-                                 onClick={() => handleDownload(job)}
-                                 disabled={activeDownloadId === job.id}
-                                 className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-auth-slate-30 hover:text-black hover:bg-[#F8FAFC] transition-colors relative"
-                                 title="Download File"
-                               >
-                                  {activeDownloadId === job.id ? (
-                                    <div className="flex items-center justify-center scale-110">
-                                       <RefreshCw className="w-[14px] h-[14px] text-black animate-spin" />
-                                       <div className="absolute inset-[-4px] border-2 border-black/10 border-t-black rounded-full animate-spin [animation-duration:0.6s]" />
-                                    </div>
-                                  ) : (
-                                    <Download className="w-[14px] h-[14px]" />
-                                  )}
-                               </button>
+                          <div className="flex items-center justify-end gap-2">
+                            {job.status !== "printed" ? (
                               <button
-                                 onClick={() => setDeleteConfirmJob(job)}
-                                 className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-auth-slate-30 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                 title="Delete Job"
-                               >
-                                  <Trash2 className="w-[14px] h-[14px]" />
-                               </button>
-                           </div>
+                                onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
+                                className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest"
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Done</span>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => handleDownload(job)}
+                              disabled={activeDownloadId === job.id}
+                              className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors"
+                              title="Download"
+                            >
+                              {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmJob(job)}
+                              className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                     );
-                   })}
-               </tbody>
-             </table>
-           </div>
-        </div>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* VERIFICATION CHALLENGE MODAL */}
