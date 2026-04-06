@@ -1850,7 +1850,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto">
+      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-thin">
 
         {/* ── EMPTY STATE ── */}
         {filteredJobs.length === 0 && (
@@ -1867,7 +1867,7 @@ export default function AdminDashboard() {
 
         {/* ── MOBILE CARDS (shown below lg) ── */}
         {filteredJobs.length > 0 && (
-          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto">
+          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-thin">
             {filteredJobs.map((job) => {
               const isExpired = new Date(job.expires_at) < currentTime;
               const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
@@ -1963,7 +1963,7 @@ export default function AdminDashboard() {
         {/* ── DESKTOP TABLE (shown at lg+) ── */}
         {filteredJobs.length > 0 && (
           <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden">
-            <div className="flex-1 min-w-full overflow-auto relative">
+            <div className="flex-1 min-w-full overflow-auto scrollbar-thin relative">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#F8FAFC] sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#E2E8F0]">
                   <tr>

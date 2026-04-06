@@ -304,3 +304,31 @@
 .animate-fade-slide-in-2 { animation: fadeSlideIn 0.8s ease-out 0.2s forwards; opacity: 0; }
 .animate-fade-slide-in-3 { animation: fadeSlideIn 0.8s ease-out 0.3s forwards; opacity: 0; }
 .animate-fade-slide-in-4 { animation: fadeSlideIn 0.8s ease-out 0.4s forwards; opacity: 0; }
+
+/* Ultra-thin scrollbar for queue panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.12) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 99px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.22);
+}
+
+/* Hide scrollbar entirely but keep scroll functionality */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
