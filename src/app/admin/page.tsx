@@ -170,7 +170,9 @@ export default function AdminDashboard() {
   }, [activePrintJob, printPreviewUrl]);
 
 
-  const baseScale = Math.min((viewportWidth - 360) / 850, viewportHeight / 1300);
+  const isMobileView = viewportWidth < 768;
+  const sidebarOffset = isMobileView ? 16 : 360;
+  const baseScale = Math.min((viewportWidth - sidebarOffset) / 850, viewportHeight / 1300);
   const finalScale = Math.max(0.2, Math.min(1, baseScale)) * canvasZoom;
 
 
@@ -1143,8 +1145,166 @@ export default function AdminDashboard() {
       {activePrintJob && printPreviewUrl && (
         <div className="fixed inset-0 z-40 bg-[#0A0A0A] flex flex-col md:flex-row overflow-hidden font-sans">
           
-          {/* Header/Sidebar (Left on Desktop, Top on Mobile) */}
-          <div className="w-full md:w-[320px] bg-white border-b md:border-b-0 md:border-r border-[#E2E8F0] shadow-2xl flex flex-col z-20 shrink-0">
+          {/* ===== MOBILE-ONLY COMPACT TOOLBAR ===== */}
+          <div className="flex md:hidden bg-white border-b border-[#E2E8F0] flex-col z-20 shrink-0">
+            {/* Row 1: Title + Quick Actions */}
+            <div className="flex items-center justify-between px-3 py-[14px] border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-black rounded-[6px] flex items-center justify-center shrink-0">
+                  <MousePointer2 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[14px] font-bold text-black tracking-tight leading-none">Canvas Editor</h2>
+                  <p className="text-[8px] font-bold text-auth-slate-50 uppercase tracking-widest mt-1">A4 Print Composer</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <input type="file" ref={addImageInputRef} onChange={handleAddImage} accept="image/*" className="hidden" />
+                {/* Download Dialog - mobile */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="w-8 h-8 flex items-center justify-center hover:bg-[#E2E8F0] rounded transition-colors text-black" title="Download">
+                      {isCompositing ? <div className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px] bg-white text-black border-none shadow-2xl rounded-[32px]">
+                    <DialogHeader>
+                      <DialogTitle>Download Asset</DialogTitle>
+                      <DialogDescription>Select your preferred download protocol.</DialogDescription>
+                    </DialogHeader>
+                    {isCompositing ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-4">
+                        <div className="w-10 h-10 border-4 border-black/10 border-t-black rounded-full animate-spin" />
+                        <div className="text-center">
+                          <p className="text-[14px] font-bold text-black">Generating Protocol...</p>
+                          <p className="text-[11px] text-auth-slate-50 mt-1 uppercase tracking-widest font-bold">Bundling {pageCount} {pageCount > 1 ? 'Pages' : 'Page'}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 py-4">
+                        <button onClick={saveCanvasAsImage} className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group">
+                          <div className="text-left flex items-center gap-4">
+                            <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors"><Palette className="w-5 h-5" /></div>
+                            <div>
+                              <p className="font-bold text-[14px] text-black">Composited {pageCount > 1 ? 'PDF' : 'Image'}</p>
+                              <p className="text-[11px] text-auth-slate-50 uppercase tracking-widest font-bold">Includes All Edits</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </button>
+                        <button onClick={() => activePrintJob && handleDownload(activePrintJob)} className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group">
+                          <div className="text-left flex items-center gap-4">
+                            <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors"><FileText className="w-5 h-5" /></div>
+                            <div>
+                              <p className="font-bold text-[14px] text-black">Raw Document</p>
+                              <p className="text-[11px] text-auth-slate-50 uppercase tracking-widest font-bold">Original Submission</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </button>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+                {/* Exit */}
+                <button
+                  onClick={() => { setActivePrintJob(null); setPrintPreviewUrl(null); setSelectedCanvasIds([]); }}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-red-50 rounded transition-colors"
+                  title="Exit Session"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Row 2 & 3: 2-row × 6-col tool grid — zero scroll, all visible */}
+            <div className="grid grid-cols-6 gap-1 px-2 py-2">
+              {/* --- ROW A: Composition Tools --- */}
+              <button onClick={() => { const img = new Image(); img.src = printPreviewUrl!; img.onload = () => { const r=img.width/img.height; const nw=300; setCanvasItems([...canvasItems,{id:`img-${Date.now()}`,x:50,y:50,width:nw,height:nw/r,pageIndex:activePageIndex}]); }; }}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-black rounded-[8px] text-black bg-white hover:bg-black/5 active:scale-95 transition-all" title="Add Image Instance">
+                <Maximize className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none text-center">Add Img</span>
+              </button>
+              <button onClick={() => { const o=canvasItems.find(i=>i.id===selectedCanvasIds[0]); if(o) setCanvasItems([...canvasItems,{...o,id:`img-${Date.now()}`,x:o.x+20,y:o.y+20}]); }}
+                disabled={selectedCanvasIds.length===0}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Duplicate">
+                <Copy className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Dup</span>
+              </button>
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCanvasItems(items=>items.map(i=>selectedCanvasIds.includes(i.id)?{...i,width:Math.round(i.width*1.1),height:Math.round(i.height*1.1)}:i))}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Scale Up">
+                <Plus className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Scale+</span>
+              </button>
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCanvasItems(items=>items.map(i=>selectedCanvasIds.includes(i.id)?{...i,width:Math.round(i.width*0.9),height:Math.round(i.height*0.9)}:i))}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Scale Down">
+                <Minus className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Scale-</span>
+              </button>
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCanvasItems(items=>items.map(i=>selectedCanvasIds.includes(i.id)?{...i,zIndex:(i.zIndex||0)+1}:i))}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Bring Forward">
+                <ArrowUpToLine className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Fwd</span>
+              </button>
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCanvasItems(items=>items.map(i=>selectedCanvasIds.includes(i.id)?{...i,zIndex:(i.zIndex||0)-1}:i))}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Send Back">
+                <ArrowDownToLine className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Back</span>
+              </button>
+
+              {/* --- ROW B: Edit & Page Tools --- */}
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCanvasItems(items=>items.map(i=>selectedCanvasIds.includes(i.id)?{...i,isGrayscale:!i.isGrayscale}:i))}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Toggle B&W">
+                <Palette className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">B&W</span>
+              </button>
+              <button disabled={selectedCanvasIds.length===0}
+                onClick={() => setCroppingItemId(selectedCanvasIds[0])}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-[#E2E8F0] rounded-[8px] text-black bg-white hover:bg-[#F8FAFC] active:scale-95 transition-all disabled:opacity-40" title="Crop">
+                <Crop className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Crop</span>
+              </button>
+              <button onClick={() => { setCanvasItems(canvasItems.filter(i=>!selectedCanvasIds.includes(i.id))); setSelectedCanvasIds([]); }}
+                disabled={selectedCanvasIds.length===0}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-red-200 bg-red-50 rounded-[8px] text-red-600 hover:bg-red-100 active:scale-95 transition-all disabled:opacity-40" title="Delete Selected">
+                <Trash2 className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Delete</span>
+              </button>
+              <button onClick={() => setIsGridSnapped(!isGridSnapped)}
+                className={`flex flex-col items-center justify-center gap-0.5 h-[52px] border rounded-[8px] active:scale-95 transition-all ${isGridSnapped ? 'border-[#FF591E] bg-[#FF591E]/10 text-[#FF591E]' : 'border-[#E2E8F0] text-black bg-white hover:bg-[#F8FAFC]'}`}
+                title="Snap to Grid">
+                <Grid className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">{isGridSnapped ? 'Snap On' : 'Snap Off'}</span>
+              </button>
+              <button onClick={() => { setPageCount(prev=>prev+1); setActivePageIndex(pageCount); }}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] bg-black text-white rounded-[8px] hover:bg-black/90 active:scale-95 transition-all shadow-sm" title="Add Page">
+                <Plus className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Add Pg</span>
+              </button>
+              <button onClick={() => { setCanvasItems(items=>items.filter(i=>i.pageIndex!==pageCount-1)); setPageCount(prev=>Math.max(1,prev-1)); if(activePageIndex>=pageCount-1) setActivePageIndex(Math.max(0,pageCount-2)); }}
+                disabled={pageCount<=1}
+                className="flex flex-col items-center justify-center gap-0.5 h-[52px] border border-red-200 bg-red-50 text-red-600 rounded-[8px] hover:bg-red-100 active:scale-95 transition-all disabled:opacity-40" title="Remove Last Page">
+                <Minus className="w-[14px] h-[14px]" />
+                <span className="text-[6.5px] font-black uppercase tracking-tight leading-none">Rem Pg</span>
+              </button>
+            </div>
+
+            {/* Row 4: Transmit Action */}
+            <div className="px-2 pb-2.5">
+              <button onClick={executeCanvasPrint}
+                className="w-full h-10 btn-primary-gradient text-white font-bold text-[12px] rounded-[8px] flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98] transition-all">
+                <Zap className="w-3.5 h-3.5" /> Transmit to Printer
+              </button>
+            </div>
+          </div>
+
+          {/* ===== DESKTOP-ONLY SIDEBAR (unchanged) ===== */}
+          <div className="hidden md:flex w-[320px] bg-white border-r border-[#E2E8F0] shadow-2xl flex-col z-20 shrink-0">
              <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <div className="flex items-center justify-between mb-0">
                   <div className="flex items-center gap-2">
@@ -1156,23 +1316,11 @@ export default function AdminDashboard() {
                       <p className="text-[9px] font-bold text-auth-slate-50 uppercase tracking-widest mt-1">A4 Print Composer</p>
                     </div>
                   </div>
-                  
                   <div className="flex items-center gap-1">
-                    <input 
-                      type="file" 
-                      ref={addImageInputRef} 
-                      onChange={handleAddImage}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    <button 
-                      onClick={() => addImageInputRef.current?.click()}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-[#E2E8F0] rounded transition-colors text-black" 
-                      title="Add Image"
-                    >
+                    <input type="file" ref={addImageInputRef} onChange={handleAddImage} accept="image/*" className="hidden" />
+                    <button onClick={() => addImageInputRef.current?.click()} className="w-8 h-8 flex items-center justify-center hover:bg-[#E2E8F0] rounded transition-colors text-black" title="Add Image">
                       <Plus className="w-4 h-4" />
                     </button>
-
                     <Dialog>
                       <DialogTrigger asChild>
                         <button className="w-8 h-8 flex items-center justify-center hover:bg-[#E2E8F0] rounded transition-colors text-black" title="Download Asset">
@@ -1182,11 +1330,8 @@ export default function AdminDashboard() {
                       <DialogContent className="sm:max-w-[425px] bg-white text-black border-none shadow-2xl rounded-[32px]">
                          <DialogHeader>
                            <DialogTitle>Download Asset</DialogTitle>
-                           <DialogDescription>
-                             Select your preferred download protocol.
-                           </DialogDescription>
+                           <DialogDescription>Select your preferred download protocol.</DialogDescription>
                          </DialogHeader>
-
                          {isCompositing ? (
                            <div className="flex flex-col items-center justify-center py-12 gap-4">
                               <div className="w-10 h-10 border-4 border-black/10 border-t-black rounded-full animate-spin" />
@@ -1197,14 +1342,9 @@ export default function AdminDashboard() {
                            </div>
                          ) : (
                            <div className="grid gap-3 py-4">
-                              <button 
-                                onClick={saveCanvasAsImage}
-                                className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group"
-                              >
+                              <button onClick={saveCanvasAsImage} className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group">
                                 <div className="text-left flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors">
-                                    <Palette className="w-5 h-5" />
-                                  </div>
+                                  <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors"><Palette className="w-5 h-5" /></div>
                                   <div>
                                     <p className="font-bold text-[14px] text-black">Composited {pageCount > 1 ? 'PDF' : 'Image'}</p>
                                     <p className="text-[11px] text-auth-slate-50 uppercase tracking-widest font-bold">Includes All Edits</p>
@@ -1212,15 +1352,9 @@ export default function AdminDashboard() {
                                 </div>
                                 <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                               </button>
-
-                              <button 
-                                onClick={() => activePrintJob && handleDownload(activePrintJob)}
-                                className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group"
-                              >
+                              <button onClick={() => activePrintJob && handleDownload(activePrintJob)} className="flex items-center justify-between p-4 rounded-2xl border border-[#E2E8F0] hover:border-black hover:bg-black/5 transition-all group">
                                 <div className="text-left flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors">
-                                    <FileText className="w-5 h-5" />
-                                  </div>
+                                  <div className="w-10 h-10 bg-[#F8FAFC] rounded-xl flex items-center justify-center group-hover:bg-white transition-colors"><FileText className="w-5 h-5" /></div>
                                   <div>
                                     <p className="font-bold text-[14px] text-black">Raw Document</p>
                                     <p className="text-[11px] text-auth-slate-50 uppercase tracking-widest font-bold">Original Submission</p>
@@ -1240,94 +1374,31 @@ export default function AdminDashboard() {
                 <div>
                   <h3 className="text-[12px] font-bold text-auth-slate-50 uppercase tracking-[0.1em] mb-3">Composition Tools</h3>
                   <div className="grid grid-cols-2 gap-2">
-                     <button 
-                       onClick={() => {
-                          const img = new Image();
-                          img.src = printPreviewUrl!;
-                          img.onload = () => {
-                             const ratio = img.width / img.height;
-                             const nw = 300;
-                             const nh = nw / ratio;
-                             setCanvasItems([...canvasItems, { id: `img-${Date.now()}`, x: 50, y: 50, width: nw, height: nh, pageIndex: activePageIndex }]);
-                          };
-                       }}
-                       className="col-span-2 h-[36px] border border-black rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-black/5 hover:scale-[1.01] transition-all"
-                     >
+                     <button onClick={() => { const img = new Image(); img.src = printPreviewUrl!; img.onload = () => { const ratio = img.width / img.height; const nw = 300; const nh = nw / ratio; setCanvasItems([...canvasItems, { id: `img-${Date.now()}`, x: 50, y: 50, width: nw, height: nh, pageIndex: activePageIndex }]); }; }} className="col-span-2 h-[36px] border border-black rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-black/5 hover:scale-[1.01] transition-all">
                        <Maximize className="w-4 h-4" /> Add Image Instance
                      </button>
-                     <button 
-                       onClick={() => {
-                          const original = canvasItems.find(i => i.id === selectedCanvasIds[0]);
-                          if(original) setCanvasItems([...canvasItems, { ...original, id: `img-${Date.now()}`, x: original.x + 20, y: original.y + 20 }]);
-                       }}
-                       disabled={selectedCanvasIds.length === 0}
-                       className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button onClick={() => { const original = canvasItems.find(i => i.id === selectedCanvasIds[0]); if(original) setCanvasItems([...canvasItems, { ...original, id: `img-${Date.now()}`, x: original.x + 20, y: original.y + 20 }]); }} disabled={selectedCanvasIds.length === 0} className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                        <Copy className="w-4 h-4" /> Duplicate Selected
                      </button>
-
-                     <button
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => {
-                          setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, width: Math.round(i.width * 1.1), height: Math.round(i.height * 1.1) } : i));
-                       }}
-                       className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, width: Math.round(i.width * 1.1), height: Math.round(i.height * 1.1) } : i))} className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                         <Plus className="w-3 h-3" /> Scale Up
                      </button>
-                     <button
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => {
-                          setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, width: Math.round(i.width * 0.9), height: Math.round(i.height * 0.9) } : i));
-                       }}
-                       className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, width: Math.round(i.width * 0.9), height: Math.round(i.height * 0.9) } : i))} className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                         <Minus className="w-3 h-3" /> Scale Down
                      </button>
-
-                     <button
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => {
-                          setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, zIndex: (i.zIndex || 0) + 1 } : i));
-                       }}
-                       className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, zIndex: (i.zIndex || 0) + 1 } : i))} className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                         <ArrowUpToLine className="w-3 h-3" /> Fwd
                      </button>
-                     <button
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => {
-                          setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, zIndex: (i.zIndex || 0) - 1 } : i));
-                       }}
-                       className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, zIndex: (i.zIndex || 0) - 1 } : i))} className="h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-1 text-[11px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                         <ArrowDownToLine className="w-3 h-3" /> Back
                      </button>
-
-                     <button 
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => {
-                          setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, isGrayscale: !i.isGrayscale } : i));
-                       }}
-                       className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCanvasItems(items => items.map(i => selectedCanvasIds.includes(i.id) ? { ...i, isGrayscale: !i.isGrayscale } : i))} className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                        <Palette className="w-3 h-3" /> Toggle B&W (Grayscale)
                      </button>
-                     <button 
-                       disabled={selectedCanvasIds.length === 0}
-                       onClick={() => setCroppingItemId(selectedCanvasIds[0])}
-                       className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                     >
+                     <button disabled={selectedCanvasIds.length === 0} onClick={() => setCroppingItemId(selectedCanvasIds[0])} className="col-span-2 h-[36px] border border-[#E2E8F0] rounded flex items-center justify-center gap-2 text-[12px] font-bold text-black hover:bg-[#F8FAFC] transition-colors disabled:opacity-50">
                        <Crop className="w-3 h-3" /> Crop Selected
                      </button>
-                     <button 
-                       onClick={() => {
-                          setCanvasItems(canvasItems.filter(i => !selectedCanvasIds.includes(i.id)));
-                          setSelectedCanvasIds([]);
-                       }}
-                       disabled={selectedCanvasIds.length === 0}
-                       className="col-span-2 h-[36px] border border-red-200 bg-red-50 text-red-600 rounded flex items-center justify-center gap-2 text-[12px] font-bold hover:bg-red-100 transition-colors disabled:opacity-50"
-                     >
+                     <button onClick={() => { setCanvasItems(canvasItems.filter(i => !selectedCanvasIds.includes(i.id))); setSelectedCanvasIds([]); }} disabled={selectedCanvasIds.length === 0} className="col-span-2 h-[36px] border border-red-200 bg-red-50 text-red-600 rounded flex items-center justify-center gap-2 text-[12px] font-bold hover:bg-red-100 transition-colors disabled:opacity-50">
                        <Trash2 className="w-3 h-3" /> Delete Selected
                      </button>
                   </div>
@@ -1336,48 +1407,23 @@ export default function AdminDashboard() {
                 <div>
                    <h3 className="text-[12px] font-bold text-auth-slate-50 uppercase tracking-[0.1em] mb-2 mt-2">Page Layout</h3>
                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                         onClick={() => {
-                            setIsGridSnapped(!isGridSnapped);
-                         }}
-                         className={`col-span-2 h-[36px] border ${isGridSnapped ? 'border-[#FF591E] bg-[#FF591E]/10 text-[#FF591E]' : 'border-[#E2E8F0] bg-white text-black'} rounded flex items-center justify-center gap-2 text-[12px] font-bold transition-all`}
-                      >
+                      <button onClick={() => setIsGridSnapped(!isGridSnapped)} className={`col-span-2 h-[36px] border ${isGridSnapped ? 'border-[#FF591E] bg-[#FF591E]/10 text-[#FF591E]' : 'border-[#E2E8F0] bg-white text-black'} rounded flex items-center justify-center gap-2 text-[12px] font-bold transition-all`}>
                          <Grid className="w-3 h-3" /> {isGridSnapped ? "Snap to Grid: ON" : "Snap to Grid: OFF"}
                       </button>
-                      <button 
-                         onClick={() => {
-                            setPageCount(prev => prev + 1);
-                            setActivePageIndex(pageCount);
-                         }}
-                         className="h-[36px] bg-black text-white rounded flex items-center justify-center gap-2 text-[11px] font-bold hover:bg-black/90 transition-all shadow-lg shadow-black/20"
-                      >
+                      <button onClick={() => { setPageCount(prev => prev + 1); setActivePageIndex(pageCount); }} className="h-[36px] bg-black text-white rounded flex items-center justify-center gap-2 text-[11px] font-bold hover:bg-black/90 transition-all shadow-lg shadow-black/20">
                          <Plus className="w-3 h-3" /> Add Page
                       </button>
-                      <button 
-                         onClick={() => {
-                            setCanvasItems(items => items.filter(i => i.pageIndex !== pageCount - 1));
-                            setPageCount(prev => Math.max(1, prev - 1));
-                            if(activePageIndex >= pageCount - 1) setActivePageIndex(Math.max(0, pageCount - 2));
-                         }}
-                         disabled={pageCount <= 1}
-                         className="h-[36px] text-red-600 border border-red-200 bg-red-50 text-[11px] font-bold hover:bg-red-100 rounded flex items-center justify-center transition-colors disabled:opacity-50"
-                      >
+                      <button onClick={() => { setCanvasItems(items => items.filter(i => i.pageIndex !== pageCount - 1)); setPageCount(prev => Math.max(1, prev - 1)); if(activePageIndex >= pageCount - 1) setActivePageIndex(Math.max(0, pageCount - 2)); }} disabled={pageCount <= 1} className="h-[36px] text-red-600 border border-red-200 bg-red-50 text-[11px] font-bold hover:bg-red-100 rounded flex items-center justify-center transition-colors disabled:opacity-50">
                          Remove Last
                       </button>
                    </div>
                 </div>
 
                 <div className="mt-auto">
-                  <button 
-                    onClick={() => { setActivePrintJob(null); setPrintPreviewUrl(null); setSelectedCanvasIds([]); }}
-                    className="w-full h-[44px] bg-white border border-[#E2E8F0] text-black font-bold text-[13px] rounded mb-3 hover:bg-[#F8FAFC] transition-colors flex items-center justify-center gap-2"
-                  >
+                  <button onClick={() => { setActivePrintJob(null); setPrintPreviewUrl(null); setSelectedCanvasIds([]); }} className="w-full h-[44px] bg-white border border-[#E2E8F0] text-black font-bold text-[13px] rounded mb-3 hover:bg-[#F8FAFC] transition-colors flex items-center justify-center gap-2">
                     <LogOut className="w-4 h-4 text-red-500" /> Exit Session
                   </button>
-                  <button 
-                    onClick={executeCanvasPrint}
-                    className="w-full h-[50px] btn-primary-gradient text-white font-bold text-[14px] rounded shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                  >
+                  <button onClick={executeCanvasPrint} className="w-full h-[50px] btn-primary-gradient text-white font-bold text-[14px] rounded shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                     <Zap className="w-[16px] h-[16px]" /> Transmit to Printer
                   </button>
                 </div>
@@ -1410,7 +1456,7 @@ export default function AdminDashboard() {
              onMouseLeave={() => setIsPanning(false)}
            >
                {/* Zoom Overlay Controls */}
-               <div className="fixed bottom-8 right-8 flex items-center gap-1 bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-1.5 rounded-full shadow-2xl z-[100]">
+               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:bottom-8 md:left-auto md:right-8 md:translate-x-0 flex items-center gap-1 bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-1 md:p-1.5 rounded-full shadow-2xl z-[100]">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setCanvasZoom(z => Math.max(0.4, z - 0.2)); }}
                     className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-all"
