@@ -580,36 +580,57 @@ export default function AdminDashboard() {
              const pdf = await loadingTask.promise;
              const numPages = pdf.numPages;
              
-             let newCanvasItems = [];
+             // Prepare initial placeholder items with empty payloadUrl
+             const sessionTimestamp = Date.now();
+             let initialCanvasItems = [];
              for (let i = 1; i <= numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 1.5 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                if (!context) continue;
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                await page.render({ canvasContext: context, viewport } as any).promise;
-                
-                const imgDataUrl = canvas.toDataURL('image/png');
-                const initialWidth = 600;
-                const initialHeight = initialWidth / (viewport.width / viewport.height);
-                
-                newCanvasItems.push({
-                   id: `pdf-${i}-${Date.now()}`,
+                initialCanvasItems.push({
+                   id: `pdf-${i}-${sessionTimestamp}`,
                    x: 0,
                    y: 0,
                    width: 794,
                    height: 1123,
                    pageIndex: i - 1,
-                   payloadUrl: imgDataUrl
+                   payloadUrl: "" // Initially empty for background rendering
                 });
              }
              
-             setPrintPreviewUrl(localUrl); // fallback
-             setCanvasItems(newCanvasItems);
+             setPrintPreviewUrl(localUrl);
+             setCanvasItems(initialCanvasItems);
              setPageCount(numPages);
              setActivePageIndex(0);
+
+             // Background rendering process
+             const renderPagesSequentially = async () => {
+                for (let i = 1; i <= numPages; i++) {
+                   const page = await pdf.getPage(i);
+                   const viewport = page.getViewport({ scale: 1.5 });
+                   const canvas = document.createElement('canvas');
+                   const context = canvas.getContext('2d');
+                   if (!context) continue;
+                   
+                   canvas.height = viewport.height;
+                   canvas.width = viewport.width;
+                   await page.render({ canvasContext: context, viewport } as any).promise;
+                   
+                   const imgDataUrl = canvas.toDataURL('image/png');
+                   
+                   // Update the specific page item in state ONLY if it belongs to this session
+                   setCanvasItems(prevItems => prevItems.map(item => 
+                      item.pageIndex === i - 1 && item.id === `pdf-${i}-${sessionTimestamp}`
+                      ? { ...item, payloadUrl: imgDataUrl }
+                      : item
+                   ));
+
+                   // Small delay to ensure main thread remains responsive for other UI interactions
+                   if (i % 2 === 0) await new Promise(r => setTimeout(r, 10));
+                }
+             };
+
+
+             // Kick off background rendering without awaiting
+             renderPagesSequentially();
+
            } catch(e) {
              console.error("PDF Parse error", e);
              setPrintPreviewUrl(null);
@@ -1590,12 +1611,22 @@ export default function AdminDashboard() {
                               dangerouslySetInnerHTML={{ __html: item.rawHtml }} 
                            />
                         ) : (
-                           <img 
-                             src={item.payloadUrl || ""} 
-                             className="w-full h-full object-contain pointer-events-none" 
-                             style={{ filter: item.isGrayscale ? "grayscale(100%)" : "none" }}
-                             alt="Canvas segment" 
-                           />
+                           item.payloadUrl ? (
+                             <img 
+                               src={item.payloadUrl} 
+                               className="w-full h-full object-contain pointer-events-none" 
+                               style={{ filter: item.isGrayscale ? "grayscale(100%)" : "none" }}
+                               alt="Canvas segment" 
+                             />
+                           ) : (
+                             <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 gap-4">
+                                <div className="w-10 h-10 border-4 border-black/5 border-t-black rounded-full animate-spin" />
+                                <div className="flex flex-col items-center">
+                                   <p className="text-[10px] font-black text-black uppercase tracking-widest">Rendering Page {item.pageIndex + 1}</p>
+                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">XeroxQ Engine</p>
+                                </div>
+                             </div>
+                           )
                         )}
                       </Rnd>
                     ))}
@@ -1697,7 +1728,7 @@ export default function AdminDashboard() {
                  </div>
                  <div className="flex flex-col">
                    <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>
-                   <p className="text-[9px] lg:text-[10px] font-bold text-[#7E8B9E] tracking-[0.12em] uppercase leading-none mt-0.5">Dashboard</p>
+                   <p className="text-[9px] lg:text-[10px] font-bold text-[#7E8B9E] tracking-[0.12em] uppercase leading-none mt-1.5">Dashboard</p>
                  </div>
                </div>
 
