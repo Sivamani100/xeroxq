@@ -631,7 +631,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       ref={fileInputRef}
                       className="hidden"
                       onChange={handleFileChange}
-                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      accept="*/*"
                     />
                     <motion.div 
                       whileHover={{ y: -5 }}
@@ -641,7 +641,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     </motion.div>
                     <div className="text-center relative z-10">
                        <p className="text-[20px] font-black text-black tracking-tight">Upload Document</p>
-                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: PDF/DOCX/IMG</p>
+                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: Any Format</p>
                     </div>
                     
                     {/* Background visual cues */}
