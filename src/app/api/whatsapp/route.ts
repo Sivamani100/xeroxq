@@ -4,34 +4,36 @@ import { generateToken } from "@/lib/utils";
 
 /**
  * WhatsApp Webhook for Twilio
- * Handles incoming media messages and creates jobs.
+ * Handles incoming media messages and creates jobs with session-based shop routing.
  */
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const from = formData.get("From") as string; // Customer Phone (whatsapp:+91...)
-    const body = (formData.get("Body") as string) || ""; // Message text
+    const from = formData.get("From") as string;
+    const body = (formData.get("Body") as string) || "";
     const numMedia = parseInt(formData.get("NumMedia") as string || "0");
     const mediaUrl = formData.get("MediaUrl0") as string;
     const contentType = formData.get("MediaContentType0") as string;
 
-    const senderPhone = from.replace("whatsapp:", "");
-
-    // Initialize Supabase Admin
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    // 1. Check for Shop Slug in the message (e.g. "PRINT AT [SLUG]")
+    const senderPhone = from.replace("whatsapp:", "");
     let shopSlug = "";
+
+    // 1. Identify Shop from body (if present)
     const slugMatch = body.match(/PRINT AT ([a-z0-9-]+)/i);
-    
     if (slugMatch) {
       shopSlug = slugMatch[1].toLowerCase();
-      
-      // SAVE SESSION: Remember this shop for this user
+      // Upsert session memory for this phone number
       await supabaseAdmin
         .from("whatsapp_sessions")
         .upsert({ 
@@ -39,21 +41,9 @@ export async function POST(req: NextRequest) {
           shop_slug: shopSlug,
           updated_at: new Date().toISOString()
         });
-      
-      console.log(`[WhatsApp] Saved session: ${senderPhone} -> ${shopSlug}`);
     }
 
-    // 2. Handle Case: MESSAGE ONLY (No Media)
-    // If they just sent the command, acknowledge it.
-    if (numMedia === 0 || !mediaUrl) {
-      if (slugMatch) {
-        return new NextResponse(`Ready to print at ${shopSlug}! Just send your file now.`, { status: 200 });
-      }
-      return new NextResponse("No media detected.", { status: 200 });
-    }
-
-    // 3. Handle Case: MEDIA RECEIVED (With or Without Context)
-    // If no slug in current message, look up the session
+    // 2. Retrieve shop context from session if not in message
     if (!shopSlug) {
       const { data: session } = await supabaseAdmin
         .from("whatsapp_sessions")
@@ -63,16 +53,15 @@ export async function POST(req: NextRequest) {
       
       if (session) {
         shopSlug = session.shop_slug;
-        console.log(`[WhatsApp] Retrieved session for ${senderPhone}: ${shopSlug}`);
       }
     }
 
+    // 3. Early return if we still don't know which shop this is for
     if (!shopSlug) {
-      console.warn(`[WhatsApp] Received file from ${senderPhone} but no shop context found.`);
-      return new NextResponse("Error: Please scan the QR code again or type 'PRINT AT [shop-slug]' before sending files.", { status: 200 });
+      return twimlResponse("Please scan the shop's QR code or type 'PRINT AT [slug]' first so I know where to send your files.");
     }
 
-    // Identify Shop
+    // 4. Find Shop UUID
     const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
       .select("id, name")
@@ -80,44 +69,76 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (shopError || !shop) {
-      return new NextResponse("Error: Shop not found.", { status: 200 });
+      return twimlResponse(`Error: Shop '${shopSlug}' not found in our system.`);
     }
 
-    // 4. Processing logic (unchanged)
-    const fileResponse = await fetch(mediaUrl);
-    if (!fileResponse.ok) throw new Error("Failed to download media from Twilio");
-    const fileBlob = await fileResponse.blob();
+    // 5. Handle Media Upload
+    if (numMedia > 0 && mediaUrl) {
+      // Download from Twilio
+      const fileResponse = await fetch(mediaUrl);
+      if (!fileResponse.ok) {
+        return twimlResponse("Failed to download file from WhatsApp servers. Please try again.");
+      }
+      const fileBlob = await fileResponse.blob();
 
-    const fileExt = contentType.split("/")[1] || "pdf";
-    const fileName = `whatsapp_${Date.now()}.${fileExt}`;
-    const storagePath = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // Determine extension and paths
+      const fileExt = contentType?.split("/")[1]?.split(";")[0] || "pdf";
+      const fileName = `whatsapp_${Date.now()}.${fileExt}`;
+      const storagePath = `whatsapp/${senderPhone}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from("documents")
-      .upload(storagePath, fileBlob, {
-        contentType: contentType,
-        upsert: true
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("documents")
+        .upload(storagePath, fileBlob, {
+          contentType: contentType,
+          upsert: true
+        });
+
+      if (uploadError) {
+        return twimlResponse(`Storage Error: ${uploadError.message}`);
+      }
+
+      // 6. Create Job Entry
+      const newToken = generateToken();
+      const { error: jobError } = await supabaseAdmin.from("jobs").insert({
+        token: newToken,
+        customer_name: `WA: ${senderPhone}`,
+        file_path: storagePath,
+        file_name: fileName,
+        status: "pending",
+        preferences: { color: false, copies: 1, doubleSided: false },
+        shop_id: shop.id,
+        expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
       });
 
-    if (uploadError) throw uploadError;
+      if (jobError) {
+        // Rollback storage if DB fails
+        await supabaseAdmin.storage.from("documents").remove([storagePath]);
+        return twimlResponse(`Database Error: ${jobError.message}`);
+      }
 
-    // Create Job
-    const newToken = generateToken();
-    const { error: jobError } = await supabaseAdmin.from("jobs").insert({
-      token: newToken,
-      customer_name: senderPhone,
-      file_path: storagePath,
-      file_name: fileName,
-      preferences: { color: false, copies: 1, doubleSided: false },
-      shop_id: shop.id,
-      expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-    });
+      return twimlResponse(`✅ *Job Uploaded!* \n\nShop: ${shop.name}\nFile: ${fileName}\n\nYour file is now visible in the printer queue.`);
+    }
 
-    if (jobError) throw jobError;
+    // 7. Context-only reply
+    if (slugMatch) {
+      return twimlResponse(`Ready! I've linked you to *${shop.name}*. \n\nSend me any file (PDF, Doc, Image) now to add it to the print queue.`);
+    }
 
-    return new NextResponse("File received! It's now in the queue.", { status: 200 });
+    return twimlResponse("I'm ready! Send me a file to print, or type 'PRINT AT [slug]' to change shops.");
+
   } catch (error: any) {
     console.error("[WhatsApp Webhook Error]", error);
-    return new NextResponse(`Error: ${error.message}`, { status: 500 });
+    return twimlResponse(`System Error: ${error.message || "Unknown error occurred"}`);
   }
+}
+
+/**
+ * Standard TwiML Response Generator
+ */
+function twimlResponse(message: string) {
+  return new NextResponse(
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`,
+    { headers: { "Content-Type": "text/xml" } }
+  );
 }
