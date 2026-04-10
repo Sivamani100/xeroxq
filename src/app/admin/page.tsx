@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { 
   Printer, 
@@ -41,9 +42,13 @@ import { cn } from "@/lib/utils";
 import { extractPhoneFromUpi, generateWhatsAppLink } from "@/lib/whatsapp";
 
 import * as mammoth from "mammoth";
-import html2canvas from "html2canvas-pro";
+const html2canvas = typeof window !== 'undefined' ? require("html2canvas-pro") : null;
 import { QRCodeSVG } from "qrcode.react";
-import XeroxQPrintDialog from "@/components/desktop/xeroxq-print-dialog";
+
+const XeroxQPrintDialog = dynamic(
+  () => import("@/components/desktop/xeroxq-print-dialog"),
+  { ssr: false }
+);
 
 // Dialog components for modals
 import { 

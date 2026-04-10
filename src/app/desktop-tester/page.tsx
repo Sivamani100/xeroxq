@@ -1,4 +1,11 @@
-import XeroxQPrintDialog from '@/components/desktop/xeroxq-print-dialog';
+'use client';
+
+import dynamic from 'next/dynamic';
+
+const XeroxQPrintDialog = dynamic(
+  () => import('@/components/desktop/xeroxq-print-dialog'),
+  { ssr: false }
+);
 
 export default function DesktopTesterPage() {
   return (
