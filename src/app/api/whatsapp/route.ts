@@ -74,10 +74,21 @@ export async function POST(req: NextRequest) {
 
     // 5. Handle Media Upload
     if (numMedia > 0 && mediaUrl) {
-      // Download from Twilio
-      const fileResponse = await fetch(mediaUrl);
+      // Download from Twilio (Auth may be required if Enforce HTTP Auth is on)
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      
+      const fetchOptions: RequestInit = {};
+      if (accountSid && authToken) {
+        const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+        fetchOptions.headers = {
+          Authorization: `Basic ${auth}`,
+        };
+      }
+
+      const fileResponse = await fetch(mediaUrl, fetchOptions);
       if (!fileResponse.ok) {
-        return twimlResponse("Failed to download file from WhatsApp servers. Please try again.");
+        return twimlResponse(`Download Error (${fileResponse.status}): Please add TWILIO_ACCOUNT_SID/AUTH_TOKEN to Vercel or disable Authenticated Media in Twilio.`);
       }
       const fileBlob = await fileResponse.blob();
 
