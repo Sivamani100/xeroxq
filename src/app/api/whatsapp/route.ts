@@ -15,11 +15,7 @@ export async function POST(req: NextRequest) {
     const mediaUrl = formData.get("MediaUrl0") as string;
     const contentType = formData.get("MediaContentType0") as string;
 
-    console.log("[WhatsApp] Incoming Request:", { from, body, numMedia, mediaUrl });
-
-    if (numMedia === 0 || !mediaUrl) {
-       return new NextResponse("No media detected.", { status: 200 });
-    }
+    const senderPhone = from.replace("whatsapp:", "");
 
     // Initialize Supabase Admin
     const supabaseAdmin = createClient(
@@ -28,28 +24,55 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Identify Shop
-    // Approach 1: Look for Shop Slug in the message (Prefilled via QR link)
-    // Format: "PRINT AT [SLUG]"
+    // 1. Check for Shop Slug in the message (e.g. "PRINT AT [SLUG]")
     let shopSlug = "";
     const slugMatch = body.match(/PRINT AT ([a-z0-9-]+)/i);
+    
     if (slugMatch) {
       shopSlug = slugMatch[1].toLowerCase();
+      
+      // SAVE SESSION: Remember this shop for this user
+      await supabaseAdmin
+        .from("whatsapp_sessions")
+        .upsert({ 
+          phone_number: senderPhone, 
+          shop_slug: shopSlug,
+          updated_at: new Date().toISOString()
+        });
+      
+      console.log(`[WhatsApp] Saved session: ${senderPhone} -> ${shopSlug}`);
     }
 
-    // If no slug found, we can't route the job (unless we have a fallback or session logic)
+    // 2. Handle Case: MESSAGE ONLY (No Media)
+    // If they just sent the command, acknowledge it.
+    if (numMedia === 0 || !mediaUrl) {
+      if (slugMatch) {
+        return new NextResponse(`Ready to print at ${shopSlug}! Just send your file now.`, { status: 200 });
+      }
+      return new NextResponse("No media detected.", { status: 200 });
+    }
+
+    // 3. Handle Case: MEDIA RECEIVED (With or Without Context)
+    // If no slug in current message, look up the session
     if (!shopSlug) {
-      // Logic for "No Message" - we might need to query which shop uses this Twilio number
-      // But for trial account, it's shared. 
-      // Fallback: Check if the user has a "Selected Shop" session (Requires state management)
-      // For now, let's look for the last shop this user interacted with or a default.
-      console.warn(`[WhatsApp] Received file from ${from} but no shop context found.`);
-      return new NextResponse("Error: No shop context found in message.", { status: 200 });
+      const { data: session } = await supabaseAdmin
+        .from("whatsapp_sessions")
+        .select("shop_slug")
+        .eq("phone_number", senderPhone)
+        .single();
+      
+      if (session) {
+        shopSlug = session.shop_slug;
+        console.log(`[WhatsApp] Retrieved session for ${senderPhone}: ${shopSlug}`);
+      }
     }
 
-    console.log("[WhatsApp] Detected Slug:", shopSlug);
+    if (!shopSlug) {
+      console.warn(`[WhatsApp] Received file from ${senderPhone} but no shop context found.`);
+      return new NextResponse("Error: Please scan the QR code again or type 'PRINT AT [shop-slug]' before sending files.", { status: 200 });
+    }
 
-    // Get Shop ID (Case-insensitive lookup)
+    // Identify Shop
     const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
       .select("id, name")
@@ -60,12 +83,11 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Error: Shop not found.", { status: 200 });
     }
 
-    // 1. Download file from Twilio
+    // 4. Processing logic (unchanged)
     const fileResponse = await fetch(mediaUrl);
     if (!fileResponse.ok) throw new Error("Failed to download media from Twilio");
     const fileBlob = await fileResponse.blob();
 
-    // 2. Upload to Supabase Storage
     const fileExt = contentType.split("/")[1] || "pdf";
     const fileName = `whatsapp_${Date.now()}.${fileExt}`;
     const storagePath = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -79,11 +101,11 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) throw uploadError;
 
-    // 3. Create Job
+    // Create Job
     const newToken = generateToken();
     const { error: jobError } = await supabaseAdmin.from("jobs").insert({
       token: newToken,
-      customer_name: from.replace("whatsapp:", ""), // Set customer name to phone number
+      customer_name: senderPhone,
       file_path: storagePath,
       file_name: fileName,
       preferences: { color: false, copies: 1, doubleSided: false },
@@ -93,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     if (jobError) throw jobError;
 
-    return new NextResponse("Job created successfully.", { status: 200 });
+    return new NextResponse("File received! It's now in the queue.", { status: 200 });
   } catch (error: any) {
     console.error("[WhatsApp Webhook Error]", error);
     return new NextResponse(`Error: ${error.message}`, { status: 500 });
