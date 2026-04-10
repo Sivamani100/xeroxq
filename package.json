@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "desktop:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\""
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -47,9 +48,14 @@
     "@types/puppeteer": "^5.4.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "electron": "^41.2.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "pdf-to-printer": "^5.7.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "typescript": "^5",
+    "wait-on": "^9.0.4"
+  },
+  "main": "electron/main.js"
 }

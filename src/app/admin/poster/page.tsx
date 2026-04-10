@@ -6,6 +6,7 @@ import { Printer, ShieldCheck, Zap, Scissors } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QRCodeSVG } from "qrcode.react";
+import { extractPhoneFromUpi, generateWhatsAppLink } from "@/lib/whatsapp";
 
 function PosterContent() {
   const searchParams = useSearchParams();
@@ -13,7 +14,8 @@ function PosterContent() {
   const slug = searchParams.get("slug") || "";
   const upi = searchParams.get("upi") || "";
 
-  const qrUrl = typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "";
+  const shopPhone = extractPhoneFromUpi(upi);
+  const qrUrl = slug ? generateWhatsAppLink(slug, shopPhone) : (typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "");
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(qrUrl)}&color=0-0-0&bgcolor=255-255-255&margin=0`;
 
   return (

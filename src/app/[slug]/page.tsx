@@ -143,16 +143,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (selectedFile.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setCropperImage(reader.result as string);
-        setShowCropper(true);
-        setFile(selectedFile);
-        setDocxFileToProcess(null);
-      };
-      reader.readAsDataURL(selectedFile);
-    } else if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
+    if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
       setDocxFileToProcess(selectedFile);
       setFile(selectedFile);
     } else {
@@ -752,14 +743,6 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </motion.div>
         )}
       </AnimatePresence>
-
-       {showCropper && cropperImage && (
-        <ImageCropper
-          image={cropperImage}
-          onCropComplete={(img) => handleCropComplete(img)}
-          onCancel={() => { setShowCropper(false); setCropperImage(null); }}
-        />
-      )}
 
       <Dialog open={showDocxChoice} onOpenChange={setShowDocxChoice}>
         <DialogContent className="sm:max-w-[425px] bg-white rounded-3xl border-none shadow-2xl p-0 overflow-hidden">

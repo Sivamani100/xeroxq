@@ -57,12 +57,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/xeroxq_logo.png", type: "image/png", sizes: "192x192" },
+      { url: "/ion_print.png", type: "image/png", sizes: "192x192" },
     ],
     apple: [
-      { url: "/xeroxq_logo.png", sizes: "180x180", type: "image/png" },
+      { url: "/ion_print.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/favicon.ico",
+    shortcut: "/ion_print.png",
   },
 
   // ── Open Graph ────────────────────────────────────────────────────────────
