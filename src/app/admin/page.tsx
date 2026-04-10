@@ -666,17 +666,28 @@ export default function AdminDashboard() {
   const handleDownload = async (job: Job) => {
     try {
       setActiveDownloadId(job.id);
+      
+      // 1. Resolve Extension and Filename
       const cleanCustomer = (job.customer_name || "ANONYMOUS").replace(/[^a-z0-9]/gi, '_');
-      const fileName = job.file_name || "document.pdf";
-      const ext = fileName.split('.').pop() || 'file';
+      const originalFileName = job.file_name || "document.pdf";
+      
+      // MIME Map fallback for older corrupted records
+      const MIME_MAP: Record<string, string> = {
+        "vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "msword": "doc",
+        "plain": "txt"
+      };
+
+      let ext = originalFileName.split('.').pop()?.toLowerCase() || 'file';
+      if (MIME_MAP[ext]) ext = MIME_MAP[ext];
+      
       const downloadFilename = `${cleanCustomer}.${ext}`;
 
-      // 1. Generate Secure Signed URL with Forced Download Attachment Header
+      // 2. Generate Secure Signed URL
       const { data, error } = await supabase.storage
         .from("documents")
-        .createSignedUrl(job.file_path, 60 * 5, { 
-          download: downloadFilename 
-        });
+        .createSignedUrl(job.file_path, 60 * 5);
       
       if (error) {
         if ((error as any).status === 404 || error.message?.includes('Object not found')) {
@@ -688,13 +699,20 @@ export default function AdminDashboard() {
       
       if (!data?.signedUrl) throw new Error("No signal URL generated");
 
-      // 2. Direct Window Assignment for System Prompt
+      // 3. Trigger Download via Fetch to ensure filename is respected in all browsers
+      const response = await fetch(data.signedUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
       const link = document.createElement("a");
-      link.href = data.signedUrl;
-      link.download = downloadFilename;
+      link.href = blobUrl;
+      link.setAttribute("download", downloadFilename);
       document.body.appendChild(link);
       link.click();
+      
+      // Cleanup
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
       
     } catch (error: any) {
       console.error("Downlink Protocol Failure:", error);

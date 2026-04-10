@@ -92,8 +92,19 @@ export async function POST(req: NextRequest) {
       }
       const fileBlob = await fileResponse.blob();
 
-      // Determine extension and paths
-      const fileExt = contentType?.split("/")[1]?.split(";")[0] || "pdf";
+      // Determine extension and paths with robust MIME mapping
+      const MIME_MAP: Record<string, string> = {
+        "application/pdf": "pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/msword": "doc",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "application/vnd.ms-excel": "xls",
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+      };
+
+      const fileExt = MIME_MAP[contentType!] || contentType?.split("/")[1]?.split(";")[0] || "file";
       const fileName = `whatsapp_${Date.now()}.${fileExt}`;
       const storagePath = `whatsapp/${senderPhone}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
