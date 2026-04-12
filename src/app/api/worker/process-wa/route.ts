@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const result = WorkerProcessSchema.safeParse(rawBody);
 
     if (!result.success) {
-      logger.warn("Worker: Invalid payload rejected", result.error.errors);
+      logger.warn("Worker: Invalid payload rejected", result.error.issues);
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 

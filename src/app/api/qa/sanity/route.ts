@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     logger.error(`QA Sanity Flight Test FAILED: ${results.test_id}`, err);
     return NextResponse.json({
       success: false,
-      failed_at: results.steps.find(s => s.status === "checking")?.name || "Initialization",
+      failed_at: results.steps.find((s: any) => s.status === "checking")?.name || "Initialization",
       error: err.message,
       partial_results: results
     }, { status: 500 });

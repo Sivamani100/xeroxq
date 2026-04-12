@@ -41,7 +41,7 @@ export async function proxy(request: NextRequest) {
   
   // ── 0. API Rate Limiting protection ───────────────────────────────────────
   if (pathname.startsWith("/api/")) {
-    const ip = request.ip || request.headers.get("x-forwarded-for") || "unknown-ip";
+    const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
     if (applyRateLimit(ip)) {
       return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
     }
