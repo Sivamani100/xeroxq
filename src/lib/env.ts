@@ -22,8 +22,8 @@ export function validateEnv() {
   if (missing.length > 0) {
     const errorMsg = `[DevOps] CRITICAL: Missing required environment variables: ${missing.join(", ")}`;
     
-    // In production, we throw. In local dev, we warn but keep going.
-    if (process.env.NODE_ENV === "production") {
+    // In production runtime, we throw. In CI/Build or local dev, we warn but keep going.
+    if (process.env.NODE_ENV === "production" && !process.env.CI) {
       throw new Error(errorMsg);
     } else {
       console.warn("\x1b[33m%s\x1b[0m", errorMsg);
