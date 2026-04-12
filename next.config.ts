@@ -14,11 +14,15 @@ const securityHeaders = [
   },
   {
     key: "X-Frame-Options",
-    value: "SAMEORIGIN",
+    value: "DENY", // Stronger than SAMEORIGIN — prevent all framing (clickjacking)
   },
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
+  },
+  {
+    key: "X-XSS-Protection",
+    value: "1; mode=block",
   },
   {
     key: "Referrer-Policy",
@@ -26,22 +30,23 @@ const securityHeaders = [
   },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
   },
   {
-    // Allow Supabase, Google Fonts, and self. Restrict everything else.
+    // Full CSP — covers all external sources used by the app
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",          // Next.js RSC hydration requires this
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://eisdlhbrigmwsfycvkdy.supabase.co",
-      "connect-src 'self' https://eisdlhbrigmwsfycvkdy.supabase.co wss://eisdlhbrigmwsfycvkdy.supabase.co https://www.ilovepdf.com",
+      "img-src 'self' data: blob: https://eisdlhbrigmwsfycvkdy.supabase.co https://api.qrserver.com https://i.pravatar.cc",
+      "connect-src 'self' https://eisdlhbrigmwsfycvkdy.supabase.co wss://eisdlhbrigmwsfycvkdy.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
       "upgrade-insecure-requests",
+      "block-all-mixed-content",
     ].join("; "),
   },
 ];
@@ -110,7 +115,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,         // Catch React lifecycle bugs in development
 
   // ── Experimental ─────────────────────────────────────────────────────────────
-  experimental: {},
+  experimental: {
+    // Per-route body size limits to prevent memory exhaustion
+    // The agent route needs 30MB for large DOCX/XLSX files.
+    // All other API routes are limited to 1MB.
+    serverActions: {
+      bodySizeLimit: "30mb",
+    },
+  },
 };
 
 export default nextConfig;

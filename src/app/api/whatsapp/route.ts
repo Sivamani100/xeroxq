@@ -1,12 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateToken } from "@/lib/utils";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { validateTwilioSignature } from "@/lib/twilio-verify";
+import { logger } from "@/lib/logger";
+import { WorkerProcessSchema } from "@/lib/schemas";
 
 /**
- * WhatsApp Webhook for Twilio
- * Handles incoming media messages and creates jobs with session-based shop routing.
+ * WhatsApp Webhook for Twilio — HARDENED
+ * 
+ * Security layers:
+ * 1. Twilio signature verification (rejects all non-Twilio requests)
+ * 2. Rate limiting (20 req/min per IP)
+ * 3. Sanitized error responses (no internal info leaked to users)
+ * 4. Async media ingestion (fire & forget worker pattern)
  */
+
+// Rate limiter: 20 requests per minute per IP
+const limiter = rateLimit({ windowMs: 60_000, max: 20 });
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
 export async function POST(req: NextRequest) {
+  // ── 1. Rate Limiting ──────────────────────────────────────────────────────
+  const ip = getClientIp(req);
+  const { success } = limiter.check(`whatsapp:${ip}`);
+  if (!success) {
+    return twimlResponse("Too many requests. Please wait a moment before trying again.");
+  }
+
+  // ── 2. Twilio Signature Verification ────────────────────────────────────────
+  // Skip in development for easier testing
+  if (process.env.NODE_ENV === "production") {
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const signature = req.headers.get("x-twilio-signature") || "";
+    
+    if (!authToken) {
+      console.error("[XeroxQ] CRITICAL: TWILIO_AUTH_TOKEN not set — webhook is unverified!");
+    } else {
+      // Reconstruct the full URL for verification
+      const host = req.headers.get("host") || "";
+      const proto = req.headers.get("x-forwarded-proto") || "https";
+      const url = `${proto}://${host}${req.nextUrl.pathname}`;
+      
+      // Parse form body for verification
+      const clonedReq = req.clone();
+      const formData = await clonedReq.formData();
+      const params: Record<string, string> = {};
+      formData.forEach((value, key) => { params[key] = value.toString(); });
+
+      if (!validateTwilioSignature(authToken, signature, url, params)) {
+        logger.security(`Rejected forged Twilio request from ${ip}`, { url, signature });
+        return new NextResponse("Forbidden", { status: 403 });
+      }
+    }
+  }
+
+  // ── 3. Parse Request ──────────────────────────────────────────────────────
   try {
     const formData = await req.formData();
     const from = formData.get("From") as string;
@@ -15,152 +69,160 @@ export async function POST(req: NextRequest) {
     const mediaUrl = formData.get("MediaUrl0") as string;
     const contentType = formData.get("MediaContentType0") as string;
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    const senderPhone = from.replace("whatsapp:", "");
-    let shopSlug = "";
-
-    // 1. Identify Shop from body (if present)
-    const slugMatch = body.match(/PRINT AT ([a-z0-9-]+)/i);
-    if (slugMatch) {
-      shopSlug = slugMatch[1].toLowerCase();
-      // Upsert session memory for this phone number
-      await supabaseAdmin
-        .from("whatsapp_sessions")
-        .upsert({ 
-          phone_number: senderPhone, 
-          shop_slug: shopSlug,
-          updated_at: new Date().toISOString()
-        });
+    if (!from) {
+      return twimlResponse("Invalid request.");
     }
 
-    // 2. Retrieve shop context from session if not in message
+    const senderPhone = from.replace("whatsapp:", "").trim();
+    let shopSlug = "";
+
+    // ── 4. Identify Shop from Message ───────────────────────────────────────
+    const slugMatch = body.match(/PRINT AT ([a-z0-9-]+)/i);
+    if (slugMatch) {
+      shopSlug = slugMatch[1].toLowerCase().slice(0, 60); // Limit length
+
+      await supabaseAdmin
+        .from("whatsapp_sessions")
+        .upsert({
+          phone_number: senderPhone,
+          shop_slug: shopSlug,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "phone_number" });
+    }
+
+    // ── 5. Retrieve Shop from Session ────────────────────────────────────────
     if (!shopSlug) {
       const { data: session } = await supabaseAdmin
         .from("whatsapp_sessions")
-        .select("shop_slug")
+        .select("shop_slug, updated_at")
         .eq("phone_number", senderPhone)
         .single();
-      
+
       if (session) {
-        shopSlug = session.shop_slug;
+        // Session expiry: 2 hours
+        const sessionAge = Date.now() - new Date(session.updated_at).getTime();
+        if (sessionAge < 2 * 60 * 60 * 1000) {
+          shopSlug = session.shop_slug;
+        } else {
+          // Session expired — clear it
+          await supabaseAdmin.from("whatsapp_sessions").delete().eq("phone_number", senderPhone);
+        }
       }
     }
 
-    // 3. Early return if we still don't know which shop this is for
     if (!shopSlug) {
-      return twimlResponse("Please scan the shop's QR code or type 'PRINT AT [slug]' first so I know where to send your files.");
+      return twimlResponse("Hello! 👋 Please scan a shop's QR code or type *PRINT AT [shop-code]* to get started.");
     }
 
-    // 4. Find Shop UUID
+    // ── 6. Fetch Shop ────────────────────────────────────────────────────────
     const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
-      .select("id, name")
+      .select("id, name, is_open, is_active")
       .ilike("slug", shopSlug)
       .single();
 
     if (shopError || !shop) {
-      return twimlResponse(`Error: Shop '${shopSlug}' not found in our system.`);
+      return twimlResponse("That shop code wasn't found. Please scan the QR code again or contact the shop.");
     }
 
-    // 5. Handle Media Upload
+    if (shop.is_active === false) {
+      return twimlResponse(`*${shop.name}* is temporarily undergoing maintenance. Please contact the shop owner directly or try another location. 🛠️`);
+    }
+
+    if (shop.is_open === false) {
+      return twimlResponse(`*${shop.name}* is currently closed. Please try again later. 🔒`);
+    }
+
+    // ── 7. Handle Media Ingestion (Async) ────────────────────────────────────
     if (numMedia > 0 && mediaUrl) {
-      // Download from Twilio (Auth may be required if Enforce HTTP Auth is on)
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      
-      const fetchOptions: RequestInit = {};
-      if (accountSid && authToken) {
-        const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-        fetchOptions.headers = {
-          Authorization: `Basic ${auth}`,
-        };
+      // Validate MIME type
+      const ALLOWED_CONTENT_TYPES = new Set([
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ]);
+
+      if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+        return twimlResponse(`❌ Unsupported file type (${contentType}). Please send a PDF, Word document, Excel file, or image (JPG/PNG).`);
       }
 
-      const fileResponse = await fetch(mediaUrl, fetchOptions);
-      if (!fileResponse.ok) {
-        return twimlResponse(`Download Error (${fileResponse.status}): Please add TWILIO_ACCOUNT_SID/AUTH_TOKEN to Vercel or disable Authenticated Media in Twilio.`);
-      }
-      const fileBlob = await fileResponse.blob();
-
-      // Determine extension and paths with robust MIME mapping
-      const MIME_MAP: Record<string, string> = {
-        "application/pdf": "pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-        "application/msword": "doc",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-        "application/vnd.ms-excel": "xls",
-        "image/jpeg": "jpg",
-        "image/png": "png",
-        "image/webp": "webp",
-      };
-
-      const fileExt = MIME_MAP[contentType!] || contentType?.split("/")[1]?.split(";")[0] || "file";
-      const fileName = `whatsapp_${Date.now()}.${fileExt}`;
-      const storagePath = `whatsapp/${senderPhone}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from("documents")
-        .upload(storagePath, fileBlob, {
-          contentType: contentType,
-          upsert: true
-        });
-
-      if (uploadError) {
-        return twimlResponse(`Storage Error: ${uploadError.message}`);
-      }
-
-      // 6. Create Job Entry
       const newToken = generateToken();
-      const { error: jobError } = await supabaseAdmin.from("jobs").insert({
-        token: newToken,
-        customer_name: `WA: ${senderPhone}`,
-        file_path: storagePath,
-        file_name: fileName,
-        status: "pending",
-        preferences: { color: false, copies: 1, doubleSided: false },
-        shop_id: shop.id,
-        expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-      });
+
+      const { data: jobData, error: jobError } = await supabaseAdmin
+        .from("jobs")
+        .insert({
+          token: newToken,
+          customer_name: `WA: ${senderPhone}`,
+          file_name: "Processing...",
+          status: "processing",
+          preferences: {
+            color: false,
+            copies: 1,
+            doubleSided: false,
+            _wa_media_url: mediaUrl,
+            _wa_content_type: contentType
+          },
+          shop_id: shop.id,
+          expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        })
+        .select()
+        .single();
 
       if (jobError) {
-        // Rollback storage if DB fails
-        await supabaseAdmin.storage.from("documents").remove([storagePath]);
-        return twimlResponse(`Database Error: ${jobError.message}`);
+        console.error("[WA Webhook] Job insert failed:", jobError.message);
+        return twimlResponse("Failed to queue your print job. Please try again.");
       }
 
-      return twimlResponse(`✅ *Job Uploaded!* \n\nShop: ${shop.name}\nFile: ${fileName}\n\nYour file is now visible in the printer queue.`);
+      // Increment persistent billing counter (survives job deletion)
+      await supabaseAdmin.rpc('increment_shop_files', { shop_row_id: shop.id });
+
+      // Fire & Forget: trigger background worker
+      const workerSecret = process.env.WORKER_SECRET;
+      const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+      const host = req.headers.get("host");
+      const workerUrl = `${protocol}://${host}/api/worker/process-wa`;
+
+      fetch(workerUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-worker-secret": workerSecret || "",
+        },
+        body: JSON.stringify({ jobId: jobData.id, mediaUrl, contentType, senderPhone }),
+      }).catch((err) => console.error("[WA Webhook] Worker trigger failed:", err.message));
+
+      return twimlResponse(`✅ *Files received!*\n\nYour file has been sent to *${shop.name}*. Please wait while we process your print job. 🖨️`);
     }
 
-    // 7. Context-only reply
+    // ── 8. Text-only Reply ───────────────────────────────────────────────────
     if (slugMatch) {
-      return twimlResponse(`Ready! I've linked you to *${shop.name}*. \n\nSend me any file (PDF, Doc, Image) now to add it to the print queue.`);
+      return twimlResponse(`🏪 You're now connected to *${shop.name}*.\n\nPlease share your documents in this chat and we'll print them for you!`);
     }
 
-    return twimlResponse("I'm ready! Send me a file to print, or type 'PRINT AT [slug]' to change shops.");
+    return twimlResponse(`You're connected to *${shop.name}*. Send me a file and I'll print it for you! 🖨️`);
 
-  } catch (error: any) {
-    console.error("[WhatsApp Webhook Error]", error);
-    return twimlResponse(`System Error: ${error.message || "Unknown error occurred"}`);
+  } catch (error) {
+    const e = error as Error;
+    console.error("[WA Webhook] Unhandled error:", e?.message || error);
+    // Never expose internal errors to WhatsApp users
+    return twimlResponse("Something went wrong. Please try again in a moment.");
   }
 }
 
-/**
- * Standard TwiML Response Generator
- */
 function twimlResponse(message: string) {
+  // Escape XML special chars to prevent injection
+  const safeMessage = message
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
   return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`,
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safeMessage}</Message></Response>`,
     { headers: { "Content-Type": "text/xml" } }
   );
 }

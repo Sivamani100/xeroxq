@@ -1,7 +1,15 @@
 /**
  * Utility to handle WhatsApp integration logic.
+ * 
+ * IMPORTANT: Set NEXT_PUBLIC_WHATSAPP_BOT_NUMBER in your .env.local file
+ * to your own Twilio/WhatsApp Business number in international format (no +).
+ * Example: 919876543210 for an Indian number
  */
-const WHATSAPP_BOT_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "14155238886"; // Default Twilio Sandbox
+const WHATSAPP_BOT_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
+
+if (!WHATSAPP_BOT_NUMBER && typeof window === "undefined") {
+  console.warn("[XeroxQ] ⚠️  NEXT_PUBLIC_WHATSAPP_BOT_NUMBER is not set. WhatsApp links will not work correctly.");
+}
 
 /**
  * Extracts a potential Indian phone number from a UPI ID.

@@ -63,7 +63,14 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
 }
 
 /* ─── Step card ─── */
-function StepCard({ step, icon: Icon, title, desc, delay = 0 }: any) {
+interface StepCardProps {
+  step: string | number;
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+  delay?: number;
+}
+function StepCard({ step, icon: Icon, title, desc, delay = 0 }: StepCardProps) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
@@ -87,7 +94,11 @@ function StepCard({ step, icon: Icon, title, desc, delay = 0 }: any) {
 }
 
 /* ─── Feature pill ─── */
-function FeaturePill({ icon: Icon, label }: any) {
+interface FeaturePillProps {
+  icon: React.ElementType;
+  label: string;
+}
+function FeaturePill({ icon: Icon, label }: FeaturePillProps) {
   return (
     <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8ECF0] text-sm font-semibold text-[#475569] shadow-sm hover:border-[#FB432C]/40 hover:text-[#FB432C] transition-all duration-300 cursor-default">
       <Icon className="w-4 h-4" />
@@ -97,7 +108,15 @@ function FeaturePill({ icon: Icon, label }: any) {
 }
 
 /* ─── Testimonial card ─── */
-function TestimonialCard({ name, shop, location, quote, rating, delay = 0 }: any) {
+interface TestimonialCardProps {
+  name: string;
+  shop: string;
+  location: string;
+  quote: string;
+  rating: number;
+  delay?: number;
+}
+function TestimonialCard({ name, shop, location, quote, rating, delay = 0 }: TestimonialCardProps) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
@@ -128,7 +147,13 @@ function TestimonialCard({ name, shop, location, quote, rating, delay = 0 }: any
 }
 
 /* ─── Stat counter ─── */
-function StatCounter({ value, suffix, label, trigger }: any) {
+interface StatCounterProps {
+  value: number;
+  suffix: string;
+  label: string;
+  trigger: boolean;
+}
+function StatCounter({ value, suffix, label, trigger }: StatCounterProps) {
   const count = useCounter(value, 2000, trigger);
   return (
     <div className="flex flex-col items-center gap-1 text-center">

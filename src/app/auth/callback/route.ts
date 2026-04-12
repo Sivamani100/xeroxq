@@ -5,7 +5,16 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/admin";
+  const rawNext = searchParams.get("next") ?? "/admin";
+
+  // ── Open Redirect Prevention ──────────────────────────────────────────────
+  // Only allow redirects to relative paths within our own domain.
+  // Reject anything with a protocol (http://, https://) or protocol-relative (//)
+  const isSafeNext =
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.includes(":");
+  const next = isSafeNext ? rawNext : "/admin";
 
   if (code) {
     const cookieStore = await cookies();
@@ -32,6 +41,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Return the user to an error page with some instructions
+  // Return the user to the login page with an error indicator
   return NextResponse.redirect(`${origin}/login?error=auth-callback-failed`);
 }

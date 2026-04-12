@@ -36,6 +36,7 @@ import {
   BellOff
 } from "lucide-react";
 import { Rnd } from "react-rnd";
+import { TableVirtuoso } from "react-virtuoso";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -275,7 +276,7 @@ export default function AdminDashboard() {
       // Initialize/Resume AudioContext on the very first user interaction anywhere on the document.
       const unlockAudio = async () => {
         if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
         }
         if (audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
@@ -302,7 +303,7 @@ export default function AdminDashboard() {
   const requestNotificationPermission = async () => {
     // 1. Initialize AudioContext (requires user gesture)
     if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
     
     if (audioContextRef.current.state === 'suspended') {
@@ -394,7 +395,7 @@ export default function AdminDashboard() {
 
   const playNotificationPing = async () => {
     try {
-      const audioCtx = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = audioContextRef.current || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       if (!audioContextRef.current) audioContextRef.current = audioCtx;
       
       // Final fallback resume in case the interaction listener hasn't fired yet
@@ -449,7 +450,7 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase
         .from("jobs")
-        .select("*")
+        .select("id, token, customer_name, file_name, file_path, status, preferences, created_at, expires_at")
         .eq("shop_id", shopId)
         .order("created_at", { ascending: false });
 
@@ -465,17 +466,26 @@ export default function AdminDashboard() {
   const handleCreateShop = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingShop(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    
+    // Get the current session JWT — this is used for server-side auth, not owner_id from body
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert("You must be logged in to create a shop.");
+      setCreatingShop(false);
+      return;
+    }
 
     try {
       const slug = newShopData.slug.toLowerCase().replace(/[^a-z0-9-]/g, "");
 
       const res = await fetch("/api/create-shop", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          // JWT goes in header — server extracts owner_id from it, never from body
+          "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
-          owner_id: user.id,
           name: newShopData.name,
           slug,
           upi_id: newShopData.upi_id,
@@ -487,12 +497,14 @@ export default function AdminDashboard() {
 
       setShop(body.shop);
       if (body.shop) fetchJobs(body.shop.id);
-    } catch (error: any) {
-      alert("Error creating shop: " + error.message);
+    } catch (error) {
+      const e = error as Error;
+      alert("Error creating shop: " + e.message);
     } finally {
       setCreatingShop(false);
     }
   };
+
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("jobs").update({ status }).eq("id", id);
@@ -529,7 +541,7 @@ export default function AdminDashboard() {
         .createSignedUrl(job.file_path, 60 * 5); // 5 minutes signed url
 
       if (error) {
-        if (error.message?.includes("Object not found") || (error as any).status === 404) {
+        if (error.message?.includes("Object not found") || (error as { status?: number }).status === 404) {
           if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Purge stale database record too?")) {
             handleDeleteJob(job);
           }
@@ -542,9 +554,10 @@ export default function AdminDashboard() {
          // Pass the pre-signed URL directly to the Xerox Dialog -> Native IPC
          setPrintPreviewUrl(data.signedUrl);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const e = error as Error;
       console.error("Payload decryption failed:", error);
-      alert("Execution failed to decrypt: " + error.message);
+      alert("Execution failed to decrypt: " + e.message);
       setActivePrintJob(null);
     } finally {
       setIsDecrypting(false);
@@ -576,9 +589,10 @@ export default function AdminDashboard() {
         
         setJobs(jobs.filter(j => j.id !== job.id));
         setDeleteConfirmJob(null);
-      } catch (error: any) {
+      } catch (error) {
+        const e = error as Error;
         console.error("Deletion protocol failed:", error);
-        alert("Purge failed: " + error.message);
+        alert("Purge failed: " + e.message);
       } finally {
         setIsDeleting(false);
       }
@@ -604,7 +618,11 @@ export default function AdminDashboard() {
           const zIndexCss = `z-index: ${item.zIndex || 0};`;
           
           if (item.rawHtml) {
-             imagesHtml += `<div style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; ${filterCss} ${zIndexCss}">${item.rawHtml}</div>`;
+             // Basic XSS Sanitize: strip script tags and event handlers before document.write
+             const safeHtml = item.rawHtml
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+                .replace(/on[a-z]+=/gi, "data-removed=");
+             imagesHtml += `<div style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; ${filterCss} ${zIndexCss}">${safeHtml}</div>`;
           } else {
              const src = item.payloadUrl || "";
              imagesHtml += `<img src="${src}" style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; object-fit: contain; ${filterCss} ${zIndexCss}" />`;
@@ -690,7 +708,7 @@ export default function AdminDashboard() {
         .createSignedUrl(job.file_path, 60 * 5);
       
       if (error) {
-        if ((error as any).status === 404 || error.message?.includes('Object not found')) {
+        if ((error as { status?: number }).status === 404 || error.message?.includes('Object not found')) {
            setPurgedJob(job);
            return;
         }
@@ -714,9 +732,10 @@ export default function AdminDashboard() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
       
-    } catch (error: any) {
+    } catch (error) {
+      const e = error as Error;
       console.error("Downlink Protocol Failure:", error);
-      alert("Downlink Failed: " + (error.message || "Unknown signal error"));
+      alert("Downlink Failed: " + (e.message || "Unknown signal error"));
     } finally {
       // 3. Micro-animation delay for UX stability
       setTimeout(() => setActiveDownloadId(null), 800);
@@ -808,7 +827,7 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       console.error(e);
-      alert("Composited export failed: " + (e as any).message);
+      alert("Composited export failed: " + (e as Error).message);
     } finally {
       setIsCompositing(false);
     }
@@ -817,12 +836,17 @@ export default function AdminDashboard() {
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdatingSettings(true);
+    
+    // Server/Client bound limits to prevent DB errors or logical abuse
+    const monoPrice = Math.max(0, Math.min(1000, shop?.price_mono || 0));
+    const colorPrice = Math.max(0, Math.min(1000, shop?.price_color || 0));
+
     const { error } = await supabase
       .from("shops")
       .update({
         upi_id: shop?.upi_id,
-        price_mono: shop?.price_mono,
-        price_color: shop?.price_color,
+        price_mono: monoPrice,
+        price_color: colorPrice,
         is_open: shop?.is_open
       })
       .eq("id", shop?.id);
@@ -872,9 +896,9 @@ export default function AdminDashboard() {
   );
 
   const shopPhone = shop?.upi_id ? extractPhoneFromUpi(shop.upi_id) : null;
-  const qrUrl = shop?.slug 
-    ? generateWhatsAppLink(shop.slug, shopPhone) 
-    : (typeof window !== "undefined" ? `${window.location.origin}/${shop?.slug}` : "");
+  const qrUrl = typeof window !== "undefined" 
+    ? `${window.location.origin}/s/${shop?.slug}` 
+    : "";
   
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}&color=0-0-0&bgcolor=255-255-255&margin=10`;
 
@@ -1461,108 +1485,103 @@ export default function AdminDashboard() {
         {/* ── DESKTOP TABLE (shown at lg+) ── */}
         {filteredJobs.length > 0 && (
           <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden">
-            <div className="flex-1 min-w-full overflow-auto scrollbar-thin relative">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-[#F8FAFC] sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#E2E8F0]">
-                  <tr>
-                    <th className="py-4 pl-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%]">Customer</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[28%]">File Info</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%]">Print Details</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%]">Format</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%]">Print</th>
-                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-right w-[18%]">Actions</th>
+            <div className="flex-1 min-w-full relative h-[600px]">
+              <TableVirtuoso
+                style={{ height: '100%' }}
+                data={filteredJobs}
+                fixedHeaderContent={() => (
+                  <tr className="bg-[#F8FAFC]">
+                    <th className="py-4 pl-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[28%] border-b border-[#E2E8F0]">File Info</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%] border-b border-[#E2E8F0]">Print Details</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%] border-b border-[#E2E8F0]">Format</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%] border-b border-[#E2E8F0]">Print</th>
+                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-right w-[18%] border-b border-[#E2E8F0]">Actions</th>
                   </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {filteredJobs.map((job) => {
-                    const isExpired = new Date(job.expires_at) < currentTime;
-                    const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
-                    const minsLeft = Math.floor(diff / 60000);
-                    return (
-                      <tr key={job.id} className="group border-b border-[#E2E8F0] last:border-b-0 hover:bg-[#F8FAFC]/50 transition-colors">
-                        <td className="py-5 pl-6">
-                          <p className="font-bold text-[12px] text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</p>
-                        </td>
-                        <td className="py-5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
-                              <FileText className="w-4 h-4 text-[#323A46]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
-                              <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
-                            </div>
+                )}
+                itemContent={(_index, job) => (
+                  <>
+                    <td className="py-5 pl-6 border-b border-[#E2E8F0]">
+                      <p className="font-bold text-[12px] text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</p>
+                    </td>
+                    <td className="py-5 px-4 border-b border-[#E2E8F0]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4 text-[#323A46]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
+                          <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                          {job.preferences.color ? 'COLOR' : 'MONO'}
+                        </span>
+                        <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                          {job.preferences.copies}x
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
+                      <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
+                        {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                      </span>
+                    </td>
+                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
+                      {job.status !== "printed" ? (
+                        <button
+                          onClick={() => handlePrint(job)}
+                          className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest mx-auto"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
+                          className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
+                        </button>
+                      )}
+                    </td>
+                    <td className="py-5 pr-6 text-right border-b border-[#E2E8F0]">
+                      <div className="flex items-center justify-end gap-2">
+                        {job.status !== "printed" ? (
+                          <button
+                            onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
+                            className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest"
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Done</span>
                           </div>
-                        </td>
-                        <td className="py-5 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
-                              {job.preferences.color ? 'COLOR' : 'MONO'}
-                            </span>
-                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
-                              {job.preferences.copies}x
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-5 px-4 text-center">
-                          <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
-                            {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                          </span>
-                        </td>
-                        <td className="py-5 px-4 text-center">
-                          {job.status !== "printed" ? (
-                            <button
-                              onClick={() => handlePrint(job)}
-                              className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest mx-auto"
-                            >
-                              <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
-                              className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
-                            >
-                              <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
-                            </button>
-                          )}
-                        </td>
-                        <td className="py-5 pr-6 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {job.status !== "printed" ? (
-                              <button
-                                onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
-                                className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest"
-                              >
-                                <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
-                              </button>
-                            ) : (
-                              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Done</span>
-                              </div>
-                            )}
-                            <button
-                              onClick={() => handleDownload(job)}
-                              disabled={activeDownloadId === job.id}
-                              className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors"
-                              title="Download"
-                            >
-                              {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirmJob(job)}
-                              className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        )}
+                        <button
+                          onClick={() => handleDownload(job)}
+                          disabled={activeDownloadId === job.id}
+                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors"
+                          title="Download"
+                        >
+                          {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmJob(job)}
+                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                )}
+              />
             </div>
           </div>
         )}

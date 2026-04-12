@@ -64,12 +64,14 @@ export default function NotFound() {
           >
             <button 
               onClick={() => router.push('/')}
+              suppressHydrationWarning
               className="h-12 px-8 bg-black hover:bg-black/9 font-black text-[10px] uppercase tracking-widest rounded-lg shadow-xl shadow-black/20 transition-all flex items-center gap-2 group text-white"
             >
               <Home className="w-4 h-4 text-white" /> RETURN TO MESH
             </button>
             <button 
               onClick={() => router.back()}
+              suppressHydrationWarning
               className="h-12 px-8 border-[#E2E8F0] hover:bg-[#F8FAFC] text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all flex items-center gap-2 group"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> PREVIOUS NODE

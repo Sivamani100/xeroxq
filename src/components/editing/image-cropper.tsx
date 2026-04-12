@@ -15,7 +15,7 @@ interface ImageCropperProps {
 export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const onCropChange = (crop: { x: number; y: number }) => {
     setCrop(crop);
@@ -25,7 +25,7 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
     setZoom(zoom);
   };
 
-  const onCropAreaComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+  const onCropAreaComplete = useCallback((_croppedArea: { x: number; y: number; width: number; height: number }, croppedAreaPixels: { x: number; y: number; width: number; height: number }) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -38,7 +38,7 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
       image.src = url;
     });
 
-  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
+  const getCroppedImg = async (imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }): Promise<string> => {
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -65,6 +65,7 @@ export function ImageCropper({ image, onCropComplete, onCancel, aspect = 1 }: Im
 
   const handleApply = async () => {
     try {
+      if (!croppedAreaPixels) return;
       const croppedImage = await getCroppedImg(image, croppedAreaPixels);
       onCropComplete(croppedImage);
     } catch (e) {

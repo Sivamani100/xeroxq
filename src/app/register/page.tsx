@@ -39,6 +39,24 @@ export default function Register() {
     setLoading(true);
     setError(null);
 
+    // ── Client-side Password Strength Validation ──────────────────────────
+    const pwd = formData.password;
+    if (pwd.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      setLoading(false);
+      return;
+    }
+    if (!/[a-zA-Z]/.test(pwd)) {
+      setError("Password must contain at least one letter.");
+      setLoading(false);
+      return;
+    }
+    if (!/[0-9]/.test(pwd)) {
+      setError("Password must contain at least one number.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -50,12 +68,15 @@ export default function Register() {
 
       setSuccess(true);
       setTimeout(() => router.push("/login"), 2500);
-    } catch (err: any) {
-      setError(err.message || "An error occurred during registration");
+    } catch (err) {
+      // Generic error — don't leak whether the email already exists
+      const e = err as Error;
+      setError(e.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleSocialLogin = async (provider: 'google' | 'azure') => {
     try {
@@ -67,8 +88,9 @@ export default function Register() {
         }
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || `Social login via ${provider} failed`);
+    } catch (err) {
+      const e = err as Error;
+      setError(e.message || `Social login via ${provider} failed`);
       setLoading(false);
     }
   };

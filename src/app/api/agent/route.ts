@@ -4,10 +4,38 @@ import chromium from "@sparticuz/chromium";
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
-export const maxDuration = 60; // Vercel Hobby = 60s max. Upgrade to Pro for 300s.
+export const maxDuration = 60; // Vercel Hobby = 60s max.
+
+// Allowed file types for conversion
+const ALLOWED_EXTENSIONS = new Set(["docx", "doc", "xlsx", "xls"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  // Some browsers may send these for .docx
+  "application/octet-stream",
+]);
+
+// 25MB limit
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+// Rate limiter: 10 conversions per minute per IP (Puppeteer is heavy)
+const limiter = rateLimit({ windowMs: 60_000, max: 10 });
 
 export async function POST(req: NextRequest) {
+  // ── 1. Rate Limiting ──────────────────────────────────────────────────────
+  const ip = getClientIp(req);
+  const { success } = limiter.check(`agent:${ip}`);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many conversion requests. Please wait a minute and try again." },
+      { status: 429 }
+    );
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -16,34 +44,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // ── 2. File Size Validation ────────────────────────────────────────────
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum allowed size is 25MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.` },
+        { status: 413 }
+      );
+    }
+
+    // ── 3. File Extension & Type Validation ────────────────────────────────
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!ALLOWED_EXTENSIONS.has(fileExt)) {
+      return NextResponse.json(
+        { error: `Unsupported file type ".${fileExt}". Only Word and Excel files can be converted.` },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize filename to prevent path traversal
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileExt = file.name.split(".").pop()?.toLowerCase();
 
     // Create temp directory for conversion
-    const tempDir = join(tmpdir(), `xeroxq-conv-${Date.now()}`);
+    const tempDir = join(tmpdir(), `xeroxq-conv-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await mkdir(tempDir, { recursive: true });
 
-    const inputPath = join(tempDir, file.name);
+    const inputPath = join(tempDir, safeFileName);
     await writeFile(inputPath, buffer);
 
-    // --- Serverless-safe Chromium launch (Vercel-hardened) ---
+    // --- Serverless-safe Chromium launch ---
     let executablePath: string;
     
     if (process.env.VERCEL || process.env.NODE_ENV === "production") {
       try {
-        // 1. Try local path first (if bundled successfully by Next.js)
         executablePath = await chromium.executablePath();
       } catch (e) {
-        // 2. CRITICAL FALLBACK: Use Remote Chromium Binary if local bin is missing.
-        // This resolves the "/var/task/node_modules/@sparticuz/chromium/bin does not exist" error.
-        // We use the stable v123 binary tarball.
-        executablePath = await (chromium as any).executablePath(
+        const chromiumModule = chromium as { executablePath: (url?: string) => Promise<string> };
+        executablePath = await chromiumModule.executablePath(
           `https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar`
         );
-        console.warn("[Agent] Local signal missing. Diverting to Remote binary signal.");
       }
     } else {
-      // Local dev fallback
       const platform = process.platform;
       if (platform === "win32") {
         executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
@@ -55,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!executablePath) {
-      throw new Error("Critical Protocol Breach: Chromium signal path (executablePath) not found.");
+      throw new Error("Chromium path not found.");
     }
 
     const browser = await puppeteerCore.launch({
@@ -74,16 +116,11 @@ export async function POST(req: NextRequest) {
         "--hide-scrollbars",
         "--disable-notifications",
       ],
-      defaultViewport: {
-        width: 1280,
-        height: 720,
-        deviceScaleFactor: 1,
-      },
+      defaultViewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
     });
 
     const page = await browser.newPage();
 
-    // LIGHTWEIGHT AGENT (Optimized for reliability)
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     );
@@ -97,24 +134,19 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Determine iLovePDF tool URL
     let toolUrl = "https://www.ilovepdf.com/word_to_pdf";
-    if (fileExt === "xlsx") {
+    if (fileExt === "xlsx" || fileExt === "xls") {
       toolUrl = "https://www.ilovepdf.com/excel_to_pdf";
     }
 
-    console.log(`[Agent] Navigating to ${toolUrl}`);
     await page.goto(toolUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-    // 1. Upload file
-    console.log("[Agent] Syncing Agent with Payload...");
     try {
       await page.waitForSelector("input[type='file']", { timeout: 20000 });
       const input = await page.$("input[type='file']");
-      if (!input) throw new Error("Signal Interface (Upload) not found");
+      if (!input) throw new Error("Upload input not found");
       await input.uploadFile(inputPath);
     } catch (e) {
-      console.error("[Agent] Upload selector mismatch, trying fallback...");
       const [fileChooser] = await Promise.all([
         page.waitForFileChooser({ timeout: 15000 }),
         page.click("a#pickfiles"),
@@ -122,14 +154,9 @@ export async function POST(req: NextRequest) {
       await fileChooser.accept([inputPath]);
     }
 
-    // 2. Click Convert
-    console.log("[Agent] Signal Intercepted. Finalizing Protocol...");
     await page.waitForSelector("#processTask", { visible: true, timeout: 30000 });
-
-    // Allow Plupload handlers to bind
     await new Promise((r) => setTimeout(r, 1200));
 
-    // Set download path before clicking convert
     const client = await page.target().createCDPSession();
     await client.send("Browser.setDownloadBehavior", {
       behavior: "allow",
@@ -138,14 +165,9 @@ export async function POST(req: NextRequest) {
 
     await page.click("#processTask");
 
-    // 3. Wait for completion and download
-    console.log("[Agent] Converting via iLovePDF...");
     await page.waitForSelector("a#pickfiles", { visible: true, timeout: 120000 });
-
-    console.log("[Agent] Conversion Ready. Fetching Payload...");
     await page.click("a#pickfiles");
 
-    // Poll for the downloaded PDF file
     let pdfPath = "";
     const startTime = Date.now();
     const pollingTimeout = 45000;
@@ -157,18 +179,13 @@ export async function POST(req: NextRequest) {
       );
       if (pdfFile) {
         pdfPath = join(tempDir, pdfFile);
-        console.log(`[Agent] Payload Extracted: ${pdfFile}`);
         break;
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
 
     if (!pdfPath) {
-      console.error(
-        "[Agent] Download Sync Failure. TempDir contents:",
-        await require("fs").promises.readdir(tempDir)
-      );
-      throw new Error("Conversion timed out in the Agent pipeline (Download failed)");
+      throw new Error("Conversion timed out. Please try again or upload a PDF directly.");
     }
 
     const pdfBuffer = await readFile(pdfPath);
@@ -182,16 +199,23 @@ export async function POST(req: NextRequest) {
       console.warn("[Agent] Cleanup warning:", e);
     }
 
+    // Sanitize output filename
+    const safeOutputName = safeFileName.replace(/\.[^/.]+$/, "") + ".pdf";
+
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${file.name.replace(/\.[^/.]+$/, "")}.pdf"`,
+        "Content-Disposition": `attachment; filename="${safeOutputName}"`,
+        // Prevent caching of potentially sensitive documents
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
       },
     });
-  } catch (error: any) {
-    console.error("[Agent Error]", error);
+  } catch (error) {
+    const e = error as Error;
+    console.error("[Agent Error]", e?.message || error);
     return NextResponse.json(
-      { error: error.message || "Agent conversion failed" },
+      { error: e.message || "Document conversion failed. Please try again." },
       { status: 500 }
     );
   }

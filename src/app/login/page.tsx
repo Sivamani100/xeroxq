@@ -49,8 +49,9 @@ export default function Login() {
 
       if (authError) throw authError;
       router.push("/admin");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      const e = err as Error;
+      setError(e.message || "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,9 @@ export default function Login() {
         }
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || `Social login via ${provider} failed`);
+    } catch (err) {
+      const e = err as Error;
+      setError(e.message || `Social login via ${provider} failed`);
       setLoading(false);
     }
   };

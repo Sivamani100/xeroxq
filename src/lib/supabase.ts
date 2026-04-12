@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -14,22 +14,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(
+export const supabase = createBrowserClient(
   supabaseUrl ?? "https://placeholder.supabase.co",
-  supabaseAnonKey ?? "placeholder-anon-key",
-  {
-    auth: {
-      // Persist Supabase session in localStorage so shop owners stay logged in.
-      persistSession: true,
-      autoRefreshToken: true,
-      // Detect auth state changes (e.g. magic links, OAuth callbacks).
-      detectSessionInUrl: true,
-    },
-    global: {
-      headers: {
-        // Helps Supabase identify the origin of requests in logs.
-        "x-app-name": "xeroxq-production",
-      },
-    },
-  }
+  supabaseAnonKey ?? "placeholder-anon-key"
 );

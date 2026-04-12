@@ -14,7 +14,7 @@ import {
   Lock
 } from "lucide-react";
 
-function GithubIcon(props: any) {
+function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg 
       {...props}
@@ -30,7 +30,7 @@ function GithubIcon(props: any) {
   );
 }
 
-function SlackIcon(props: any) {
+function SlackIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}
@@ -177,7 +177,7 @@ export default function Integrations() {
   );
 }
 
-function BoxIcon(props: any) {
+function BoxIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}
@@ -198,7 +198,7 @@ function BoxIcon(props: any) {
   );
 }
 
-function Briefcase(props: any) {
+function Briefcase(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

@@ -93,13 +93,14 @@ export default function XeroxQPrintDialog({
   useEffect(() => {
     // If it's an image, we pre-set page count to 1
     if (isImage) setNumPages(1);
-    
-    if (typeof window !== 'undefined' && (window as any).electron) {
-      setIsElectron(true);
-      (window as any).electron.getPrinters()
-        .then((res: any) => {
-          if (res.success && res.printers.length > 0) {
-             const names = res.printers.map((p: any) => p.name || p.deviceId || p);
+      const electronWindow = window as unknown as { electronAPI?: { getPrinters: () => Promise<{ success: boolean; printers: { name?: string; deviceId?: string }[] }> } };
+      if (typeof window !== 'undefined' && electronWindow.electronAPI) {
+        setIsElectron(true);
+        electronWindow.electronAPI.getPrinters()
+        .then((res) => {
+          if (res.success) {
+             // @ts-ignore
+             const names = res.printers.map((p) => p.name || p.deviceId || String(p));
              setPrinters(names);
              if (names.length > 0) setSelectedPrinter(names[0]);
           }
@@ -108,9 +109,10 @@ export default function XeroxQPrintDialog({
     }
   }, []);
 
-  const handleCycle = (current: any, options: any[], setter: (v: any) => void) => {
+  const handleCycle = <T,>(current: T, options: T[], setter: (v: T) => void) => {
     const idx = options.indexOf(current);
-    setter(options[(idx + 1) % options.length]);
+    const nextIdx = (idx + 1) % options.length;
+    setter(options[nextIdx]);
   };
 
   // Pinch-to-Zoom Logic
@@ -344,7 +346,8 @@ export default function XeroxQPrintDialog({
             }
         } else {
             // Bake PDF canvases
-            canvases.forEach((canvas: any) => {
+            canvases.forEach((canvasElement: Element) => {
+               const canvas = canvasElement as HTMLCanvasElement;
                const bakeCanvas = document.createElement('canvas');
                bakeCanvas.width = canvas.width * RES_MULT;
                bakeCanvas.height = canvas.height * RES_MULT;
@@ -371,9 +374,10 @@ export default function XeroxQPrintDialog({
           setBakedPages([]);
         }, 800);
 
-      } catch (err: any) {
+      } catch (err) {
         console.error(err);
-        alert(`Bake Failed: ${err.message}`);
+        alert(`Print failed: ${(err as Error).message}`);
+      } finally {
         setIsBaking(false);
         setStatus('idle');
       }
@@ -382,7 +386,9 @@ export default function XeroxQPrintDialog({
 
     try {
       setStatus('printing');
-      const res = await (window as any).electron.printNative({
+      const electronWindow = window as unknown as { electronAPI?: { printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> }, electron?: { printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> } };
+      
+      const res = await (electronWindow.electronAPI || electronWindow.electron)!.printNative({
         filePath: documentPath, 
         base64Data: base64Data, 
         options: {
@@ -409,10 +415,10 @@ export default function XeroxQPrintDialog({
       } else {
         throw new Error(res.error || 'Spool failure');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setStatus('idle');
-      alert(`Print Failed: ${err.message}`);
+      alert(`Print Failed: ${(err as Error).message}`);
     }
   };
 

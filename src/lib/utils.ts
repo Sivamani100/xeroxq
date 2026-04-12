@@ -6,9 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateToken(): string {
-  // Generate a random 2-digit number (00-99)
-  // This is now unique PER SHOP due to the database constraint refactor.
-  return Math.floor(Math.random() * 100).toString().padStart(2, '0');
+  // Cryptographically secure 8-char alphanumeric token (36^8 = 2.8 trillion combinations).
+  // Uses crypto.getRandomValues for true randomness — not Math.random() which is predictable.
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint8Array(8);
+  
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    // Server-side Node.js fallback
+    const { randomFillSync } = require("crypto");
+    randomFillSync(array);
+  }
+  
+  return Array.from(array).map((b) => chars[b % chars.length]).join("");
 }
 
 /**

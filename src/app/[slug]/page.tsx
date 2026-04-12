@@ -139,11 +139,60 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     return () => { supabase.removeChannel(channel); };
   }, [token]);
 
+  // ── File Validation Constants ─────────────────────────────────────────────
+  const MAX_FILE_SIZE_MB = 25;
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+  
+  const ALLOWED_FILE_TYPES: Record<string, string[]> = {
+    "application/pdf": ["pdf"],
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
+    "application/msword": ["doc"],
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
+    "application/vnd.ms-excel": ["xls"],
+    "image/jpeg": ["jpg", "jpeg"],
+    "image/png": ["png"],
+    "image/webp": ["webp"],
+    // Some OS/browsers send octet-stream for office docs — allow it with extension check
+    "application/octet-stream": ["pdf", "docx", "doc", "xlsx", "xls"],
+  };
+
+  const ALL_ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "doc", "xlsx", "xls", "jpg", "jpeg", "png", "webp"]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (selectedFile.name.toLowerCase().endsWith(".docx") || selectedFile.name.toLowerCase().endsWith(".doc")) {
+    // ── Size Check ────────────────────────────────────────────────────────
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      alert(`File too large!\n\nYour file is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.\n\nPlease compress your file and try again.`);
+      e.target.value = ""; // Reset the input
+      return;
+    }
+
+    // ── Extension Check ───────────────────────────────────────────────────
+    const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
+    if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
+      alert(`Unsupported file type ".${ext}".\n\nAllowed types: PDF, Word (DOCX/DOC), Excel (XLSX/XLS), Images (JPG, PNG, WebP).`);
+      e.target.value = "";
+      return;
+    }
+
+    // ── MIME Type Check ───────────────────────────────────────────────────
+    const mimeType = selectedFile.type;
+    const allowedExtensionsForMime = ALLOWED_FILE_TYPES[mimeType];
+    
+    // If MIME is not in our allowlist (and not octet-stream which we handle separately), reject
+    if (!allowedExtensionsForMime && mimeType !== "") {
+      // Double check extension since MIME can be unreliable
+      if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
+        alert(`This file type is not supported for printing.\n\nAllowed types: PDF, Word, Excel, JPG, PNG.`);
+        e.target.value = "";
+        return;
+      }
+    }
+
+    // ── Accept File ───────────────────────────────────────────────────────
+    if (ext === "docx" || ext === "doc") {
       setDocxFileToProcess(selectedFile);
       setFile(selectedFile);
     } else {
@@ -151,6 +200,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       setDocxFileToProcess(null);
     }
   };
+
 
 
   const handleCropComplete = async (croppedDataUrl: string) => {
@@ -239,7 +289,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
       // 3. Insert into DB (with Retry Logic for collisions)
       let newToken = "";
-      let dbError: any = null;
+      let dbError: { code?: string; message?: string } | null = null;
       let retries = 3;
 
       while (retries > 0) {
@@ -256,6 +306,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
         if (!error) {
           dbError = null;
+          // Increment persistent billing counter (survives job deletion)
+          await supabase.rpc('increment_shop_files', { shop_row_id: shop.id });
           break;
         }
 
@@ -291,10 +343,10 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
       setToken(newToken);
       setJobStatus("pending");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Mercury Upload Terminal Error Snapshot:", error);
-      
-      const message = error?.message || (typeof error === 'string' ? error : "Upload protocol failed due to an unknown network or storage error.");
+      const e = error as { message?: string };
+      const message = e?.message || (typeof error === 'string' ? error : "Upload protocol failed due to an unknown network or storage error.");
       alert(`Mercury Terminal Alert: ${message}`);
     } finally {
       setUploading(false);

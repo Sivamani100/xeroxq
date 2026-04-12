@@ -11,14 +11,17 @@ export default function NativePrintButton({ documentPath }: { documentPath?: str
 
   useEffect(() => {
     // Check if we are running inside Electron (our preload script exposes window.electronAPI)
-    if (typeof window !== 'undefined' && (window as any).electronAPI) {
+    const electronWindow = window as unknown as { electronAPI?: { getPrinters: () => Promise<{ success: boolean; printers: { name?: string; deviceId?: string }[] }>; printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> } };
+    
+    if (typeof window !== 'undefined' && electronWindow.electronAPI) {
       setIsElectron(true);
       
       // Load available printers
-      (window as any).electronAPI.getPrinters()
-        .then((res: any) => {
+      electronWindow.electronAPI.getPrinters()
+        .then((res) => {
           if (res.success) {
-            setPrinters(res.printers.map((p: any) => p.name || p.deviceId || p));
+            // @ts-ignore fallback extraction
+            setPrinters(res.printers.map((p) => p.name || p.deviceId || String(p)));
           }
         })
         .catch(console.error);
@@ -34,12 +37,11 @@ export default function NativePrintButton({ documentPath }: { documentPath?: str
 
     try {
       setStatus('Printing...');
-      const res = await (window as any).electronAPI.printNative({
+      const electronWindow = window as unknown as { electronAPI?: { printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> } };
+      
+      const res = await electronWindow.electronAPI!.printNative({
         filePath: documentPath || 'test-document-path',
-        options: {
-          // You can pass specific options supported by pdf-to-printer here
-          // e.g., printer: "My Canon Printer", scale: "noscale"
-        }
+        options: {}
       });
 
       if (res.success) {
@@ -47,8 +49,9 @@ export default function NativePrintButton({ documentPath }: { documentPath?: str
       } else {
         setStatus(`Error: ${res.error}`);
       }
-    } catch (err: any) {
-      setStatus(`Failed: ${err.message}`);
+    } catch (err) {
+      const e = err as Error;
+      setStatus(`Failed: ${e.message}`);
     }
   };
 
