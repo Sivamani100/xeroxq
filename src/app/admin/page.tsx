@@ -91,6 +91,14 @@ interface Job {
   expires_at: string;
 }
 
+interface Notification {
+  id: string;
+  type: 'success' | 'info' | 'error' | 'new_job';
+  message: string;
+  subMessage?: string;
+  timestamp: Date;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [shop, setShop] = useState<Shop | null>(null);
@@ -128,6 +136,7 @@ export default function AdminDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
@@ -378,6 +387,18 @@ export default function AdminDashboard() {
                       playNotificationPing();
                       sendDesktopNotification(newJob);
                   }
+                  
+                  // Push visual In-App Alert
+                  setNotifications(prev => [
+                    {
+                      id: `job-${newJob.id}`,
+                      type: 'new_job',
+                      message: `Incoming Document: ${newJob.customer_name || 'Anonymous'}`,
+                      subMessage: `File: ${newJob.file_name}`,
+                      timestamp: new Date()
+                    },
+                    ...prev.slice(0, 4) // Keep max 5 notifications
+                  ]);
               }
               fetchJobs(shopData.id);
             }
@@ -557,7 +578,14 @@ export default function AdminDashboard() {
     } catch (error) {
       const e = error as Error;
       console.error("Payload decryption failed:", error);
-      alert("Execution failed to decrypt: " + e.message);
+      // Inline Error Feedback
+      setNotifications(prev => [{
+         id: `err-${Date.now()}`,
+         type: 'error',
+         message: "Decryption Failed",
+         subMessage: e.message,
+         timestamp: new Date()
+      }, ...prev]);
       setActivePrintJob(null);
     } finally {
       setIsDecrypting(false);
@@ -589,10 +617,25 @@ export default function AdminDashboard() {
         
         setJobs(jobs.filter(j => j.id !== job.id));
         setDeleteConfirmJob(null);
+        
+        // Push Success Feedback
+        setNotifications(prev => [{
+          id: `purge-${job.id}`,
+          type: 'success',
+          message: "Cache Purged Successful",
+          subMessage: `Job ${job.token} data securely wiped.`,
+          timestamp: new Date()
+        }, ...prev]);
       } catch (error) {
         const e = error as Error;
         console.error("Deletion protocol failed:", error);
-        alert("Purge failed: " + e.message);
+        setNotifications(prev => [{
+           id: `purge-err-${Date.now()}`,
+           type: 'error',
+           message: "Purge Failed",
+           subMessage: e.message,
+           timestamp: new Date()
+        }, ...prev]);
       } finally {
         setIsDeleting(false);
       }
@@ -851,8 +894,24 @@ export default function AdminDashboard() {
       })
       .eq("id", shop?.id);
     
-    if (error) alert("Sync failed: " + error.message);
-    else setShowingSettings(false);
+    if (error) {
+       setNotifications(prev => [{
+         id: `sync-err-${Date.now()}`,
+         type: 'error',
+         message: "Sync Failure",
+         subMessage: error.message,
+         timestamp: new Date()
+       }, ...prev]);
+    } else {
+       setShowingSettings(false);
+       setNotifications(prev => [{
+         id: `sync-ok-${Date.now()}`,
+         type: 'success',
+         message: "Configurations Synced",
+         subMessage: "Your shop preferences are now cloud-consistent.",
+         timestamp: new Date()
+       }, ...prev]);
+    }
     setUpdatingSettings(false);
   };
 
@@ -1689,6 +1748,77 @@ export default function AdminDashboard() {
              </button>
           </DialogContent>
         </Dialog>
+
+      {/* ── REAL-TIME NOTIFICATION OVERLAY ── */}
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-[400px]">
+        <AnimatePresence mode="popLayout">
+          {notifications.map((notif) => (
+            <XeroxQNotification 
+              key={notif.id} 
+              notification={notif} 
+              onClose={(id) => setNotifications(prev => prev.filter(n => n.id !== id))}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
      </div>
+   );
+ }
+ 
+ // --- SUB-COMPONENT: XEROXQ PREMIUM NOTIFICATION ---
+ function XeroxQNotification({ notification, onClose }: { notification: Notification, onClose: (id: string) => void }) {
+   useEffect(() => {
+     const timer = setTimeout(() => onClose(notification.id), 6000);
+     return () => clearTimeout(timer);
+   }, [notification.id, onClose]);
+ 
+   const icons = {
+     success: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+     error: <ShieldCheck className="w-5 h-5 text-red-500" />,
+     info: <Activity className="w-5 h-5 text-blue-500" />,
+     new_job: <Zap className="w-5 h-5 text-[#FF591E] fill-[#FF591E]/20" />
+   };
+ 
+   return (
+     <motion.div
+       layout
+       initial={{ opacity: 0, y: 20, scale: 0.95 }}
+       animate={{ opacity: 1, y: 0, scale: 1 }}
+       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+       className="pointer-events-auto w-full bg-white/90 backdrop-blur-xl border border-[#E2E8F0] shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-[20px] p-4 flex items-start gap-4 relative overflow-hidden"
+     >
+       <div className={cn(
+         "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+         notification.type === 'new_job' ? "bg-orange-50" : "bg-slate-50"
+       )}>
+         {icons[notification.type]}
+       </div>
+       
+       <div className="flex-1 min-w-0 pr-6">
+         <p className="text-[13px] font-black text-black tracking-tight uppercase leading-tight">
+           {notification.message}
+         </p>
+         {notification.subMessage && (
+           <p className="text-[11px] font-medium text-auth-slate-50 mt-0.5 line-clamp-1">
+             {notification.subMessage}
+           </p>
+         )}
+       </div>
+ 
+       <button 
+         onClick={() => onClose(notification.id)}
+         className="absolute top-4 right-4 text-[#7E8B9E] hover:text-black transition-colors"
+       >
+         <Minus className="w-4 h-4" />
+       </button>
+ 
+       {/* Progress Bar Loader */}
+       <motion.div 
+         initial={{ width: "100%" }}
+         animate={{ width: "0%" }}
+         transition={{ duration: 6, ease: "linear" }}
+         className="absolute bottom-0 left-0 h-[3px] bg-[#FF591E]/30 rounded-full"
+       />
+     </motion.div>
    );
  }
