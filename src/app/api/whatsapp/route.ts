@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
           token: newToken,
           customer_name: `WA: ${senderPhone}`,
           file_name: "Processing...",
+          file_path: "processing_whatsapp_media",
           status: "processing",
           preferences: {
             color: false,
