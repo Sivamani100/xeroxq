@@ -85,49 +85,12 @@ export default function LandingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
-        {/* Navbar Skeleton Chassis */}
-        <div className="w-full bg-white/80 backdrop-blur-md border-b border-gray-100 h-20 flex items-center px-6 lg:px-[82px] justify-between fixed top-0 z-50">
-          <Skeleton className="w-32 h-10 rounded-xl" />
-          <div className="hidden lg:flex gap-8">
-            <Skeleton className="w-20 h-4" />
-            <Skeleton className="w-20 h-4" />
-            <Skeleton className="w-20 h-4" />
-          </div>
-          <Skeleton className="w-32 h-11 rounded-full" />
-        </div>
-
-        {/* Hero Skeleton Chassis */}
-        <div className="max-w-[1440px] mx-auto px-6 pt-40 pb-20 lg:px-[82px] flex flex-col items-center">
-           <SkeletonLoader type="hero" />
-        </div>
-
-        {/* Value Props Skeleton Grid */}
-        <div className="max-w-[1280px] mx-auto px-6 py-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-             <SkeletonLoader type="card" />
-             <SkeletonLoader type="card" />
-             <SkeletonLoader type="card" />
-          </div>
-        </div>
-
-        {/* FAQ Area Skeleton */}
-        <div className="max-w-[1280px] mx-auto px-6 py-20 border-t border-gray-100">
-           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-              <div className="lg:col-span-5 space-y-6">
-                 <Skeleton className="w-40 h-8 rounded-full" />
-                 <Skeleton className="w-full h-20" />
-                 <Skeleton className="w-[60%] h-4" />
-              </div>
-              <div className="lg:col-span-7 space-y-8">
-                 {[...Array(4)].map((_, i) => (
-                   <div key={i} className="py-6 border-b border-gray-100 flex justify-between items-center">
-                      <Skeleton className="w-[70%] h-6" />
-                      <Skeleton className="w-8 h-8 rounded-lg" />
-                   </div>
-                 ))}
-              </div>
-           </div>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 space-y-12">
+        <SkeletonLoader type="hero" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+          <SkeletonLoader type="card" />
+          <SkeletonLoader type="card" />
+          <SkeletonLoader type="card" />
         </div>
       </div>
     );
