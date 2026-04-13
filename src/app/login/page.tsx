@@ -78,22 +78,8 @@ export default function Login() {
     return (
       <main className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden font-sans relative">
         <div className="w-full lg:w-[630px] shrink-0 flex flex-col justify-center px-8 lg:pl-[180px] lg:pr-[82px] py-12 lg:py-0 relative z-10 bg-white">
-           <div className="w-full lg:w-[378px] flex flex-col gap-[21.03px]">
-              <div className="space-y-4">
-                 <Skeleton className="w-[200px] h-10" />
-                 <Skeleton className="w-[140px] h-4" />
-              </div>
-              <div className="space-y-8 mt-4">
-                 <div className="space-y-3">
-                    <Skeleton className="w-16 h-4" />
-                    <Skeleton className="w-full h-14 rounded-2xl" />
-                 </div>
-                 <div className="space-y-3">
-                    <Skeleton className="w-16 h-4" />
-                    <Skeleton className="w-full h-14 rounded-2xl" />
-                 </div>
-              </div>
-              <Skeleton className="w-full h-14 rounded-2xl mt-4" />
+           <div className="w-full lg:w-[378px]">
+              <SkeletonLoader type="form" />
            </div>
         </div>
         <div className="hidden lg:block relative flex-1 bg-[#F8FAFC]">

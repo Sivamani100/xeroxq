@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/dialog";
 import { ImageCropper } from "@/components/editing/image-cropper";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 
 interface Shop {
   id: string;
@@ -966,24 +967,25 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-[#F8FAFC]">
         <SkeletonLoader type="dashboard-header" />
 
-        {/* Skeleton Subheader */}
-        <div className="max-w-[1440px] mx-auto px-6 pt-6 pb-4 lg:px-[82px] flex items-center justify-between">
-           <Skeleton className="w-[180px] h-[32px] rounded-lg" />
-           <div className="flex gap-2">
-              <Skeleton className="w-[220px] h-[36px] rounded-lg" />
-              <Skeleton className="w-[36px] h-[36px] rounded-lg" />
+        {/* Skeleton Subheader Chassis */}
+        <div className="max-w-[1440px] mx-auto px-6 pt-10 pb-6 lg:px-[82px] flex items-center justify-between">
+           <div className="space-y-2">
+              <Skeleton className="w-[200px] h-[40px] rounded-xl" />
+              <Skeleton className="w-[140px] h-[16px]" />
+           </div>
+           <div className="flex gap-3">
+              <Skeleton className="w-[240px] h-[44px] rounded-xl" />
+              <Skeleton className="w-[44px] h-[44px] rounded-xl" />
            </div>
         </div>
 
         {/* Skeleton Main Grid */}
-        <main className="max-w-[1440px] mx-auto px-6 lg:px-[82px] mt-2 flex flex-col h-[calc(100vh-180px)]">
-           <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[24px] overflow-hidden shadow-sm flex flex-col">
-              <div className="p-0 flex-1 overflow-hidden">
-                 <div className="divide-y divide-gray-50">
-                    {[...Array(6)].map((_, i) => (
-                      <SkeletonLoader key={i} type="queue-row" />
-                    ))}
-                 </div>
+        <main className="max-w-[1440px] mx-auto px-6 lg:px-[82px] pb-12">
+           <div className="bg-white border border-[#E2E8F0] rounded-[32px] overflow-hidden shadow-sm flex flex-col min-h-[600px]">
+              <div className="divide-y divide-gray-50">
+                 {[...Array(6)].map((_, i) => (
+                   <SkeletonLoader key={i} type="queue-row" />
+                 ))}
               </div>
            </div>
         </main>

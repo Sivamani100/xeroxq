@@ -1,18 +1,6 @@
-import { cn } from "@/lib/utils";
+import { Skeleton } from "./skeleton";
 
-export function Skeleton({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-md bg-black/5", className)}
-      {...props}
-    />
-  );
-}
-
-export function SkeletonLoader({ type }: { type: 'card' | 'text' | 'hero' | 'queue-row' | 'dashboard-header' | 'stat-card' }) {
+export function SkeletonLoader({ type }: { type: 'card' | 'text' | 'hero' | 'queue-row' | 'dashboard-header' | 'stat-card' | 'form' }) {
   if (type === 'card') {
     return (
       <div className="p-8 border border-gray-100 rounded-2xl bg-white space-y-4">
@@ -61,6 +49,28 @@ export function SkeletonLoader({ type }: { type: 'card' | 'text' | 'hero' | 'que
       <div className="p-6 bg-white border border-gray-100 rounded-2xl space-y-3">
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-8 w-12" />
+      </div>
+    );
+  }
+
+  if (type === 'form') {
+    return (
+      <div className="w-full space-y-10 p-10 bg-white rounded-[40px] border border-[#E2E8F0] shadow-sm">
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-[70%]" />
+          <Skeleton className="h-4 w-[40%]" />
+        </div>
+        <div className="space-y-8 mt-4">
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-14 w-full rounded-2xl" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-14 w-full rounded-2xl" />
+          </div>
+          <Skeleton className="h-14 w-full rounded-2xl mt-4" />
+        </div>
       </div>
     );
   }
