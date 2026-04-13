@@ -964,52 +964,24 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        {/* Skeleton Header */}
-        <div className="w-full bg-white border-b border-[#E2E8F0]">
-          <div className="max-w-[1440px] mx-auto px-6 py-4 lg:px-[82px] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Skeleton className="w-[40px] h-[40px] rounded-[5.57px]" />
-              <div className="flex flex-col gap-2">
-                <Skeleton className="w-[140px] h-[20px]" />
-                <Skeleton className="w-[90px] h-[12px]" />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Skeleton className="w-[80px] h-[36px] rounded-[5.57px]" />
-              <Skeleton className="w-[60px] h-[36px] rounded-[5.57px]" />
-              <div className="h-[20px] w-[1px] bg-[#E2E8F0] mx-1" />
-              <Skeleton className="w-[80px] h-[36px] rounded-[5.57px]" />
-            </div>
-          </div>
-        </div>
+        <SkeletonLoader type="dashboard-header" />
 
         {/* Skeleton Subheader */}
-        <div className="w-full bg-[#F8FAFC]">
-          <div className="max-w-[1440px] mx-auto px-6 pt-6 pb-4 lg:px-[82px] flex items-center justify-between">
-             <Skeleton className="w-[150px] h-[28px]" />
-             <div className="flex gap-2">
-                <Skeleton className="w-[200px] h-[36px] rounded-[5.57px]" />
-                <Skeleton className="w-[36px] h-[36px] rounded-[5.57px]" />
-             </div>
-          </div>
+        <div className="max-w-[1440px] mx-auto px-6 pt-6 pb-4 lg:px-[82px] flex items-center justify-between">
+           <Skeleton className="w-[180px] h-[32px] rounded-lg" />
+           <div className="flex gap-2">
+              <Skeleton className="w-[220px] h-[36px] rounded-lg" />
+              <Skeleton className="w-[36px] h-[36px] rounded-lg" />
+           </div>
         </div>
 
         {/* Skeleton Main Grid */}
         <main className="max-w-[1440px] mx-auto px-6 lg:px-[82px] mt-2 flex flex-col h-[calc(100vh-180px)]">
-           <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] overflow-hidden shadow-sm flex flex-col">
+           <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[24px] overflow-hidden shadow-sm flex flex-col">
               <div className="p-0 flex-1 overflow-hidden">
-                 <div className="divide-y divide-[#E2E8F0]">
-                    {[...Array(8)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-6 px-6 py-6">
-                         <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                         <div className="flex-1 space-y-2">
-                            <Skeleton className="w-[30%] h-4" />
-                            <Skeleton className="w-[20%] h-3" />
-                         </div>
-                         <Skeleton className="w-[10%] h-6 rounded-lg" />
-                         <Skeleton className="w-[15%] h-8 rounded-lg" />
-                         <Skeleton className="w-[15%] h-8 rounded-lg" />
-                      </div>
+                 <div className="divide-y divide-gray-50">
+                    {[...Array(6)].map((_, i) => (
+                      <SkeletonLoader key={i} type="queue-row" />
                     ))}
                  </div>
               </div>
@@ -1449,196 +1421,231 @@ export default function AdminDashboard() {
         {/* ── MOBILE CARDS (shown below lg) ── */}
         {filteredJobs.length > 0 && (
           <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-thin">
-            {filteredJobs.map((job) => {
-              const isExpired = new Date(job.expires_at) < currentTime;
-              const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
-              const minsLeft = Math.floor(diff / 60000);
-              return (
-                <div key={job.id} className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm p-4 flex flex-col gap-3">
-                  {/* Row 1: Customer + Status badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-black text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</span>
-                    {job.status === "printed" ? (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Done
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-[10px] font-bold text-[#FF591E] uppercase tracking-widest">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#FF591E] animate-pulse" /> Pending
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Row 2: File info */}
-                  <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5">
-                    <div className="w-9 h-9 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-[#323A46]" />
+            <AnimatePresence mode="popLayout">
+              {filteredJobs.map((job, idx) => {
+                const isExpired = new Date(job.expires_at) < currentTime;
+                return (
+                  <motion.div 
+                    key={job.id} 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ delay: idx * 0.05, type: "spring", damping: 20, stiffness: 100 }}
+                    className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm p-4 flex flex-col gap-3"
+                  >
+                    {/* Row 1: Customer + Status badge */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] font-black text-black tracking-tight uppercase">{job.customer_name || "ANONYMOUS"}</span>
+                      {job.status === "printed" ? (
+                        <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Done
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 px-3 py-1 bg-orange-50 border border-orange-200 rounded-full text-[10px] font-bold text-[#FB432C] uppercase tracking-widest">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#FB432C] animate-pulse" /> Pending
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[13px] text-black truncate">{job.file_name}</p>
-                      <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+
+                    {/* Row 2: File info */}
+                    <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-3">
+                      <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                        <FileText className="w-5 h-5 text-[#323A46]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[14px] text-black truncate">{job.file_name}</p>
+                        <p className="text-[11px] text-auth-slate-50 font-medium tracking-tight">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                      </div>
+                      <span className="text-[11px] font-black text-red-500 uppercase shrink-0">
+                        {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                      </span>
                     </div>
-                    <span className="text-[11px] font-black text-red-500 uppercase shrink-0">
-                      {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                    </span>
-                  </div>
 
-                  {/* Row 3: Print detail tags */}
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
-                      {job.preferences.color ? '🎨 Color' : '⬛ Mono'}
-                    </span>
-                    <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
-                      {job.preferences.copies} {job.preferences.copies > 1 ? 'copies' : 'copy'}
-                    </span>
-                    {job.preferences.doubleSided && (
-                      <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">2-Sided</span>
-                    )}
-                  </div>
+                    {/* Row 3: Print detail tags */}
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center h-7 px-3 rounded-lg text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                        {job.preferences.color ? '🎨 Color' : '⬛ Mono'}
+                      </span>
+                      <span className="inline-flex items-center h-7 px-3 rounded-lg text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                        {job.preferences.copies} {job.preferences.copies > 1 ? 'copies' : 'copy'}
+                      </span>
+                      {job.preferences.doubleSided && (
+                        <span className="inline-flex items-center h-7 px-3 rounded-lg text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">2-Sided</span>
+                      )}
+                    </div>
 
-                  {/* Row 4: Action buttons */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-[#F1F5F9]">
-                    {job.status !== "printed" ? (
-                      <>
-                        <button
-                          onClick={() => handlePrint(job)}
-                          className="flex-1 h-10 bg-black text-white rounded-xl text-[12px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest"
+                    {/* Row 4: Action buttons */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-[#F1F5F9] mt-1">
+                      {job.status !== "printed" ? (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handlePrint(job)}
+                            className="flex-1 h-11 bg-black text-white rounded-xl text-[13px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg shadow-black/10"
+                          >
+                            <Printer className="w-4 h-4" /> Print
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
+                            className="flex-1 h-11 bg-white border border-[#E2E8F0] text-black rounded-xl text-[13px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                          >
+                            <CheckCircle2 className="w-4 h-4" /> Done
+                          </motion.button>
+                        </>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
+                          className="flex-1 h-11 bg-white border border-green-200 text-green-700 rounded-xl text-[13px] font-bold hover:bg-green-50 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                         >
-                          <Printer className="w-3.5 h-3.5" /> Print
-                        </button>
-                        <button
-                          onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
-                          className="flex-1 h-10 bg-white border border-[#E2E8F0] text-black rounded-xl text-[12px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Complete
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
-                        className="flex-1 h-10 bg-white border border-green-200 text-green-700 rounded-xl text-[12px] font-bold hover:bg-green-50 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                          <Printer className="w-4 h-4" /> Reprint
+                        </motion.button>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDownload(job)}
+                        disabled={activeDownloadId === job.id}
+                        className="h-11 w-11 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-auth-slate-50 hover:text-black hover:border-black/20 transition-all bg-white"
                       >
-                        <Printer className="w-3.5 h-3.5" /> Reprint
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDownload(job)}
-                      disabled={activeDownloadId === job.id}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20 transition-all"
-                    >
-                      {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirmJob(job)}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                        {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-5 h-5" />}
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setDeleteConfirmJob(job)}
+                        className="h-11 w-11 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-auth-slate-50 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all bg-white"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
 
         {/* ── DESKTOP TABLE (shown at lg+) ── */}
         {filteredJobs.length > 0 && (
-          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden">
+          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[24px] shadow-sm flex-col overflow-hidden">
             <div className="flex-1 min-w-full relative h-[600px]">
               <TableVirtuoso
                 style={{ height: '100%' }}
                 data={filteredJobs}
                 fixedHeaderContent={() => (
-                  <tr className="bg-[#F8FAFC]">
-                    <th className="py-4 pl-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[28%] border-b border-[#E2E8F0]">File Info</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%] border-b border-[#E2E8F0]">Print Details</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%] border-b border-[#E2E8F0]">Format</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%] border-b border-[#E2E8F0]">Print</th>
-                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-right w-[18%] border-b border-[#E2E8F0]">Actions</th>
+                  <tr className="bg-white">
+                    <th className="py-5 pl-8 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] w-[18%] text-left border-b border-gray-100">Customer Agent</th>
+                    <th className="py-5 px-6 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] w-[28%] text-left border-b border-gray-100">Packet Integrity</th>
+                    <th className="py-5 px-6 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] text-center w-[16%] border-b border-gray-100">Metrics</th>
+                    <th className="py-5 px-6 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] text-center w-[10%] border-b border-gray-100">EXT</th>
+                    <th className="py-5 px-6 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] text-center w-[14%] border-b border-gray-100">Release</th>
+                    <th className="py-5 pr-8 text-[11px] font-black uppercase tracking-[0.2em] text-[#7E8B9E] text-right w-[14%] border-b border-gray-100">Terminal</th>
                   </tr>
                 )}
-                itemContent={(_index, job) => (
-                  <>
-                    <td className="py-5 pl-6 border-b border-[#E2E8F0]">
-                      <p className="font-bold text-[12px] text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</p>
+                itemContent={(idx, job) => (
+                  <motion.tr 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="group"
+                  >
+                    <td className="py-5 pl-8 border-b border-gray-50 bg-white">
+                      <p className="font-black text-[14px] text-black tracking-tight uppercase leading-none">{job.customer_name || "ANONYMOUS"}</p>
                     </td>
-                    <td className="py-5 px-4 border-b border-[#E2E8F0]">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-[#323A46]" />
+                    <td className="py-5 px-6 border-b border-gray-50 bg-white">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm group-hover:border-black/20 transition-all">
+                          <FileText className="w-5 h-5 text-black" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
-                          <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                          <p className="font-bold text-[14px] text-black truncate max-w-[240px] leading-tight mb-1">{job.file_name}</p>
+                          <p className="text-[11px] text-auth-slate-50 font-medium tracking-tight">Handshake: {new Date(job.created_at).toLocaleTimeString()}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
+                    <td className="py-5 px-6 text-center border-b border-gray-50 bg-white">
                       <div className="flex items-center justify-center gap-1.5">
-                        <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                        <span className={cn(
+                          "h-7 px-3 rounded-lg flex items-center text-[10px] font-black border uppercase tracking-tight",
+                          job.preferences.color ? "bg-orange-50 border-orange-100 text-[#FB432C]" : "bg-white border-gray-200 text-black"
+                        )}>
                           {job.preferences.color ? 'COLOR' : 'MONO'}
                         </span>
-                        <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-bold bg-white border border-[#E2E8F0] text-[#323A46] uppercase">
+                        <span className="h-7 px-3 rounded-lg flex items-center text-[10px] font-black bg-white border border-gray-200 text-black uppercase tracking-tight">
                           {job.preferences.copies}x
                         </span>
                       </div>
                     </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
-                      <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
+                    <td className="py-5 px-6 text-center border-b border-gray-50 bg-white">
+                      <span className="text-[12px] font-black text-[#FB432C] uppercase tracking-widest">
                         {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
                       </span>
                     </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
+                    <td className="py-5 px-6 text-center border-b border-gray-50 bg-white">
                       {job.status !== "printed" ? (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => handlePrint(job)}
-                          className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest mx-auto"
+                          className="h-[38px] px-5 bg-black text-white rounded-xl text-[11px] font-black hover:bg-black/90 transition-all shadow-lg shadow-black/10 flex items-center gap-2 uppercase tracking-widest mx-auto"
                         >
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
-                        </button>
+                          <Printer className="w-4 h-4" /> Release
+                        </motion.button>
                       ) : (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => { setVerifyingJobId(job.id); setVerificationMode('reprint'); }}
-                          className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
+                          className="h-[38px] px-5 bg-white border border-green-200 text-green-700 rounded-xl text-[11px] font-black hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
                         >
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
-                        </button>
+                          <RefreshCw className="w-4 h-4" /> Reprint
+                        </motion.button>
                       )}
                     </td>
-                    <td className="py-5 pr-6 text-right border-b border-[#E2E8F0]">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="py-5 pr-8 text-right border-b border-gray-50 bg-white">
+                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         {job.status !== "printed" ? (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => { setVerifyingJobId(job.id); setVerificationMode('complete'); }}
-                            className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest"
+                            className="h-[38px] px-4 bg-white border border-gray-200 text-black rounded-xl text-[11px] font-black hover:bg-gray-50 transition-all flex items-center gap-1.5 uppercase tracking-tight"
                           >
-                            <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
-                          </button>
+                             Done
+                          </motion.button>
                         ) : (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-lg">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Done</span>
+                            <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">OK</span>
                           </div>
                         )}
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => handleDownload(job)}
                           disabled={activeDownloadId === job.id}
-                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors"
+                          className="h-[38px] w-[38px] flex items-center justify-center rounded-xl text-auth-slate-50 hover:text-black hover:bg-gray-50 transition-colors"
                           title="Download"
                         >
-                          {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
+                          {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => setDeleteConfirmJob(job)}
-                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="Delete"
+                          className="h-[38px] w-[38px] flex items-center justify-center rounded-xl text-auth-slate-50 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="Purge"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <Trash2 className="w-4 h-4" />
+                        </motion.button>
                       </div>
                     </td>
-                  </>
+                  </motion.tr>
                 )}
               />
             </div>
