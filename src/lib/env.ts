@@ -22,12 +22,9 @@ export function validateEnv() {
   if (missing.length > 0) {
     const errorMsg = `[DevOps] CRITICAL: Missing required environment variables: ${missing.join(", ")}`;
     
-    // In production runtime, we throw. In CI/Build or local dev, we warn but keep going.
-    if (process.env.NODE_ENV === "production" && !process.env.CI) {
-      throw new Error(errorMsg);
-    } else {
-      console.warn("\x1b[33m%s\x1b[0m", errorMsg);
-    }
+    // In serverless architecture (Vercel), throwing at module scope bricks the entire lambda.
+    // We log a critical warning instead of crashing the process.
+    console.warn("\x1b[31m%s\x1b[0m", errorMsg);
   }
 
   // Specific format validations
