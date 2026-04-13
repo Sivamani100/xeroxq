@@ -182,13 +182,15 @@ export async function POST(req: NextRequest) {
       // Increment persistent billing counter (survives job deletion)
       await supabaseAdmin.rpc('increment_shop_files', { shop_row_id: shop.id });
 
-      // Fire & Forget: trigger background worker
       const workerSecret = process.env.WORKER_SECRET;
       const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
       const host = req.headers.get("host");
       const workerUrl = `${protocol}://${host}/api/worker/process-wa`;
 
-      fetch(workerUrl, {
+      // We must AWAIT the fetch. In Vercel serverless environments, 
+      // fire-and-forget promises are instantly killed when the handler returns.
+      // Twilio timeout is 15s, which is plenty of time for this internal download.
+      await fetch(workerUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
