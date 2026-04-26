@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { HeroSection } from "@/components/blocks/hero-section-1";
 import CTAWithVerticalMarquee from "@/components/ui/cta-with-text-marquee";
@@ -215,18 +216,42 @@ export default function LandingPage() {
                 }
               ]}
             >
-              <form action="#" className="w-full space-y-5">
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const shopName = formData.get("shopName") as string;
+                  const email = formData.get("email") as string;
+                  const message = formData.get("message") as string;
+
+                  try {
+                    const { error } = await supabase.from("contact_submissions").insert({
+                      shop_name: shopName,
+                      owner_email: email,
+                      message: message
+                    });
+
+                    if (error) throw error;
+                    alert("Mercury Protocol: Shop registration request dispatched successfully! Our team will reach out soon.");
+                    (e.target as HTMLFormElement).reset();
+                  } catch (err) {
+                    console.error("Submission Failure:", err);
+                    alert("System Alert: Failed to dispatch registration request. Please check your connection.");
+                  }
+                }} 
+                className="w-full space-y-5"
+              >
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Shop Name</Label>
-                  <Input type="text" placeholder="Enter your xerox shop name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Input name="shopName" required type="text" placeholder="Enter your xerox shop name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Owner Email</Label>
-                  <Input type="email" placeholder="owner@email.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Input name="email" required type="email" placeholder="owner@email.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Your Message</Label>
-                  <Textarea placeholder="Tell us more about your shop and location..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" />
+                  <Textarea name="message" placeholder="Tell us more about your shop and location..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" />
                 </div>
                 <button 
                   type="submit" 

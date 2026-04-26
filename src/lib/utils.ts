@@ -6,10 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateToken(): string {
-  // Cryptographically secure 8-char alphanumeric token (36^8 = 2.8 trillion combinations).
-  // Uses crypto.getRandomValues for true randomness — not Math.random() which is predictable.
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const array = new Uint8Array(8);
+  // Generates a 2-digit numeric token (00-99).
+  // Uses crypto for security.
+  const array = new Uint8Array(1);
   
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     crypto.getRandomValues(array);
@@ -19,7 +18,9 @@ export function generateToken(): string {
     randomFillSync(array);
   }
   
-  return Array.from(array).map((b) => chars[b % chars.length]).join("");
+  // Convert to 0-99 range and pad with leading zero
+  const tokenValue = array[0] % 100;
+  return tokenValue.toString().padStart(2, "0");
 }
 
 /**

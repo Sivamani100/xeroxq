@@ -13,8 +13,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+
 export default function NewsPage() {
-  const featuredArticle = {
+  const [newsItems, setNewsItems] = useState<any[]>([]);
+  const [featuredArticle, setFeaturedArticle] = useState<any>({
     tag: "Platform Launch",
     title: "The Zero-Trace Printing Protocol Goes Live in Andhra Pradesh.",
     desc: "After months of rigorous security testing, XeroxQ has officially deployed its decentralized routing mesh across all 26 districts of AP. Customers can now physicalize documents without exposing their digital footprint to shop owners.",
@@ -22,38 +26,55 @@ export default function NewsPage() {
     icon: ShieldCheck,
     color: "text-emerald-500",
     bg: "bg-emerald-50"
-  };
+  });
 
-  const newsItems = [
-    {
-      tag: "Funding",
-      title: "Securing $1.2M Pre-Seed to scale Decentralized Physicalization",
-      desc: "XeroxQ has successfully closed a pre-seed round led by prominent privacy-centric tech investors to expand our shop verification network pan-India.",
-      date: "March 28, 2026",
-      icon: TrendingUp
-    },
-    {
-      tag: "Product Update",
-      title: "Introducing Contrast AI Edge-Rendering",
-      desc: "Our latest network update automatically detects poor-quality mobile photographs of ID cards and drops the white-balance for crisp Grayscale laser printing.",
-      date: "March 15, 2026",
-      icon: Cpu
-    },
-    {
-      tag: "Milestone",
-      title: "500+ Verified Shop Nodes now in the Mesh",
-      desc: "We celebrate a massive milestone as over 500 commercial retail xerox shops have successfully passed our hardware and signal verification audits.",
-      date: "March 2, 2026",
-      icon: Megaphone
-    },
-    {
-      tag: "Op-Ed",
-      title: "Why WhatsApp Printing is a National Privacy Hazard",
-      desc: "Lead Developer Sivamani outlines the severe data security flaws of using messaging apps for printing, and why AES-256 ephemeral routing is the only path forward.",
-      date: "February 18, 2026",
-      icon: Newspaper
+  useEffect(() => {
+    async function fetchNews() {
+      const { data, error } = await supabase
+        .from("platform_news")
+        .select("*")
+        .order("published_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const formatted = data.map(item => ({
+          ...item,
+          tag: item.category || "Update",
+          desc: item.content,
+          date: new Date(item.published_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+          icon: item.category === 'Funding' ? TrendingUp : item.category === 'Milestone' ? Megaphone : Cpu
+        }));
+        setNewsItems(formatted);
+        // If there's a highly relevant one, we could set it as featured
+        // setFeaturedArticle(formatted[0]);
+      } else {
+        // Fallback to defaults
+        setNewsItems([
+          {
+            tag: "Funding",
+            title: "Securing $1.2M Pre-Seed to scale Decentralized Physicalization",
+            desc: "XeroxQ has successfully closed a pre-seed round led by prominent privacy-centric tech investors to expand our shop verification network pan-India.",
+            date: "March 28, 2026",
+            icon: TrendingUp
+          },
+          {
+            tag: "Product Update",
+            title: "Introducing Contrast AI Edge-Rendering",
+            desc: "Our latest network update automatically detects poor-quality mobile photographs of ID cards and drops the white-balance for crisp Grayscale laser printing.",
+            date: "March 15, 2026",
+            icon: Cpu
+          },
+          {
+            tag: "Milestone",
+            title: "500+ Verified Shop Nodes now in the Mesh",
+            desc: "We celebrate a massive milestone as over 500 commercial retail xerox shops have successfully passed our hardware and signal verification audits.",
+            date: "March 2, 2026",
+            icon: Megaphone
+          }
+        ]);
+      }
     }
-  ];
+    fetchNews();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">

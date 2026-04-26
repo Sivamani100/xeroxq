@@ -802,7 +802,25 @@ export default function XeroxQPrintDialog({
                                           opacity: isCropMode ? 0.4 : 1,
                                           filter: isCropMode ? 'none' : `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
                                         }}
-                                        onLoad={() => setNumPages(1)}
+                                                                                 onLoad={(e) => {
+                                           setNumPages(1);
+                                           const img = e.currentTarget;
+                                           const A4_PT_W = 595.27;
+                                           const A4_PT_H = 841.88;
+                                           const ratio = img.naturalWidth / img.naturalHeight;
+                                           
+                                           // Calculate max width/height that fits within A4 while maintaining ratio
+                                           let finalW = A4_PT_W * 0.9; // 90% width
+                                           let finalH = finalW / ratio;
+                                           
+                                           if (finalH > A4_PT_H * 0.9) {
+                                             finalH = A4_PT_H * 0.9;
+                                             finalW = finalH * ratio;
+                                           }
+                                           
+                                           setImgRect(prev => ({ ...prev, w: finalW, h: finalH }));
+                                         }}
+
                                       />
 
                                       {/* The "Visible" Crop Area Highlighting */}

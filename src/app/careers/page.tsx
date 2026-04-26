@@ -13,12 +13,28 @@ import {
   Briefcase
 } from "lucide-react";
 
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 export default function CareersPage() {
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [applying, setApplying] = useState(false);
+
   const jobs = [
-    { title: "Lead Protocol Engineer", location: "Remote / Global", type: "Full-Time", dept: "Engineering", time: "48H AGO" },
-    { title: "Security Auditor", location: "Lisbon, PT", type: "Full-Time", dept: "Security", time: "3D AGO" },
-    { title: "Global Mesh Growth Lead", location: "Remote / US", type: "Full-Time", dept: "Growth", time: "1W AGO" },
-    { title: "Full-Stack UI Architect", location: "Remote / Global", type: "Full-Time", dept: "Design", time: "1W AGO" }
+    { id: "protocol-engineer", title: "Lead Protocol Engineer", location: "Remote / Global", type: "Full-Time", dept: "Engineering", time: "48H AGO" },
+    { id: "security-auditor", title: "Security Auditor", location: "Lisbon, PT", type: "Full-Time", dept: "Security", time: "3D AGO" },
+    { id: "growth-lead", title: "Global Mesh Growth Lead", location: "Remote / US", type: "Full-Time", dept: "Growth", time: "1W AGO" },
+    { id: "ui-architect", title: "Full-Stack UI Architect", location: "Remote / Global", type: "Full-Time", dept: "Design", time: "1W AGO" }
   ];
 
   const perks = [
@@ -26,6 +42,32 @@ export default function CareersPage() {
     { title: "Hardware DNA", desc: "Help build the world's most secure document physicalization standards alongside industry leaders.", icon: ShieldCheck },
     { title: "Founder Model", desc: "Extreme ownership, high-fidelity output, and sub-second decision making are our core principles.", icon: Cpu }
   ];
+
+  const handleApply = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setApplying(true);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const { error } = await supabase.from("job_applications").insert({
+        job_id: selectedJob.id,
+        full_name: formData.get("name"),
+        email: formData.get("email"),
+        resume_url: formData.get("resume"),
+        portfolio_url: formData.get("portfolio"),
+        message: formData.get("message")
+      });
+
+      if (error) throw error;
+      alert("System Alert: Application successfully committed to the recruitment mesh.");
+      setSelectedJob(null);
+    } catch (err) {
+      console.error("Application Error:", err);
+      alert("System Alert: Connection failure. Application not dispatched.");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
@@ -127,6 +169,7 @@ export default function CareersPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.1 }}
+                       onClick={() => setSelectedJob(job)}
                        className="group bg-white p-6 md:p-8 rounded-[24px] border border-gray-200 hover:bg-black hover:border-black hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-8 h-auto md:h-32"
                     >
                        <div className="space-y-4">
@@ -182,12 +225,54 @@ export default function CareersPage() {
               </div>
 
               <div className="relative z-10 shrink-0">
-                 <button className="h-16 px-10 bg-white text-black hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:shadow-[#FB432C]/20 hover:-translate-y-1">
+                 <button onClick={() => setSelectedJob({ id: "general", title: "General Application" })} className="h-16 px-10 bg-white text-black hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:shadow-[#FB432C]/20 hover:-translate-y-1">
                     Send Application
                  </button>
               </div>
            </div>
         </section>
+
+        <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
+          <DialogContent className="sm:max-w-[500px] bg-white rounded-3xl p-8 border-none shadow-2xl">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Apply for {selectedJob?.title}</DialogTitle>
+              <DialogDescription className="text-[13px] font-medium text-gray-500 italic">
+                Dispatch your credentials to the recruitment mesh.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleApply} className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Full Name</Label>
+                <Input name="name" required placeholder="John Doe" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Email Address</Label>
+                <Input name="email" type="email" required placeholder="john@example.com" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Resume Link</Label>
+                  <Input name="resume" required placeholder="Drive/Dropbox URL" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Portfolio</Label>
+                  <Input name="portfolio" placeholder="Github/Behance" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Tell us your vision</Label>
+                <Textarea name="message" required placeholder="Why do you want to join XeroxQ?" className="min-h-[100px] bg-gray-50 border-gray-100 rounded-xl" />
+              </div>
+              <button 
+                type="submit" 
+                disabled={applying}
+                className="w-full h-14 bg-black hover:bg-[#FB432C] text-white font-black text-[12px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              >
+                {applying ? "Dispatching..." : "Submit Application"}
+              </button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </main>
 
       <SiteFooter />

@@ -22,7 +22,81 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+
 export default function PartnersPage() {
+  const [coreMembers, setCoreMembers] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function fetchLeaders() {
+      const { data, error } = await supabase
+        .from("partners")
+        .select("*")
+        .eq("status", "approved")
+        .order("created_at", { ascending: true });
+      
+      if (!error && data && data.length > 0) {
+        setCoreMembers(data.map(m => ({
+          ...m,
+          initials: m.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+          theme: m.type === 'leader' ? "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600" : "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600"
+        })));
+      } else {
+        // Fallback to defaults if no approved partners yet
+        setCoreMembers([
+          {
+            name: "Sivamanikanta Mallipurapu",
+            role: "Lead Developer",
+            location: "AP, India",
+            initials: "SM",
+            contributions: "Built Core Protocol",
+            stats: { commits: "400+", uptime: "99.9%" },
+            tags: ["Next.js", "Cryptography", "Supabase"],
+            theme: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600"
+          },
+          {
+            name: "Saini Koyya",
+            role: "Core Developer",
+            location: "AP, India",
+            initials: "SK",
+            contributions: "Network Scaling",
+            stats: { commits: "350+", speed: "O(1)" },
+            tags: ["React", "API Optimization", "Deployment"],
+            theme: "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600"
+          }
+        ]);
+      }
+    }
+    fetchLeaders();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const { error } = await supabase.from("partners").insert({
+        name: formData.get("name"),
+        email: formData.get("email"),
+        bio: formData.get("bio"),
+        profile_url: formData.get("link"),
+        type: formData.get("pathway")?.toString().includes("Developer") ? "leader" : "partner"
+      });
+
+      if (error) throw error;
+      alert("Mercury Protocol: Partnership application dispatched. Our command center will review your credentials within 48H.");
+      (e.target as HTMLFormElement).reset();
+    } catch (err) {
+      console.error("Partnership Error:", err);
+      alert("System Alert: Connection interrupted. Dispatch failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const volunteerRoles = [
     { 
       title: "Local Affiliates", 
@@ -56,31 +130,6 @@ export default function PartnersPage() {
       title: "Technical Mentorship",
       desc: "Work directly with senior engineers. Learn Next.js, Supabase, and cryptography by contributing to our production codebase.",
       icon: <GraduationCap className="w-5 h-5 text-[#FB432C]" />
-    }
-  ];
-
-  const coreMembers = [
-    {
-      name: "Sivamanikanta Mallipurapu",
-      role: "Lead Developer",
-      location: "AP, India",
-      initials: "SM",
-      contributions: "Built Core Protocol",
-      stats: { commits: "400+", uptime: "99.9%" },
-      tags: ["Next.js", "Cryptography", "Supabase"],
-      social: "github",
-      theme: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600"
-    },
-    {
-      name: "Saini Koyya",
-      role: "Core Developer",
-      location: "AP, India",
-      initials: "SK",
-      contributions: "Network Scaling",
-      stats: { commits: "350+", speed: "O(1)" },
-      tags: ["React", "API Optimization", "Deployment"],
-      social: "github",
-      theme: "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600"
     }
   ];
 
@@ -192,34 +241,34 @@ export default function PartnersPage() {
              </div>
 
              <div className="bg-white p-8 md:p-12 rounded-[32px] border border-gray-200 shadow-2xl shadow-black/[0.04]">
-                <form action="#" className="w-full space-y-6">
+                <form onSubmit={handleSubmit} className="w-full space-y-6">
                   {/* Two Column Grid Everywhere */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Full Name *</Label>
-                      <Input type="text" placeholder="Your name" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Input name="name" type="text" placeholder="Your name" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">WhatsApp No. *</Label>
-                      <Input type="tel" placeholder="+91" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Input name="whatsapp" type="tel" placeholder="+91" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Email Address *</Label>
-                      <Input type="email" placeholder="you@domain.com" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Input name="email" type="email" placeholder="you@domain.com" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Current City / District</Label>
-                      <Input type="text" placeholder="e.g. Vijayawada" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
+                      <Input name="location" type="text" placeholder="e.g. Vijayawada" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Desired Pathway *</Label>
-                      <select className="h-14 bg-white border border-gray-200 focus:border-black transition-all rounded-xl px-4 text-sm outline-none cursor-pointer" required>
+                      <select name="pathway" className="h-14 bg-white border border-gray-200 focus:border-black transition-all rounded-xl px-4 text-sm outline-none cursor-pointer" required>
                         <option value="">Select a path...</option>
                         <option>Local Affiliate (Field Sales)</option>
                         <option>Core Developer / Technical</option>
@@ -229,20 +278,21 @@ export default function PartnersPage() {
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Portfolio / Link</Label>
-                      <Input type="url" placeholder="Github or LinkedIn URL" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
+                      <Input name="link" type="url" placeholder="Github or LinkedIn URL" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
                     <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Why should we select you? *</Label>
-                    <Textarea placeholder="Outline your experience and how you plan to contribute..." className="min-h-[140px] bg-white border-gray-200 focus:border-black transition-all rounded-xl p-5" required />
+                    <Textarea name="bio" placeholder="Outline your experience and how you plan to contribute..." className="min-h-[140px] bg-white border-gray-200 focus:border-black transition-all rounded-xl p-5" required />
                   </div>
                   
                   <button 
                     type="submit" 
+                    disabled={submitting}
                     className="w-full h-16 bg-black hover:bg-[#FB432C] text-white font-bold text-[13px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl shadow-black/10 mt-6"
                   >
-                    Submit Official Application
+                    {submitting ? "Dispatching Application..." : "Submit Official Application"}
                   </button>
                 </form>
              </div>
@@ -283,7 +333,7 @@ export default function PartnersPage() {
                              <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mt-1 block">{member.role}</span>
                              <div className="flex items-center justify-center gap-1.5 mt-2 text-gray-400">
                                 <MapPinIcon className="w-3.5 h-3.5" />
-                                <span className="text-[11px] font-medium">{member.location}</span>
+                                <span className="text-[11px] font-medium">{member.location || "Andhra Pradesh"}</span>
                              </div>
                           </div>
 
@@ -293,29 +343,37 @@ export default function PartnersPage() {
                                 <Medal className="w-4 h-4 text-gray-400" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">Core Impact</span>
                              </div>
-                             <p className="text-sm font-bold text-black mb-4">"{member.contributions}"</p>
+                             <p className="text-sm font-bold text-black mb-4">"{member.contributions || member.bio?.substring(0, 50) || "Driving Network Growth"}"</p>
                              
                              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                                {Object.entries(member.stats).map(([k, v]) => (
+                                {member.stats ? Object.entries(member.stats).map(([k, v]: any) => (
                                    <div key={k}>
                                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{k}</span>
                                       <span className="text-lg font-black text-black">{v}</span>
                                    </div>
-                                ))}
+                                )) : (
+                                  <>
+                                    <div>
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Uptime</span>
+                                      <span className="text-lg font-black text-black">99.9%</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Status</span>
+                                      <span className="text-lg font-black text-emerald-600">Active</span>
+                                    </div>
+                                  </>
+                                )}
                              </div>
                           </div>
 
                           {/* Skill Tags */}
                           <div className="flex flex-wrap gap-2 justify-center">
-                             {member.tags.map(tag => (
+                             {(member.tags || ["Core Partner", "AP Operations"]).map((tag: any) => (
                                 <span key={tag} className="px-3 py-1 bg-black/5 text-black rounded-full text-[10px] font-black uppercase tracking-wider">
                                    {tag}
                                 </span>
                              ))}
                           </div>
-                          
-                          {/* Hover action bar */}
-                          <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-r from-transparent via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                        </div>
                     </motion.div>
                  ))}
@@ -326,6 +384,7 @@ export default function PartnersPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: 0.4 }}
+                    onClick={() => window.scrollTo({ top: document.getElementById('partnership-form')?.offsetTop || 1200, behavior: 'smooth' })}
                     className="relative bg-gray-50/50 rounded-[32px] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-12 text-center group hover:bg-white hover:border-black hover:shadow-xl transition-all duration-500 cursor-pointer min-h-[400px]"
                  >
                     <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center text-4xl text-gray-400 font-light mb-8 group-hover:bg-[#FB432C] group-hover:text-white group-hover:border-[#FB432C] transition-all duration-500 shadow-sm">
@@ -339,7 +398,6 @@ export default function PartnersPage() {
               </div>
            </div>
         </section>
-
       </main>
       <SiteFooter />
     </div>

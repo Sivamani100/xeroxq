@@ -5,8 +5,51 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ShieldCheck, Lock, Cpu, BugPlay, Server, QrCode, ScanEye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function SecurityPage() {
+  const [isReporting, setIsReporting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitReport = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const { error } = await supabase.from("security_reports").insert({
+        reporter_name: formData.get("name"),
+        reporter_email: formData.get("email"),
+        vulnerability_type: formData.get("type"),
+        severity: formData.get("severity"),
+        description: formData.get("description"),
+        status: "pending"
+      });
+
+      if (error) throw error;
+      alert("System Alert: Vulnerability report successfully committed to the security audit mesh. Our team will review this within 24H.");
+      setIsReporting(false);
+    } catch (err: any) {
+      console.error("Security Report Error:", err);
+      // Detailed error if available from Supabase
+      const msg = err.message || "Connection failure. Report not dispatched.";
+      alert(`System Alert: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const securityLayers = [
     {
       title: "AES-GCM Encryption",
@@ -127,7 +170,7 @@ export default function SecurityPage() {
                  </p>
                  
                  <div className="inline-flex flex-col sm:flex-row items-center gap-4">
-                    <button className="h-14 px-8 bg-black text-white hover:bg-[#FB432C] font-bold text-[12px] uppercase tracking-widest rounded-xl shadow-xl shadow-black/10 transition-all">
+                    <button onClick={() => setIsReporting(true)} className="h-14 px-8 bg-black text-white hover:bg-[#FB432C] font-bold text-[12px] uppercase tracking-widest rounded-xl shadow-xl shadow-black/10 transition-all">
                        Submit Report (PGP Key)
                     </button>
                     <a href="#" className="h-14 px-8 bg-white border border-gray-200 text-black hover:border-black font-bold text-[12px] uppercase tracking-widest rounded-xl shadow-sm flex items-center transition-all">
@@ -137,6 +180,60 @@ export default function SecurityPage() {
               </motion.div>
            </div>
         </section>
+
+        <Dialog open={isReporting} onOpenChange={setIsReporting}>
+          <DialogContent className="sm:max-w-[500px] bg-white rounded-3xl p-8 border-none shadow-2xl">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Security Disclosure</DialogTitle>
+              <DialogDescription className="text-[13px] font-medium text-gray-500 italic">
+                Report a vulnerability to the XeroxQ security mesh.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmitReport} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Researcher Name</Label>
+                  <Input name="name" required placeholder="Ghost01" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Secure Email</Label>
+                  <Input name="email" type="email" required placeholder="alias@proton.me" className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Vulnerability Type</Label>
+                  <select name="type" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm outline-none" required>
+                    <option value="web">Web Interface</option>
+                    <option value="protocol">Protocol/Auth</option>
+                    <option value="api">API / Backend</option>
+                    <option value="node">Physical Node</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Severity</Label>
+                  <select name="severity" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm outline-none font-bold text-red-600" required>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">CRITICAL</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Description / PoC</Label>
+                <Textarea name="description" required placeholder="Outline the exploit steps and potential impact..." className="min-h-[120px] bg-gray-50 border-gray-100 rounded-xl" />
+              </div>
+              <button 
+                type="submit" 
+                disabled={submitting}
+                className="w-full h-14 bg-black hover:bg-[#FB432C] text-white font-black text-[12px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              >
+                {submitting ? "Dispatching Report..." : "Submit Secure Disclosure"}
+              </button>
+            </form>
+          </DialogContent>
+        </Dialog>
 
       </main>
 

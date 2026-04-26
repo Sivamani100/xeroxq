@@ -163,7 +163,7 @@ export default function Login() {
                   <input type="checkbox" className="w-[12.27px] h-[12.27px] rounded-[1.39px] border-auth-slate-20 bg-input-bg accent-primary-blue cursor-pointer" required />
                 </div>
                 <p className="text-[12.27px] font-medium text-auth-slate-50 leading-[1.8]">
-                  By signing up, you are creating a XeroxQ account, and you agree to XeroxQ’s <span className="text-primary-blue font-[500]">Terms of Use</span> and <span className="text-primary-blue font-[500]">Privacy Policy.</span>
+                  By signing up, you are creating a XeroxQ account, and you agree to XeroxQ’s <button type="button" onClick={() => router.push("/terms")} className="text-primary-blue font-[500] hover:underline">Terms of Use</button> and <button type="button" onClick={() => router.push("/privacy")} className="text-primary-blue font-[500] hover:underline">Privacy Policy.</button>
                 </p>
               </div>
               <div className="flex items-center gap-[7.01px]">

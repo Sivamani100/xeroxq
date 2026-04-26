@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MailIcon, PhoneIcon, MapPinIcon, X, LifeBuoy } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 // Copied exactly from the landing page's custom premium accordion for style consistency
 const FAQItem = ({ question, answer }: { question?: string, answer?: string }) => {
@@ -131,18 +132,33 @@ export default function SupportPage() {
                 }
               ]}
             >
-              <form action="#" className="w-full space-y-5">
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                try {
+                  const { error } = await supabase.from("contact_submissions").insert({
+                    shop_name: formData.get("name"),
+                    email: formData.get("email"),
+                    message: formData.get("message")
+                  });
+                  if (error) throw error;
+                  alert("Support Request Dispatched. Our regional team will contact you securely.");
+                  (e.target as HTMLFormElement).reset();
+                } catch (err) {
+                  alert("Dispatch failed. System connection error.");
+                }
+              }} className="w-full space-y-5">
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Full Name</Label>
-                  <Input type="text" placeholder="Your name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Input name="name" type="text" placeholder="Your name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" required />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Contact Email</Label>
-                  <Input type="email" placeholder="email@example.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Input name="email" type="email" placeholder="email@example.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" required />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">How can we help?</Label>
-                  <Textarea placeholder="Please describe your issue in detail..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" />
+                  <Textarea name="message" placeholder="Please describe your issue in detail..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" required />
                 </div>
                 <button 
                   type="submit" 

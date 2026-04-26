@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 export function SiteFooter() {
   const router = useRouter();
@@ -110,16 +111,33 @@ export function SiteFooter() {
            </div>
            
            <div className="w-full max-w-md space-y-6">
-              <div className="flex flex-col sm:flex-row p-1.5 bg-zinc-950 border border-zinc-800 rounded-[2rem] sm:rounded-full focus-within:border-white/20 focus-within:ring-4 focus-within:ring-white/[0.02] transition-all gap-2 sm:gap-0">
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
+                  try {
+                    const { error } = await supabase.from("newsletter_subs").insert({ email });
+                    if (error) throw error;
+                    alert("Mercury Protocol: Registration successful! Welcome to the network.");
+                    (e.target as HTMLFormElement).reset();
+                  } catch (err) {
+                    console.error("Newsletter Failure:", err);
+                    alert("System Alert: Registration failed. You might already be in our network!");
+                  }
+                }}
+                className="flex flex-col sm:flex-row p-1.5 bg-zinc-950 border border-zinc-800 rounded-[2rem] sm:rounded-full focus-within:border-white/20 focus-within:ring-4 focus-within:ring-white/[0.02] transition-all gap-2 sm:gap-0"
+              >
                  <input 
+                   name="email"
                    type="email" 
+                   required
                    placeholder="Enter your email" 
                    className="flex-1 bg-transparent border-none outline-none px-6 py-4 sm:py-0 text-sm font-medium text-white tracking-tight placeholder:text-zinc-700"
                  />
-                  <button className="h-12 sm:h-10 px-8 bg-[#FB432C] text-white rounded-full font-bold text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap">
+                  <button type="submit" className="h-12 sm:h-10 px-8 bg-[#FB432C] text-white rounded-full font-bold text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap">
                      Register Shop
                   </button>
-              </div>
+              </form>
               <p className="text-sm font-normal text-zinc-400 tracking-tight text-center lg:text-left px-6">
                  Join 1,200+ shop owners. No joining fees. Grow your business safely.
               </p>

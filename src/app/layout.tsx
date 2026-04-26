@@ -128,6 +128,7 @@ import {
   LocalBusinessJsonLd,
   FAQPageJsonLd,
 } from "@/components/seo/json-ld";
+import { MaintenanceGuard } from "@/components/layout/maintenance-guard";
 
 export default function RootLayout({
   children,
@@ -166,7 +167,9 @@ export default function RootLayout({
           `}
         </Script>
 
-        {children}
+        <MaintenanceGuard>
+          {children}
+        </MaintenanceGuard>
         <Analytics />
         <SpeedInsights />
         <CookieConsent />

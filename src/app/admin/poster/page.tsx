@@ -15,7 +15,7 @@ function PosterContent() {
   const upi = searchParams.get("upi") || "";
 
   const shopPhone = extractPhoneFromUpi(upi);
-  const qrUrl = slug ? generateWhatsAppLink(slug, shopPhone) : (typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "");
+  const qrUrl = slug ? (typeof window !== "undefined" ? `${window.location.origin}/${slug}` : `https://xeroxq.arkio.in/${slug}`) : "";
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(qrUrl)}&color=0-0-0&bgcolor=255-255-255&margin=0`;
 
   return (

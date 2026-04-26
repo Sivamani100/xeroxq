@@ -19,7 +19,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-const posts = [
+import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
+
+const mockPosts = [
   {
     title: "The Zero-Knowledge Print Protocol: A Deep Dive",
     excerpt: "Exploring how XeroxQ encrypts and purges documents locally using AES-256-GCM to ensure 100% data autonomy across the decentralized mesh.",
@@ -84,9 +87,40 @@ const posts = [
 
 export default function Blog() {
   const [activeTag, setActiveTag] = useState("All");
+  const [posts, setPosts] = useState<any[]>(mockPosts);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchBlogs() {
+      try {
+        const { data, error } = await supabase
+          .from("blogs")
+          .select("*")
+          .eq("is_published", true)
+          .order("published_at", { ascending: false });
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setPosts(data.map(p => ({
+            ...p,
+            excerpt: p.content.substring(0, 160) + "...",
+            date: new Date(p.published_at).toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" }),
+            readTime: "5 min", // Default for now
+            tag: p.tags?.[0] || "Uncategorized",
+            icon: Cpu // Default icon
+          })));
+        }
+      } catch (err) {
+        console.error("Blog Fetch Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBlogs();
+  }, []);
 
   const filteredPosts = activeTag === "All" ? posts : posts.filter(p => p.tag === activeTag);
-  const featuredPost = posts[0];
+  const featuredPost = posts[0] || mockPosts[0];
   const gridPosts = filteredPosts.filter(p => p.slug !== featuredPost.slug);
 
   return (
