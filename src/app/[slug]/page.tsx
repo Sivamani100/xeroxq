@@ -757,11 +757,11 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     Since you are ordering from home, your job has been prioritized and marked as <b>ONLINE PAID</b>. No need to visit the shop until it's ready.
                   </p>
                   <a 
-                    href={`tel:${shop?.contact_number || shop?.contact_phone || ''}`}
+                    href={`tel:${shop?.contact_number || ''}`}
                     className="flex items-center justify-center gap-3 w-full h-12 bg-white border-2 border-black/5 rounded-[12px] text-[13px] font-black uppercase hover:bg-black hover:text-white hover:border-black transition-all shadow-sm"
                   >
                     <Smartphone className="w-4 h-4" />
-                    Call Shop: {shop?.contact_number || shop?.contact_phone || '9849497911'}
+                    Call Shop: {shop?.contact_number || '9849497911'}
                   </a>
                </div>
              )}
