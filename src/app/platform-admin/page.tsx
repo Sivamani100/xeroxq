@@ -39,7 +39,10 @@ import {
   ExternalLink,
   ToggleLeft,
   ToggleRight,
-  Printer
+  Printer,
+  Star,
+  Plus,
+  Trash2
 } from "lucide-react";
 
 import {
@@ -84,7 +87,7 @@ interface PlatformStats {
 
 type SortKey = "name" | "totalJobs" | "platformFee" | "created_at";
 type SortDir = "asc" | "desc";
-type TabType = "overview" | "shops" | "billing" | "leads" | "content" | "hr" | "security" | "partners" | "settings";
+type TabType = "overview" | "shops" | "billing" | "leads" | "content" | "hr" | "security" | "partners" | "settings" | "feedback";
 
 const PLATFORM_FEE_PER_FILE = CONFIG.BILLING.PLATFORM_FEE_PER_FILE;
 
@@ -110,6 +113,14 @@ export default function PlatformAdminDashboard() {
   const [news, setNews]               = useState<any[]>([]);
   const [security, setSecurity]       = useState<any[]>([]);
   const [settings, setSettings]       = useState<any[]>([]);
+  
+  // Feedback management state
+  const [defaultQuestions, setDefaultQuestions] = useState<any[]>([]);
+  const [feedbackGlobalEnabled, setFeedbackGlobalEnabled] = useState(true);
+  const [newDefaultQuestion, setNewDefaultQuestion] = useState("");
+  const [newDefaultOptions, setNewDefaultOptions] = useState("😠,😐,🙂,😍");
+  const [allFeedbackResponses, setAllFeedbackResponses] = useState<any[]>([]);
+  const [selectedFeedbackShop, setSelectedFeedbackShop] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey]         = useState<SortKey>("totalJobs");
@@ -306,6 +317,113 @@ export default function PlatformAdminDashboard() {
     await supabase.auth.signOut();
     router.replace("/login");
   };
+
+  // ── Feedback Management Functions ───────────────────────────────────────────
+  
+  const fetchDefaultQuestions = async () => {
+    const { data, error } = await supabase
+      .from('feedback_questions_default')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order');
+    
+    if (!error && data) {
+      setDefaultQuestions(data);
+    }
+  };
+
+  const fetchFeedbackGlobalSetting = async () => {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'global_feedback_enabled')
+      .single();
+    
+    if (!error && data) {
+      setFeedbackGlobalEnabled(data.value?.enabled !== false);
+    }
+  };
+
+  const fetchAllFeedbackResponses = async () => {
+    const { data, error } = await supabase
+      .from('feedback_responses')
+      .select('*, shops(name)')
+      .order('submitted_at', { ascending: false })
+      .limit(100);
+    
+    if (!error && data) {
+      setAllFeedbackResponses(data);
+    }
+  };
+
+  const handleToggleGlobalFeedback = async () => {
+    const newValue = !feedbackGlobalEnabled;
+    
+    const { error } = await supabase
+      .from('platform_settings')
+      .upsert({
+        key: 'global_feedback_enabled',
+        value: { enabled: newValue },
+        description: 'Global toggle for feedback system across all shops',
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error toggling global feedback:', error);
+      alert('Failed to update setting');
+    } else {
+      setFeedbackGlobalEnabled(newValue);
+    }
+  };
+
+  const handleAddDefaultQuestion = async () => {
+    if (!newDefaultQuestion.trim()) return;
+    
+    const options = newDefaultOptions.split(',').map(o => o.trim()).filter(Boolean);
+    
+    const { error } = await supabase
+      .from('feedback_questions_default')
+      .insert({
+        question_text: newDefaultQuestion.trim(),
+        question_type: 'emoji',
+        options: JSON.stringify(options),
+        is_active: true,
+        display_order: defaultQuestions.length,
+        category: 'general'
+      });
+    
+    if (error) {
+      console.error('Error adding question:', error);
+      alert('Failed to add question');
+    } else {
+      setNewDefaultQuestion("");
+      await fetchDefaultQuestions();
+    }
+  };
+
+  const handleDeleteDefaultQuestion = async (id: string) => {
+    if (!confirm('Delete this default question?')) return;
+    
+    const { error } = await supabase
+      .from('feedback_questions_default')
+      .update({ is_active: false })
+      .eq('id', id);
+    
+    if (error) {
+      alert('Failed to delete question');
+    } else {
+      await fetchDefaultQuestions();
+    }
+  };
+
+  // Load feedback data when tab is active
+  useEffect(() => {
+    if (activeTab === 'feedback' && isAuthorized) {
+      fetchDefaultQuestions();
+      fetchFeedbackGlobalSetting();
+      fetchAllFeedbackResponses();
+    }
+  }, [activeTab, isAuthorized]);
 
   // ── Sorting & filtering ─────────────────────────────────────────────────────
   const toggleSort = (key: SortKey) => {
@@ -559,6 +677,7 @@ export default function PlatformAdminDashboard() {
             { id: "content", label: "Content", icon: FileEdit },
             { id: "security", label: "Security", icon: ShieldAlert },
             { id: "billing", label: "Billing", icon: IndianRupee },
+            { id: "feedback", label: "Feedback", icon: Star },
             { id: "settings", label: "Settings", icon: Settings },
           ] as const).map((tab) => (
             <button
@@ -917,6 +1036,158 @@ export default function PlatformAdminDashboard() {
                  </div>
               </div>
            </div>
+        )}
+
+        {/* ── FEEDBACK TAB ───────────────────────────────────────────────────── */}
+        {activeTab === "feedback" && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Global Feedback Toggle */}
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#E2E8F0]">
+                <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2">
+                  <Star className="w-5 h-5" /> Global Feedback Control
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[14px] font-black text-black">Feedback System</p>
+                    <p className="text-[12px] text-gray-500">Enable/disable feedback collection across all shops</p>
+                  </div>
+                  <button
+                    onClick={handleToggleGlobalFeedback}
+                    className={cn(
+                      "w-14 h-7 rounded-full relative transition-all duration-300",
+                      feedbackGlobalEnabled ? "bg-green-500" : "bg-gray-300"
+                    )}
+                  >
+                    <div className={cn(
+                      "absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-md",
+                      feedbackGlobalEnabled ? "right-1" : "left-1"
+                    )} />
+                  </button>
+                </div>
+                <p className={cn(
+                  "mt-4 text-[12px] font-bold uppercase tracking-wider",
+                  feedbackGlobalEnabled ? "text-green-600" : "text-red-500"
+                )}>
+                  {feedbackGlobalEnabled ? "✓ Feedback System Active" : "✗ Feedback System Disabled Globally"}
+                </p>
+              </div>
+            </div>
+
+            {/* Default Questions Management */}
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#E2E8F0]">
+                <h3 className="text-[16px] font-black uppercase tracking-tighter">Default Feedback Questions</h3>
+                <p className="text-[12px] text-gray-500 mt-1">These questions appear for all customers across all shops</p>
+              </div>
+              
+              {/* Add New Question */}
+              <div className="p-6 bg-gray-50 border-b border-[#E2E8F0]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <input
+                    type="text"
+                    value={newDefaultQuestion}
+                    onChange={(e) => setNewDefaultQuestion(e.target.value)}
+                    placeholder="Enter question text..."
+                    className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10"
+                  />
+                  <input
+                    type="text"
+                    value={newDefaultOptions}
+                    onChange={(e) => setNewDefaultOptions(e.target.value)}
+                    placeholder="Options: 😠,😐,🙂,😍"
+                    className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10"
+                  />
+                </div>
+                <button
+                  onClick={handleAddDefaultQuestion}
+                  disabled={!newDefaultQuestion.trim()}
+                  className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add Default Question
+                </button>
+              </div>
+
+              {/* Existing Questions */}
+              <div className="p-6">
+                {defaultQuestions.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No default questions configured</p>
+                ) : (
+                  <div className="space-y-3">
+                    {defaultQuestions.map((q, idx) => (
+                      <div key={q.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-bold text-black">{idx + 1}. {q.question_text}</p>
+                          <p className="text-[12px] text-gray-500">
+                            {(Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]')).join(', ')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteDefaultQuestion(q.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* All Feedback Responses */}
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#E2E8F0]">
+                <h3 className="text-[16px] font-black uppercase tracking-tighter">Recent Feedback Responses</h3>
+                <p className="text-[12px] text-gray-500 mt-1">Latest {allFeedbackResponses.length} responses from all shops</p>
+              </div>
+              <div className="p-6">
+                {allFeedbackResponses.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No feedback responses yet</p>
+                ) : (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                    {allFeedbackResponses.map((response) => (
+                      <div key={response.id} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-black">{response.shops?.name || 'Unknown Shop'}</span>
+                          <span className="text-[12px] text-gray-500">
+                            {new Date(response.submitted_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-[13px] text-gray-700">{response.customer_name || 'Anonymous'}</p>
+                        {response.overall_rating && (
+                          <div className="flex items-center gap-1 mt-2">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={i < response.overall_rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                            ))}
+                          </div>
+                        )}
+                        {/* Individual Question Responses */}
+                        {(response.default_responses || response.custom_responses) && (
+                          <div className="mt-3 space-y-1">
+                            {Object.entries({...(response.default_responses || {}), ...(response.custom_responses || {})})
+                              .filter(([key]) => key !== 'overall_rating')
+                              .map(([key, value]) => (
+                                <div key={key} className="flex items-center gap-2 text-[12px]">
+                                  <span className="text-gray-500">{key}:</span>
+                                  <span className="font-medium text-black">{String(value)}</span>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        )}
+                        {response.written_feedback && (
+                          <p className="mt-2 text-[13px] italic text-gray-600">"{response.written_feedback}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── SETTINGS TAB ───────────────────────────────────────────────────── */}

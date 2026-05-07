@@ -65,12 +65,16 @@ import {
 } from "@/components/ui/dialog";
 import { ImageCropper } from "@/components/editing/image-cropper";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LocationAutocomplete } from "@/components/ui/location-autocomplete";
 
 interface Shop {
   id: string;
   name: string;
   slug: string;
   upi_id?: string;
+  shop_location?: string;
+  shop_lat?: number;
+  shop_lng?: number;
   price_mono?: number;
   price_color?: number;
   is_open?: boolean;
@@ -80,6 +84,9 @@ interface Shop {
   generate_token?: boolean;
   accept_preorders?: boolean;
   contact_number?: string;
+  feedback_enabled?: boolean;
+  custom_feedback_enabled?: boolean;
+  custom_feedback_title?: string;
 }
 
 interface Job {
@@ -100,6 +107,8 @@ interface Job {
   customer_phone?: string;
   created_at: string;
   expires_at: string;
+  is_deleted_by_user?: boolean;
+  deleted_at?: string;
 }
 
 interface Notification {
@@ -118,7 +127,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showQR, setShowQR] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
-  const [newShopData, setNewShopData] = useState({ name: "", slug: "", upi_id: "" });
+  const [newShopData, setNewShopData] = useState({ name: "", slug: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
   const [printingJobId, setPrintingJobId] = useState<string | null>(null);
   const [showingSettings, setShowingSettings] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
@@ -148,6 +157,25 @@ export default function AdminDashboard() {
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  // Audio element for notification sound (more reliable than Web Audio API)
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  
+  // Feedback management state
+  const [showFeedbackManager, setShowFeedbackManager] = useState(false);
+  const [showFeedbackResponses, setShowFeedbackResponses] = useState(false);
+  const [customFeedbackQuestions, setCustomFeedbackQuestions] = useState<any[]>([]);
+  const [feedbackResponses, setFeedbackResponses] = useState<any[]>([]);
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const [newQuestionOptions, setNewQuestionOptions] = useState("😠,😐,🙂,😍");
+  const [addingQuestion, setAddingQuestion] = useState(false);
+  const [feedbackAnalytics, setFeedbackAnalytics] = useState<any>(null);
+
+  // Location picker state
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
@@ -207,7 +235,8 @@ export default function AdminDashboard() {
 
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 10000);
+    // Update current time every second for accurate NEW tag timing
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return;
@@ -367,6 +396,107 @@ export default function AdminDashboard() {
     active: jobs.filter(j => j.status !== "printed").length
   };
 
+  // Get current location using browser geolocation API
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsGettingLocation(true);
+    setLocationError(null);
+    
+    console.log("[getCurrentLocation] Requesting location permission...");
+
+    // First check permission status
+    if ("permissions" in navigator) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        console.log("[getCurrentLocation] Permission state:", result.state);
+        if (result.state === 'denied') {
+          setLocationError("Location access previously denied. Please enable location permissions in your browser settings and refresh.");
+          setIsGettingLocation(false);
+          // Still show fallback map
+          const fallbackLat = 28.6139;
+          const fallbackLng = 77.2090;
+          setTempLocation({ lat: fallbackLat, lng: fallbackLng });
+          setShop(prev => prev ? { ...prev, shop_lat: fallbackLat, shop_lng: fallbackLng } : null);
+          return;
+        }
+        
+        // If not denied, proceed with location request
+        requestLocation();
+      }).catch((error) => {
+        console.error("[getCurrentLocation] Permission query error:", error);
+        // If permission API fails, still try to get location
+        requestLocation();
+      });
+    } else {
+      // Fallback for browsers without permissions API
+      requestLocation();
+    }
+
+    function requestLocation() {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log("[getCurrentLocation] Location received:", position.coords);
+          const { latitude, longitude } = position.coords;
+          setTempLocation({ lat: latitude, lng: longitude });
+          // Update shop state with coordinates
+          setShop(prev => prev ? { ...prev, shop_lat: latitude, shop_lng: longitude } : null);
+          setIsGettingLocation(false);
+          
+          // Auto-save the coordinates to database
+          if (shop?.id) {
+            supabase
+              .from("shops")
+              .update({ shop_lat: latitude, shop_lng: longitude })
+              .eq("id", shop.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error("[getCurrentLocation] Failed to save coordinates:", error);
+                } else {
+                  console.log("[getCurrentLocation] Coordinates saved successfully");
+                }
+              });
+          }
+        },
+        (error) => {
+          console.error("[getCurrentLocation] Error:", {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.PERMISSION_DENIED,
+            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+            TIMEOUT: error.TIMEOUT
+          });
+          
+          let errorMsg = "Unable to retrieve your location";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg = "Location access denied. Please enable location permissions in your browser and refresh the page.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg = "Location information unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMsg = "Location request timed out.";
+              break;
+            default:
+              errorMsg = `Location error: ${error.message || 'Unknown error'}`;
+          }
+          setLocationError(errorMsg);
+          setIsGettingLocation(false);
+          
+          // Set a fallback location (e.g., Delhi, India) so user can still see a map
+          const fallbackLat = 28.6139;
+          const fallbackLng = 77.2090;
+          setTempLocation({ lat: fallbackLat, lng: fallbackLng });
+          setShop(prev => prev ? { ...prev, shop_lat: fallbackLat, shop_lng: fallbackLng } : null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  };
+
   useEffect(() => {
     async function checkUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -375,15 +505,50 @@ export default function AdminDashboard() {
         return;
       }
 
-      const { data: shopData } = await supabase
+      // Try explicit column select first (preferred for type safety)
+      let { data: shopData, error: shopError } = await supabase
         .from("shops")
-        .select("*")
+        .select("id, name, slug, upi_id, shop_location, shop_lat, shop_lng, price_mono, price_color, is_open, require_customer_name, show_copies, show_color_mode, generate_token, accept_preorders, contact_number, feedback_enabled, custom_feedback_enabled, custom_feedback_title")
         .eq("owner_id", user.id)
         .single();
 
+      // PGRST116 = no rows returned (no shop exists yet) - this is OK, show creation form
+      // 42703 = column doesn't exist (migration not applied) - fall back to * select
+      if (shopError && shopError.code === "42703") {
+        console.warn("[checkUser] New location columns not found, falling back to * select");
+        const fallback = await supabase
+          .from("shops")
+          .select("*")
+          .eq("owner_id", user.id)
+          .single();
+        shopData = fallback.data;
+        shopError = fallback.error;
+      }
+
+      // Log errors except "no rows" which just means user needs to create shop
+      if (shopError && shopError.code !== "PGRST116") {
+        console.error("[checkUser] Error fetching shop:", shopError.message, shopError.code);
+      }
+
+      // If user has a shop, go to dashboard
       if (shopData) {
+        console.log("[checkUser] Found existing shop:", shopData.id);
         setShop(shopData);
         fetchJobs(shopData.id);
+        
+        // Ensure map shows immediately by setting default coordinates if missing
+        if (!shopData.shop_lat || !shopData.shop_lng) {
+          console.log("[checkUser] Shop missing coordinates, setting default and requesting location...");
+          // Set default coordinates immediately so map shows
+          const defaultLat = 28.6139; // Delhi
+          const defaultLng = 77.2090;
+          setShop(prev => prev ? { ...prev, shop_lat: defaultLat, shop_lng: defaultLng } : null);
+          
+          // Then request actual location
+          setTimeout(() => {
+            getCurrentLocation();
+          }, 1000); // Small delay to let page load first
+        }
 
         const channelName = `jobs-${shopData.id}-${Date.now()}`;
         const subscription = supabase
@@ -394,8 +559,10 @@ export default function AdminDashboard() {
             (payload) => {
               if (payload.eventType === 'INSERT') {
                 const newJob = payload.new as Job;
+                // Always play notification sound for new jobs, regardless of tab focus
+                playNotificationPing();
+                // Desktop notification still requires permission
                 if (localStorage.getItem("xeroxq_admin_sound") === "true") {
-                  playNotificationPing();
                   sendDesktopNotification(newJob);
                 }
 
@@ -416,7 +583,15 @@ export default function AdminDashboard() {
           )
           .subscribe();
 
-        return () => { supabase.removeChannel(subscription); };
+        // Auto-refresh: Polling every 3 seconds as backup to real-time subscription
+        const autoRefreshInterval = setInterval(() => {
+          fetchJobs(shopData.id);
+        }, 3000);
+
+        return () => { 
+          supabase.removeChannel(subscription); 
+          clearInterval(autoRefreshInterval);
+        };
       } else {
         setLoading(false);
       }
@@ -425,46 +600,112 @@ export default function AdminDashboard() {
     checkUser();
   }, [router]);
 
+  // Initialize audio element on first user interaction
+  const initAudio = () => {
+    if (audioInitialized) return;
+    
+    // Create a simple beep using data URI (reliable across all browsers)
+    // This is a simple 880Hz + 1046Hz dual-tone beep for 0.5 seconds
+    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const sampleRate = audioContext.sampleRate;
+    const duration = 0.5;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.createBuffer(1, frameCount, sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Generate dual-tone sine wave
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      // Mix two tones: 880Hz (A5) and 1046.50Hz (C6)
+      data[i] = (Math.sin(2 * Math.PI * 880 * t) * 0.5 + Math.sin(2 * Math.PI * 1046.50 * t) * 0.5) * 0.3;
+      // Fade in/out
+      if (t < 0.05) data[i] *= t / 0.05;
+      if (t > 0.4) data[i] *= (0.5 - t) / 0.1;
+    }
+    
+    audioContextRef.current = audioContext;
+    setAudioInitialized(true);
+    
+    // Remove listeners after first interaction
+    window.removeEventListener('click', initAudio);
+    window.removeEventListener('keydown', initAudio);
+    window.removeEventListener('touchstart', initAudio);
+  };
+
+  // Add listeners for first interaction to unlock audio
+  useEffect(() => {
+    window.addEventListener('click', initAudio);
+    window.addEventListener('keydown', initAudio);
+    window.addEventListener('touchstart', initAudio);
+    
+    return () => {
+      window.removeEventListener('click', initAudio);
+      window.removeEventListener('keydown', initAudio);
+      window.removeEventListener('touchstart', initAudio);
+    };
+  }, []);
+
   const playNotificationPing = async () => {
     try {
-      const audioCtx = audioContextRef.current || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      if (!audioContextRef.current) audioContextRef.current = audioCtx;
+      // Try Web Audio API first (if initialized)
+      if (audioContextRef.current && audioContextRef.current.state === 'running') {
+        const audioCtx = audioContextRef.current;
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
 
-      // Final fallback resume in case the interaction listener hasn't fired yet
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 0.5);
+        osc2.stop(audioCtx.currentTime + 0.5);
+        return;
+      }
+      
+      // Fallback: Try to create new AudioContext and resume it
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       if (audioCtx.state === 'suspended') {
         await audioCtx.resume();
       }
+      
+      if (audioCtx.state === 'running') {
+        audioContextRef.current = audioCtx;
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
 
-      if (audioCtx.state !== 'running') {
-        console.warn("XeroxQ Alert Engine: State is blocked by browser policy. Interaction required.");
-        return;
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 0.5);
+        osc2.stop(audioCtx.currentTime + 0.5);
       }
-
-      const osc1 = audioCtx.createOscillator();
-      const osc2 = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-
-      // "WhatsApp Web" style dual-tone notification
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // C6
-
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-
-      osc1.connect(gainNode);
-      osc2.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(audioCtx.currentTime + 0.5);
-      osc2.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
-      console.warn("Notification Audio Protocol failed:", e);
+      console.warn("Notification sound failed:", e);
     }
   };
 
@@ -479,17 +720,26 @@ export default function AdminDashboard() {
   };
 
   const fetchJobs = async (shopId: string) => {
+    if (!shopId) {
+      console.error("[fetchJobs] No shopId provided");
+      setLoading(false);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, token, customer_name, customer_phone, is_preorder, is_paid, file_name, file_path, status, preferences, page_count, created_at, expires_at")
+        .select("id, token, customer_name, customer_phone, is_preorder, is_paid, file_name, file_path, status, preferences, page_count, created_at, expires_at, is_deleted_by_user, deleted_at")
         .eq("shop_id", shopId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[fetchJobs] Supabase error:", error.message, error.code, error.details);
+        throw error;
+      }
       setJobs(data || []);
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
+    } catch (error: any) {
+      console.error("[fetchJobs] Error fetching jobs:", error?.message || error, error?.code || "");
     } finally {
       setLoading(false);
     }
@@ -521,6 +771,9 @@ export default function AdminDashboard() {
           name: newShopData.name,
           slug,
           upi_id: newShopData.upi_id,
+          shop_location: newShopData.shop_location,
+          shop_lat: newShopData.shop_lat,
+          shop_lng: newShopData.shop_lng,
         }),
       });
 
@@ -543,6 +796,19 @@ export default function AdminDashboard() {
   };
 
   const initiateVerification = async (job: Job, mode: 'complete' | 'reprint') => {
+    // ── SECURITY CHECK ───────────────────────────────────────────────────────
+    // Check if user deleted the file - CRITICAL CHECK
+    if (job.is_deleted_by_user) {
+      setNotifications(prev => [{
+        id: `action-blocked-${Date.now()}`,
+        type: 'error',
+        message: "⛔ USER DELETED THIS FILE",
+        subMessage: `Customer has permanently deleted this file. Cannot complete or reprint. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
     if (shop?.generate_token === false) {
       // Skip verification if shop disabled tokens
       if (mode === 'complete') {
@@ -588,9 +854,26 @@ export default function AdminDashboard() {
   };
 
   const handlePrint = async (job: Job) => {
+    // ── SECURITY CHECKS ─────────────────────────────────────────────────────
+    // Check if user deleted the file - CRITICAL CHECK
+    if (job.is_deleted_by_user) {
+      setNotifications(prev => [{
+        id: `print-blocked-${Date.now()}`,
+        type: 'error',
+        message: "⛔ USER DELETED THIS FILE",
+        subMessage: `Customer has permanently deleted this file. No actions allowed. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
     setActivePrintJob(job);
     setIsDecrypting(true);
     setPrintPreviewUrl(null);
+    
+    // Mark job as printed immediately when opening print dialog
+    await updateStatus(job.id, "printed");
+    setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
     try {
       const { data, error } = await supabase.storage
         .from("documents")
@@ -760,9 +1043,34 @@ export default function AdminDashboard() {
   };
 
   const handleDownload = async (job: Job) => {
-    try {
-      setActiveDownloadId(job.id);
+    // ── SECURITY CHECKS ─────────────────────────────────────────────────────
+    // Check if user deleted the file - CRITICAL CHECK
+    if (job.is_deleted_by_user) {
+      setNotifications(prev => [{
+        id: `download-blocked-${Date.now()}`,
+        type: 'error',
+        message: "⛔ USER DELETED THIS FILE",
+        subMessage: `Customer has permanently deleted this file. No actions allowed. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
 
+    // Check if job is already completed (printed)
+    if (job.status === 'printed') {
+      setNotifications(prev => [{
+        id: `download-blocked-${Date.now()}`,
+        type: 'error',
+        message: "Download Blocked: Job Already Completed",
+        subMessage: `This job has been marked as completed. Files cannot be downloaded after completion for security.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
+    setActiveDownloadId(job.id);
+
+    try {
       // 1. Resolve Extension and Filename
       const cleanCustomer = (job.customer_name || "ANONYMOUS").replace(/[^a-z0-9]/gi, '_');
       const originalFileName = job.file_name || "document.pdf";
@@ -919,21 +1227,40 @@ export default function AdminDashboard() {
     const monoPrice = Math.max(0, Math.min(1000, shop?.price_mono || 0));
     const colorPrice = Math.max(0, Math.min(1000, shop?.price_color || 0));
 
-    const { error } = await supabase
+    let updateData: any = {
+      upi_id: shop?.upi_id,
+      shop_location: shop?.shop_location || "",
+      price_mono: monoPrice,
+      price_color: colorPrice,
+      is_open: shop?.is_open,
+      require_customer_name: shop?.require_customer_name !== false,
+      show_copies: shop?.show_copies !== false,
+      show_color_mode: shop?.show_color_mode !== false,
+      generate_token: shop?.generate_token !== false,
+      accept_preorders: shop?.accept_preorders === true,
+      contact_number: shop?.contact_number || ""
+    };
+
+    // Only include lat/lng if they exist in the shop object (migration applied)
+    if (shop?.shop_lat !== undefined) updateData.shop_lat = shop.shop_lat;
+    if (shop?.shop_lng !== undefined) updateData.shop_lng = shop.shop_lng;
+
+    let { error } = await supabase
       .from("shops")
-      .update({
-        upi_id: shop?.upi_id,
-        price_mono: monoPrice,
-        price_color: colorPrice,
-        is_open: shop?.is_open,
-        require_customer_name: shop?.require_customer_name !== false,
-        show_copies: shop?.show_copies !== false,
-        show_color_mode: shop?.show_color_mode !== false,
-        generate_token: shop?.generate_token !== false,
-        accept_preorders: shop?.accept_preorders === true,
-        contact_number: shop?.contact_number || ""
-      })
+      .update(updateData)
       .eq("id", shop?.id);
+
+    // If column doesn't exist yet, retry without lat/lng
+    if (error && error.code === "42703") {
+      console.warn("[handleUpdateSettings] Lat/lng columns not found, retrying without them");
+      delete updateData.shop_lat;
+      delete updateData.shop_lng;
+      const retry = await supabase
+        .from("shops")
+        .update(updateData)
+        .eq("id", shop?.id);
+      error = retry.error;
+    }
 
     if (error) {
       setNotifications(prev => [{
@@ -981,6 +1308,145 @@ export default function AdminDashboard() {
       console.error("Flush failure:", error);
     } finally {
       setUpdatingSettings(false);
+    }
+  };
+
+  // ── FEEDBACK MANAGEMENT FUNCTIONS ─────────────────────────────────────────
+  
+  const fetchCustomFeedbackQuestions = async () => {
+    if (!shop) return;
+    
+    const { data, error } = await supabase
+      .from('feedback_questions_custom')
+      .select('*')
+      .eq('shop_id', shop.id)
+      .eq('is_active', true)
+      .order('display_order');
+    
+    if (error) {
+      console.error('Error fetching custom questions:', error);
+      return;
+    }
+    
+    setCustomFeedbackQuestions(data || []);
+  };
+
+  const fetchFeedbackResponses = async () => {
+    if (!shop) return;
+    
+    const { data, error } = await supabase
+      .from('feedback_responses')
+      .select('*')
+      .eq('shop_id', shop.id)
+      .order('submitted_at', { ascending: false })
+      .limit(50);
+    
+    if (error) {
+      console.error('Error fetching feedback responses:', error);
+      return;
+    }
+    
+    setFeedbackResponses(data || []);
+  };
+
+  const fetchFeedbackAnalytics = async () => {
+    if (!shop) return;
+    
+    const { data, error } = await supabase
+      .from('shop_feedback_analytics')
+      .select('*')
+      .eq('shop_id', shop.id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // Not found is ok
+      console.error('Error fetching feedback analytics:', error);
+      return;
+    }
+    
+    setFeedbackAnalytics(data);
+  };
+
+  const handleAddCustomQuestion = async () => {
+    if (!shop || !newQuestionText.trim()) return;
+    
+    setAddingQuestion(true);
+    
+    const options = newQuestionOptions.split(',').map(o => o.trim()).filter(Boolean);
+    
+    const { error } = await supabase
+      .from('feedback_questions_custom')
+      .insert({
+        shop_id: shop.id,
+        question_text: newQuestionText.trim(),
+        question_type: 'emoji',
+        options: JSON.stringify(options),
+        is_active: true,
+        display_order: customFeedbackQuestions.length
+      });
+    
+    if (error) {
+      console.error('Error adding question:', error);
+      alert('Failed to add question');
+    } else {
+      setNewQuestionText("");
+      await fetchCustomFeedbackQuestions();
+    }
+    
+    setAddingQuestion(false);
+  };
+
+  const handleDeleteCustomQuestion = async (questionId: string) => {
+    if (!confirm('Delete this question?')) return;
+    
+    const { error } = await supabase
+      .from('feedback_questions_custom')
+      .update({ is_active: false })
+      .eq('id', questionId);
+    
+    if (error) {
+      console.error('Error deleting question:', error);
+      alert('Failed to delete question');
+    } else {
+      await fetchCustomFeedbackQuestions();
+    }
+  };
+
+  const toggleShopFeedback = async () => {
+    if (!shop) return;
+    
+    const newValue = !shop.feedback_enabled;
+    
+    const { error } = await supabase
+      .from('shops')
+      .update({ feedback_enabled: newValue })
+      .eq('id', shop.id);
+    
+    if (error) {
+      console.error('Error toggling feedback:', error);
+      alert('Failed to update setting');
+    } else {
+      setShop({ ...shop, feedback_enabled: newValue });
+    }
+  };
+
+  const toggleCustomFeedback = async () => {
+    if (!shop) return;
+    
+    const newValue = !shop.custom_feedback_enabled;
+    
+    const { error } = await supabase
+      .from('shops')
+      .update({ custom_feedback_enabled: newValue })
+      .eq('id', shop.id);
+    
+    if (error) {
+      console.error('Error toggling custom feedback:', error);
+      alert('Failed to update setting');
+    } else {
+      setShop({ ...shop, custom_feedback_enabled: newValue });
+      if (newValue) {
+        await fetchCustomFeedbackQuestions();
+      }
     }
   };
 
@@ -1110,11 +1576,21 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewShopData({ ...newShopData, upi_id: e.target.value })}
                 />
               </div>
+              <div className="flex flex-col gap-[5.57px]">
+                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Location <span className="text-auth-slate-50 font-medium">(Required)</span></label>
+                <LocationAutocomplete
+                  value={newShopData.shop_location}
+                  onChange={(value) => setNewShopData({ ...newShopData, shop_location: value })}
+                  placeholder="e.g., Rajamundry, Andhra Pradesh"
+                  className="h-[46.79px]"
+                />
+                <p className="text-[11px] text-auth-slate-50 font-medium">This helps customers find your physical shop.</p>
+              </div>
             </div>
 
             <button
               disabled={creatingShop}
-              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-2"
+              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-2 cursor-pointer"
             >
               {creatingShop ? "Connecting..." : "Create Shop"}
             </button>
@@ -1122,7 +1598,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-6 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors"
+              className="mt-6 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors cursor-pointer"
             >
               Signing Out? <span className="text-black ml-1">Logout</span>
             </button>
@@ -1232,6 +1708,24 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
+      {/* LOCATION NOTICE BAR - 30px compact bar at the very top */}
+      {!shop?.shop_location && (
+        <div className="shrink-0 w-full h-[30px] bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center">
+          <div className="max-w-[1440px] w-full mx-auto px-4 lg:px-[82px] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-3 h-3 text-white" />
+              <span className="text-[11px] font-bold text-white tracking-tight">Add your shop location to help customers find you</span>
+            </div>
+            <button
+              onClick={() => setShowingSettings(true)}
+              className="text-[10px] font-bold text-white/90 hover:text-white underline underline-offset-2 cursor-pointer"
+            >
+              Update Settings
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* TOP HEADER - IDENTITY, ACTIONS */}
       <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
         <div className="max-w-[1440px] mx-auto px-4 py-[22px] lg:py-6 lg:px-[82px]">
@@ -1248,7 +1742,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
                     className={cn(
-                      "w-2 h-2 rounded-full transition-all",
+                      "w-2 h-2 rounded-full transition-all cursor-pointer",
                       shop?.is_open !== false ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"
                     )}
                   />
@@ -1273,7 +1767,7 @@ export default function AdminDashboard() {
               <button
                 onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
                 className={cn(
-                  "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]",
+                  "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer",
                   isSoundEnabled
                     ? "bg-orange-50 border-orange-100 text-[#FF591E]"
                     : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
@@ -1288,7 +1782,7 @@ export default function AdminDashboard() {
               <Dialog open={showingSettings} onOpenChange={setShowingSettings}>
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
+                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer"
                     title="Shop Settings"
                   >
                     <Settings className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
@@ -1336,6 +1830,15 @@ export default function AdminDashboard() {
                               placeholder="shop@upi"
                             />
                           </div>
+                          <div className="flex flex-col gap-1.5 md:col-span-2">
+                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Location <span className="text-primary-blue">*</span></label>
+                            <LocationAutocomplete
+                              value={shop?.shop_location || ""}
+                              onChange={(value) => setShop({ ...shop!, shop_location: value })}
+                              placeholder="e.g., Rajamundry, Andhra Pradesh"
+                            />
+                            <p className="text-[8px] font-bold text-auth-slate-50 uppercase tracking-[0.05em] ml-1">Visible to customers for navigation</p>
+                          </div>
                           <div className="flex flex-col gap-1.5">
                             <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Contact (For Pre-orders)</label>
                             <input
@@ -1352,7 +1855,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
                               className={cn(
-                                "flex items-center justify-between px-4 h-[42px] rounded-[5.57px] border transition-all duration-300 shadow-sm",
+                                "flex items-center justify-between px-4 h-[42px] rounded-[5.57px] border transition-all duration-300 shadow-sm cursor-pointer",
                                 shop?.is_open !== false ? "bg-white border-green-200 text-green-700" : "bg-white border-red-200 text-red-700"
                               )}
                             >
@@ -1401,7 +1904,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={() => setShop({ ...shop!, [toggle.key]: !(shop?.[toggle.key as keyof Shop] !== false) })}
                                 className={cn(
-                                  "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
+                                  "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner disabled:opacity-50 cursor-pointer",
                                   shop?.[toggle.key as keyof Shop] !== false ? "bg-black" : "bg-[#E2E8F0]"
                                 )}
                               >
@@ -1462,12 +1965,110 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={handleFlushQueue}
                               disabled={updatingSettings || jobs.length === 0}
-                              className="w-full h-full bg-red-500 text-white font-black text-[11px] uppercase tracking-widest rounded-[4px] hover:bg-red-600 active:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-30"
+                              className="w-full h-full bg-red-500 text-white font-black text-[11px] uppercase tracking-widest rounded-[4px] hover:bg-red-600 active:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-30 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Delete All Data
                             </button>
                           </div>
                           <p className="text-[8px] text-red-900/30 font-bold uppercase tracking-tight text-center mt-1">Permanently purge all queue documents</p>
+                        </div>
+                      </div>
+
+                      {/* Section 4: Feedback System */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-[4px] flex items-center justify-center">
+                            <span className="text-white text-[10px]">★</span>
+                          </div>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Customer Feedback</h3>
+                        </div>
+                        
+                        {/* Feedback Toggle */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0">
+                              <span className="text-[12px] font-black text-black uppercase tracking-tight">Enable Feedback</span>
+                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">Collect after job completion</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={toggleShopFeedback}
+                              className={cn(
+                                "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
+                                shop?.feedback_enabled !== false ? "bg-green-500" : "bg-[#E2E8F0]"
+                              )}
+                            >
+                              <div className={cn(
+                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-500 shadow-lg",
+                                shop?.feedback_enabled !== false ? "right-0.5" : "left-0.5"
+                              )} />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0">
+                              <span className="text-[12px] font-black text-black uppercase tracking-tight">Custom Questions</span>
+                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">Add your own feedback</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={toggleCustomFeedback}
+                              disabled={shop?.feedback_enabled === false}
+                              className={cn(
+                                "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
+                                shop?.custom_feedback_enabled ? "bg-black" : "bg-[#E2E8F0]",
+                                shop?.feedback_enabled === false && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <div className={cn(
+                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-500 shadow-lg",
+                                shop?.custom_feedback_enabled ? "right-0.5" : "left-0.5"
+                              )} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Manage Custom Questions */}
+                        {shop?.custom_feedback_enabled && shop?.feedback_enabled !== false && (
+                          <div className="space-y-3 p-4 bg-white border border-[#E2E8F0] rounded-[5.57px]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black text-black uppercase">Custom Questions</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowFeedbackManager(true);
+                                  fetchCustomFeedbackQuestions();
+                                }}
+                                className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-[4px] hover:bg-black/80 transition-all cursor-pointer"
+                              >
+                                Manage Questions
+                              </button>
+                            </div>
+                            <p className="text-[9px] text-auth-slate-50">{customFeedbackQuestions.length} custom question(s) active</p>
+                          </div>
+                        )}
+
+                        {/* View Feedback Responses */}
+                        <div className="p-4 bg-white border border-[#E2E8F0] rounded-[5.57px]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0">
+                              <span className="text-[12px] font-black text-black uppercase tracking-tight">View Responses</span>
+                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">
+                                {feedbackResponses.length} response(s) collected
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowFeedbackResponses(true);
+                                fetchFeedbackResponses();
+                                fetchFeedbackAnalytics();
+                              }}
+                              className="px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0] text-black text-[10px] font-black uppercase rounded-[4px] hover:bg-black hover:text-white hover:border-black transition-all cursor-pointer"
+                            >
+                              View All
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </form>
@@ -1476,7 +2077,7 @@ export default function AdminDashboard() {
                       <DialogClose asChild>
                         <button
                           type="button"
-                          className="h-12 px-8 bg-white border border-[#E2E8F0] text-black hover:bg-[#F1F5F9] active:bg-[#E2E8F0] rounded-[5.57px] text-[12px] font-black uppercase tracking-tight transition-all active:scale-95"
+                          className="h-12 px-8 bg-white border border-[#E2E8F0] text-black hover:bg-[#F1F5F9] active:bg-[#E2E8F0] rounded-[5.57px] text-[12px] font-black uppercase tracking-tight transition-all active:scale-95 cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1488,7 +2089,7 @@ export default function AdminDashboard() {
                           handleUpdateSettings(e as any);
                         }}
                         disabled={updatingSettings}
-                        className="flex-1 h-12 bg-black text-white hover:bg-black/90 active:bg-black/80 font-black text-[13px] uppercase tracking-tighter rounded-[5.57px] transition-all flex items-center justify-center shadow-xl active:scale-95 disabled:opacity-50"
+                        className="flex-1 h-12 bg-black text-white font-black text-[13px] uppercase tracking-tighter rounded-[5.57px] transition-all flex items-center justify-center shadow-xl active:scale-95 disabled:opacity-50 cursor-pointer"
                       >
                         {updatingSettings ? (
                           <div className="flex items-center gap-2">
@@ -1507,11 +2108,188 @@ export default function AdminDashboard() {
                 </DialogContent>
               </Dialog>
 
+              {/* FEEDBACK MANAGER DIALOG */}
+              <Dialog open={showFeedbackManager} onOpenChange={setShowFeedbackManager}>
+                <DialogContent className="sm:max-w-[600px] rounded-xl p-0 bg-white border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                  <DialogHeader className="p-6 pb-3 bg-gradient-to-r from-yellow-400 to-orange-500 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <span className="text-xl">★</span>
+                      </div>
+                      <div>
+                        <DialogTitle className="text-[20px] font-black text-white">Manage Custom Questions</DialogTitle>
+                        <DialogDescription className="text-white/80 text-[12px]">
+                          Add your own feedback questions for customers
+                        </DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  <div className="p-6 space-y-6">
+                    {/* Add New Question */}
+                    <div className="space-y-3 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Add New Question</h4>
+                      <input
+                        type="text"
+                        value={newQuestionText}
+                        onChange={(e) => setNewQuestionText(e.target.value)}
+                        placeholder="e.g., How was our staff behavior?"
+                        className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10 focus:border-black/20"
+                      />
+                      <input
+                        type="text"
+                        value={newQuestionOptions}
+                        onChange={(e) => setNewQuestionOptions(e.target.value)}
+                        placeholder="Options separated by commas"
+                        className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10 focus:border-black/20"
+                      />
+                      <button
+                        onClick={handleAddCustomQuestion}
+                        disabled={addingQuestion || !newQuestionText.trim()}
+                        className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {addingQuestion ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        Add Question
+                      </button>
+                    </div>
+
+                    {/* Existing Questions */}
+                    <div className="space-y-3">
+                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Active Questions ({customFeedbackQuestions.length})</h4>
+                      {customFeedbackQuestions.length === 0 ? (
+                        <p className="text-[13px] text-gray-500 text-center py-8">No custom questions yet. Add one above!</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {customFeedbackQuestions.map((q, idx) => (
+                            <div key={q.id} className="flex items-center justify-between p-3 bg-white border border-[#E2E8F0] rounded-lg">
+                              <div>
+                                <p className="text-[14px] font-bold text-black">{idx + 1}. {q.question_text}</p>
+                                <p className="text-[11px] text-gray-500">{(Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]')).join(', ')}</p>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteCustomQuestion(q.id)}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="p-6 border-t">
+                    <button
+                      onClick={() => setShowFeedbackManager(false)}
+                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* FEEDBACK RESPONSES DIALOG */}
+              <Dialog open={showFeedbackResponses} onOpenChange={setShowFeedbackResponses}>
+                <DialogContent className="sm:max-w-[800px] rounded-xl p-0 bg-white border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                  <DialogHeader className="p-6 pb-3 bg-gradient-to-r from-green-500 to-emerald-600 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <span className="text-xl">📊</span>
+                      </div>
+                      <div>
+                        <DialogTitle className="text-[20px] font-black text-white">Customer Feedback</DialogTitle>
+                        <DialogDescription className="text-white/80 text-[12px]">
+                          {feedbackAnalytics?.total_responses || feedbackResponses.length} responses • Avg Rating: {feedbackAnalytics?.avg_rating || 'N/A'}
+                        </DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  <div className="p-6 space-y-6">
+                    {/* Analytics Summary */}
+                    {feedbackAnalytics && (
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="p-4 bg-green-50 rounded-xl text-center">
+                          <p className="text-[24px] font-black text-green-600">{feedbackAnalytics.positive_count || 0}</p>
+                          <p className="text-[10px] font-bold text-green-700 uppercase">Positive</p>
+                        </div>
+                        <div className="p-4 bg-yellow-50 rounded-xl text-center">
+                          <p className="text-[24px] font-black text-yellow-600">{feedbackAnalytics.total_responses || feedbackResponses.length}</p>
+                          <p className="text-[10px] font-bold text-yellow-700 uppercase">Total</p>
+                        </div>
+                        <div className="p-4 bg-red-50 rounded-xl text-center">
+                          <p className="text-[24px] font-black text-red-600">{feedbackAnalytics.negative_count || 0}</p>
+                          <p className="text-[10px] font-bold text-red-700 uppercase">Negative</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Responses List */}
+                    <div className="space-y-4">
+                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Recent Responses</h4>
+                      {feedbackResponses.length === 0 ? (
+                        <p className="text-[13px] text-gray-500 text-center py-8">No feedback responses yet.</p>
+                      ) : (
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                          {feedbackResponses.map((response) => (
+                            <div key={response.id} className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-[12px] font-bold text-black">{response.customer_name || 'Anonymous'}</span>
+                                <span className="text-[10px] text-gray-500">
+                                  {new Date(response.submitted_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 mb-3">
+                                {response.overall_rating && (
+                                  <>
+                                    {[...Array(5)].map((_, i) => (
+                                      <span key={i} className={i < response.overall_rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
+                              {/* Individual Question Responses */}
+                              {(response.default_responses || response.custom_responses) && (
+                                <div className="mt-3 space-y-1">
+                                  {Object.entries({...(response.default_responses || {}), ...(response.custom_responses || {})})
+                                    .filter(([key]) => key !== 'overall_rating')
+                                    .map(([key, value]) => (
+                                      <div key={key} className="flex items-center gap-2 text-[12px]">
+                                        <span className="text-gray-500">{key}:</span>
+                                        <span className="font-medium text-black">{String(value)}</span>
+                                      </div>
+                                    ))
+                                  }
+                                </div>
+                              )}
+                              {response.written_feedback && (
+                                <p className="text-[13px] text-gray-700 italic">"{response.written_feedback}"</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="p-6 border-t">
+                    <button
+                      onClick={() => setShowFeedbackResponses(false)}
+                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               {/* QR — mobile: small icon-only | desktop: icon + text */}
               <Dialog open={showQR} onOpenChange={setShowQR}>
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
+                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer"
                     title="Customer QR"
                   >
                     <QrCode className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
@@ -1566,11 +2344,11 @@ export default function AdminDashboard() {
                       <div className="flex gap-3 pt-2">
                         <button
                           onClick={() => window.open(`/admin/poster?name=${encodeURIComponent(shop.name)}&slug=${shop.slug}&upi=${shop.upi_id || ''}`, '_blank')}
-                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
+                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" /> Poster
                         </button>
-                        <button onClick={() => setShowQR(false)} className="flex-1 h-[40px] bg-black text-white hover:bg-black/90 rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center shadow-lg shadow-black/10">
+                        <button onClick={() => setShowQR(false)} className="flex-1 h-[40px] bg-black text-white hover:bg-black/90 rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center shadow-lg shadow-black/10 cursor-pointer">
                           Dismiss
                         </button>
                       </div>
@@ -1627,7 +2405,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-thin">
+      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-admin max-h-[calc(100vh-8rem)]">
 
         {/* ── EMPTY STATE ── */}
         {filteredJobs.length === 0 && (
@@ -1644,29 +2422,47 @@ export default function AdminDashboard() {
 
         {/* ── MOBILE CARDS (shown below lg) ── */}
         {filteredJobs.length > 0 && (
-          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-thin">
+          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-admin">
             {filteredJobs.map((job) => {
               const isExpired = new Date(job.expires_at) < currentTime;
               const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
               const minsLeft = Math.floor(diff / 60000);
               return (
-                <div key={job.id} className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+                <div key={job.id} className={cn(
+                  "bg-white border rounded-2xl shadow-sm p-4 flex flex-col gap-3",
+                  job.is_deleted_by_user ? "border-red-200 bg-red-50/30" : "border-[#E2E8F0]"
+                )}>
                   {/* Row 1: Customer + Status badge */}
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col">
-                      <span className="text-[13px] font-black text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-black text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</span>
+                        {(() => {
+                          const jobAge = new Date().getTime() - new Date(job.created_at).getTime();
+                          const isNew = jobAge < 2 * 60 * 1000; // 2 minutes
+                          return isNew ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-black uppercase tracking-wider rounded animate-pulse">
+                              NEW
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
                       {job.customer_phone && (
                         <span className="text-[10px] font-bold text-[#7E8B9E] mt-0.5">{job.customer_phone}</span>
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      {job.status === "printed" ? (
+                      {job.is_deleted_by_user ? (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-[10px] font-bold text-red-700 uppercase tracking-widest">
+                          <Trash2 className="w-3 h-3" /> Deleted by User
+                        </span>
+                      ) : job.status === "printed" ? (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Done
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Completed
                         </span>
                       ) : (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-[10px] font-bold text-[#FF591E] uppercase tracking-widest">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#FF591E] animate-pulse" /> Pending
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#FF591E] animate-pulse" /> To Be Printed
                         </span>
                       )}
                     </div>
@@ -1724,13 +2520,13 @@ export default function AdminDashboard() {
                       <>
                         <button
                           onClick={() => handlePrint(job)}
-                          className="flex-1 h-10 bg-black text-white rounded-xl text-[12px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest"
+                          className="flex-1 h-10 bg-black text-white rounded-xl text-[12px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" /> Print
                         </button>
                         <button
                           onClick={() => initiateVerification(job, 'complete')}
-                          className="flex-1 h-10 bg-white border border-[#E2E8F0] text-black rounded-xl text-[12px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                          className="flex-1 h-10 bg-white border border-[#E2E8F0] text-black rounded-xl text-[12px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Complete
                         </button>
@@ -1745,21 +2541,27 @@ export default function AdminDashboard() {
                     )}
                     <button
                       onClick={() => handleDownload(job)}
-                      disabled={activeDownloadId === job.id}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20 transition-all"
+                      disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.status === 'printed'}
+                      className={cn(
+                        "h-10 w-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+                        job.is_deleted_by_user || job.status === 'printed'
+                          ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                          : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
+                      )}
+                      title={job.is_deleted_by_user ? "File deleted by user" : job.status === 'printed' ? "Job already completed" : "Download"}
                     >
                       {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     </button>
                     <button
                       onClick={() => setDeleteConfirmJob(job)}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
+                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     {job.customer_phone && (
                       <a
                         href={`tel:${job.customer_phone}`}
-                        className="h-10 px-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all text-[11px] font-bold uppercase"
+                        className="h-10 px-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all text-[11px] font-bold uppercase cursor-pointer"
                       >
                         <Smartphone className="w-4 h-4" /> Call
                       </a>
@@ -1799,6 +2601,20 @@ export default function AdminDashboard() {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <p className="font-black text-[12px] text-black tracking-widest uppercase leading-none">{job.customer_name || "ANONYMOUS"}</p>
+                          {(() => {
+                            const jobAge = new Date().getTime() - new Date(job.created_at).getTime();
+                            const isNew = jobAge < 2 * 60 * 1000; // 2 minutes
+                            return isNew ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-black uppercase tracking-wider rounded animate-pulse">
+                                NEW
+                              </span>
+                            ) : null;
+                          })()}
+                          {job.is_deleted_by_user && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-bold text-red-700 uppercase">
+                              <Trash2 className="w-3 h-3" /> Deleted
+                            </span>
+                          )}
                         </div>
                         {job.customer_phone && (
                           <p className="text-[11px] font-bold text-auth-slate-50 tracking-tight mt-1">
@@ -1856,14 +2672,14 @@ export default function AdminDashboard() {
                       {job.status !== "printed" ? (
                         <button
                           onClick={() => handlePrint(job)}
-                          className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 transition-all shadow-sm flex items-center gap-2 uppercase tracking-widest mx-auto"
+                          className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 shadow-xl shadow-black/10 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto cursor-pointer"
                         >
                           <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
                         </button>
                       ) : (
                         <button
                           onClick={() => initiateVerification(job, 'reprint')}
-                          className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto"
+                          className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto cursor-pointer"
                         >
                           <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
                         </button>
@@ -1874,27 +2690,32 @@ export default function AdminDashboard() {
                         {job.status !== "printed" ? (
                           <button
                             onClick={() => initiateVerification(job, 'complete')}
-                            className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest"
+                            className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest cursor-pointer"
                           >
                             <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
                           </button>
                         ) : (
                           <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Done</span>
+                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Completed</span>
                           </div>
                         )}
                         <button
                           onClick={() => handleDownload(job)}
-                          disabled={activeDownloadId === job.id}
-                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors"
-                          title="Download"
+                          disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.status === 'printed'}
+                          className={cn(
+                            "h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] transition-colors cursor-pointer",
+                            job.is_deleted_by_user || job.status === 'printed'
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC]"
+                          )}
+                          title={job.is_deleted_by_user ? "File deleted by user" : job.status === 'printed' ? "Job already completed" : "Download"}
                         >
                           {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                         </button>
                         <button
                           onClick={() => setDeleteConfirmJob(job)}
-                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors"
+                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                           title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1933,20 +2754,20 @@ export default function AdminDashboard() {
                 value={tokenChallengeInput}
                 onChange={(e) => setTokenChallengeInput(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyComplete()}
-                className="relative w-full h-[100px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] text-center text-[56px] font-black tracking-[0.2em] text-black focus:bg-white focus:ring-4 focus:ring-black/5 transition-all outline-none shadow-inner"
+                className="relative w-full h-[100px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] text-center text-[56px] font-black tracking-[0.2em] text-black focus:bg-white focus:ring-4 focus:ring-black/5 transition-all outline-none shadow-inner cursor-pointer"
               />
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => { setVerifyingJobId(null); setTokenChallengeInput(""); }}
-                className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all"
+                className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
               >
                 Abort
               </button>
               <button
                 onClick={handleVerifyComplete}
-                className="flex-1 h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98]"
+                className="flex-1 h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98] cursor-pointer"
               >
                 Verify
               </button>
@@ -1971,14 +2792,14 @@ export default function AdminDashboard() {
           <div className="flex gap-3 w-full pt-2">
             <button
               onClick={() => setDeleteConfirmJob(null)}
-              className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all"
+              className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
             >
               Abort
             </button>
             <button
               disabled={isDeleting}
               onClick={() => deleteConfirmJob && handleDeleteJob(deleteConfirmJob)}
-              className="flex-1 h-[40px] bg-red-500 text-white font-bold text-[12px] rounded-[5.57px] hover:bg-red-600 shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="flex-1 h-[40px] bg-red-500 text-white font-bold text-[12px] rounded-[5.57px] hover:bg-red-600 shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
             >
               {isDeleting ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -2005,15 +2826,15 @@ export default function AdminDashboard() {
 
           <button
             onClick={() => setPurgedJob(null)}
-            className="w-full h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98]"
+            className="w-full h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98] cursor-pointer"
           >
             Understood
           </button>
         </DialogContent>
       </Dialog>
 
-      {/* ── REAL-TIME NOTIFICATION OVERLAY ── */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-[400px]">
+      {/* ── IN-APP NOTIFICATION TOASTS (Bottom Right) ── */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none w-[400px]">
         <AnimatePresence mode="popLayout">
           {notifications.map((notif) => (
             <XeroxQNotification
@@ -2028,59 +2849,102 @@ export default function AdminDashboard() {
   );
 }
 
-// --- SUB-COMPONENT: XEROXQ PREMIUM NOTIFICATION ---
+// --- SUB-COMPONENT: WINDOWS STYLE NOTIFICATION TOAST ---
 function XeroxQNotification({ notification, onClose }: { notification: Notification, onClose: (id: string) => void }) {
   useEffect(() => {
     const timer = setTimeout(() => onClose(notification.id), 6000);
     return () => clearTimeout(timer);
   }, [notification.id, onClose]);
 
-  const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-green-500" />,
-    error: <ShieldCheck className="w-5 h-5 text-red-500" />,
-    info: <Activity className="w-5 h-5 text-blue-500" />,
-    new_job: <Zap className="w-5 h-5 text-[#FF591E] fill-[#FF591E]/20" />
-  };
+  const isNewJob = notification.type === 'new_job';
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      className="pointer-events-auto w-full bg-white/90 backdrop-blur-xl border border-[#E2E8F0] shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-[20px] p-4 flex items-start gap-4 relative overflow-hidden"
+      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 50, scale: 0.9, transition: { duration: 0.2 } }}
+      className={cn(
+        "pointer-events-auto w-full relative overflow-hidden",
+        "bg-white",
+        "border border-gray-200",
+        "shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
+        "rounded-xl",
+        isNewJob && "ring-2 ring-blue-500 ring-offset-2"
+      )}
     >
-      <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
-        notification.type === 'new_job' ? "bg-orange-50" : "bg-slate-50"
-      )}>
-        {icons[notification.type]}
-      </div>
+      {/* Top accent bar for new jobs */}
+      {isNewJob && (
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-blue-400" />
+      )}
 
-      <div className="flex-1 min-w-0 pr-6">
-        <p className="text-[13px] font-black text-black tracking-tight uppercase leading-tight">
-          {notification.message}
-        </p>
-        {notification.subMessage && (
-          <p className="text-[11px] font-medium text-auth-slate-50 mt-0.5 line-clamp-1">
-            {notification.subMessage}
+      <div className={cn("p-5 flex items-start gap-4", isNewJob && "pt-6")}>
+        {/* App Icon - Larger for visibility */}
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md",
+          isNewJob ? "bg-gradient-to-br from-blue-500 to-blue-600" : "bg-gray-100"
+        )}>
+          {isNewJob ? (
+            <Printer className="w-6 h-6 text-white" />
+          ) : notification.type === 'success' ? (
+            <CheckCircle2 className="w-6 h-6 text-green-500" />
+          ) : notification.type === 'error' ? (
+            <ShieldCheck className="w-6 h-6 text-red-500" />
+          ) : (
+            <Activity className="w-6 h-6 text-blue-500" />
+          )}
+        </div>
+
+        {/* Content - Larger text */}
+        <div className="flex-1 min-w-0 pr-10">
+          {/* Title */}
+          <p className={cn(
+            "text-[15px] font-bold leading-tight",
+            isNewJob ? "text-blue-600" : "text-gray-900"
+          )}>
+            {isNewJob ? "📄 New Print Job Received" : notification.message}
           </p>
-        )}
+
+          {/* Message */}
+          <p className="text-[14px] text-gray-700 mt-2 leading-relaxed">
+            {isNewJob ? (
+              <>
+                <span className="font-semibold text-gray-900">{notification.message.replace('Incoming Document: ', '')}</span>
+                {notification.subMessage && (
+                  <span className="block text-gray-500 mt-1 text-[13px]">{notification.subMessage}</span>
+                )}
+              </>
+            ) : (
+              notification.subMessage
+            )}
+          </p>
+
+          {/* Timestamp */}
+          <p className="text-[11px] text-gray-400 mt-3 font-medium">
+            {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </p>
+        </div>
+
+        {/* Close button */}
+        <button
+          onClick={() => onClose(notification.id)}
+          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <button
-        onClick={() => onClose(notification.id)}
-        className="absolute top-4 right-4 text-[#7E8B9E] hover:text-black transition-colors"
-      >
-        <Minus className="w-4 h-4" />
-      </button>
-
-      {/* Progress Bar Loader */}
+      {/* Progress bar at bottom */}
       <motion.div
         initial={{ width: "100%" }}
         animate={{ width: "0%" }}
         transition={{ duration: 6, ease: "linear" }}
-        className="absolute bottom-0 left-0 h-[3px] bg-[#FF591E]/30 rounded-full"
+        className={cn(
+          "h-1.5",
+          isNewJob ? "bg-blue-500" : "bg-gray-300"
+        )}
       />
     </motion.div>
   );

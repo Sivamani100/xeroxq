@@ -308,20 +308,39 @@
 /* Ultra-thin scrollbar for queue panels */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.12) transparent;
+  scrollbar-color: rgba(0,0,0,0.08) transparent;
 }
 .scrollbar-thin::-webkit-scrollbar {
-  width: 3px;
+  width: 2px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.08);
   border-radius: 99px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.22);
+  background: rgba(0,0,0,0.15);
+}
+
+/* Extra thin scrollbar for admin dashboard */
+.scrollbar-admin {
+  scrollbar-width: none;
+  scrollbar-color: rgba(0,0,0,0.05) transparent;
+}
+.scrollbar-admin::-webkit-scrollbar {
+  width: 1px;
+}
+.scrollbar-admin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-admin::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.05);
+  border-radius: 99px;
+}
+.scrollbar-admin::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.1);
 }
 
 /* Hide scrollbar entirely but keep scroll functionality */
@@ -331,6 +350,39 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Global hand cursor for all clickable elements */
+button, [role="button"], a, input[type="button"], input[type="submit"], 
+[onclick], [data-testid*="button"], [data-testid*="click"], 
+.cursor-pointer, .btn, .clickable, .interactive {
+  cursor: pointer !important;
+}
+
+/* Hand cursor for specific interactive elements */
+select, input[type="checkbox"], input[type="radio"], input[type="file"],
+label[for], .tab, .accordion-trigger, .dropdown-trigger, .menu-item,
+.nav-item, .link, .card-clickable, .list-item-clickable, .option {
+  cursor: pointer !important;
+}
+
+/* Hand cursor for icon buttons and clickable icons */
+.icon-button, [class*="icon"]:has([onclick]), 
+[class*="button"]:has(svg), [class*="clickable"]:has(svg),
+svg[onclick], svg[role="button"] {
+  cursor: pointer !important;
+}
+
+/* Hand cursor for dialog and modal interactions */
+dialog button, modal button, .modal button, .dialog button,
+.popup button, .overlay button, .close-button, .dismiss-button {
+  cursor: pointer !important;
+}
+
+/* Hand cursor for table actions */
+table button, tr button, .action-button, .row-action, 
+.table-action, .cell-action {
+  cursor: pointer !important;
 }
 
 

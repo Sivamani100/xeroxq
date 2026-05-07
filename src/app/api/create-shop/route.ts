@@ -64,10 +64,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: firstError }, { status: 400 });
   }
 
-  const { name, slug, upi_id } = result.data;
+  const { name, slug, upi_id, shop_location } = result.data;
   const cleanName = name;
   const cleanSlug = slug;
   const cleanUpiId = upi_id;
+  const cleanLocation = shop_location;
+  
+  // Extract coordinates from body (validated separately as they are optional)
+  const shop_lat = body.shop_lat ? Number(body.shop_lat) : null;
+  const shop_lng = body.shop_lng ? Number(body.shop_lng) : null;
 
   // ── 4. Database Operations ────────────────────────────────────────────────
   const supabaseAdmin = createClient(
@@ -112,6 +117,9 @@ export async function POST(req: NextRequest) {
       name: cleanName,
       slug: cleanSlug,
       upi_id: cleanUpiId,
+      shop_location: cleanLocation,
+      shop_lat: shop_lat,
+      shop_lng: shop_lng,
       price_mono: 3,
       price_color: 10,
       is_open: true,

@@ -16,7 +16,8 @@ import {
   RefreshCw,
   History,
   Crop,
-  Palette
+  Palette,
+  MessageCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -62,6 +63,19 @@ interface Shop {
   generate_token?: boolean;
   accept_preorders?: boolean;
   contact_number?: string;
+  feedback_enabled?: boolean;
+  custom_feedback_enabled?: boolean;
+  custom_feedback_title?: string;
+}
+
+interface FeedbackQuestion {
+  question_id: string;
+  question_text: string;
+  question_type: string;
+  options: string[];
+  is_required: boolean;
+  display_order: number;
+  source: 'default' | 'custom';
 }
 
 interface HistoryItem {
@@ -92,6 +106,15 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   });
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [jobStatus, setJobStatus] = useState<string>("pending");
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackQuestions, setFeedbackQuestions] = useState<FeedbackQuestion[]>([]);
+  const [feedbackResponses, setFeedbackResponses] = useState<Record<string, string>>({});
+  const [writtenFeedback, setWrittenFeedback] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackEnabled, setFeedbackEnabled] = useState(true);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [docxFileToProcess, setDocxFileToProcess] = useState<File | null>(null);
@@ -138,9 +161,28 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     if (saved) setHistoryItems(JSON.parse(saved));
   }, [slug]);
 
-  // Live Status Updates
+  // Live Status Updates + Initial Status Fetch
   useEffect(() => {
-    if (!token) return;
+    if (!token || !shop) return;
+
+    // Fetch initial job status
+    const fetchInitialStatus = async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('status, is_deleted_by_user')
+        .eq('token', token)
+        .eq('shop_id', shop.id)
+        .single();
+      
+      if (data && !error) {
+        setJobStatus(data.status);
+        if (data.is_deleted_by_user) {
+          setIsDeleted(true);
+        }
+      }
+    };
+    
+    fetchInitialStatus();
 
     const channel = supabase
       .channel(`job-status-${token}`)
@@ -167,7 +209,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [token]);
+  }, [token, shop]);
 
   // ── File Validation Constants ─────────────────────────────────────────────
   const MAX_FILE_SIZE_MB = 25;
@@ -450,6 +492,214 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     localStorage.setItem("xeroxq_history", JSON.stringify(updated));
   };
 
+  const handleDeleteFile = async () => {
+    if (!token || !shop) return;
+    
+    setIsDeleting(true);
+    try {
+      // Call the database function to mark file as deleted
+      const { data, error } = await supabase.rpc('mark_file_deleted_by_user', {
+        p_job_id: null, // We'll find by token instead
+      });
+      
+      // Alternative: Update directly via the jobs table
+      const { data: jobData, error: fetchError } = await supabase
+        .from('jobs')
+        .select('id, file_path, status, is_deleted_by_user')
+        .eq('token', token)
+        .eq('shop_id', shop.id)
+        .single();
+      
+      if (fetchError || !jobData) {
+        alert('Could not find your file. It may have already been processed or deleted.');
+        return;
+      }
+      
+      if (jobData.is_deleted_by_user) {
+        alert('File has already been deleted.');
+        setIsDeleted(true);
+        return;
+      }
+      
+      if (jobData.status === 'printed') {
+        alert('Cannot delete - the shopkeeper has already completed this job.');
+        return;
+      }
+      
+      // Delete file from storage first
+      if (jobData.file_path) {
+        const { error: storageError } = await supabase.storage
+          .from('documents')
+          .remove([jobData.file_path]);
+        
+        // Ignore storage errors - file might already be gone
+        if (storageError && !storageError.message.includes('Object not found')) {
+          console.warn('Storage deletion warning:', storageError.message);
+        }
+      }
+      
+      // Mark as deleted in database
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update({
+          is_deleted_by_user: true,
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobData.id);
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      setIsDeleted(true);
+      
+      // Update local history to reflect deletion
+      const updatedHistory = historyItems.map(item => 
+        item.token === token ? { ...item, isDeleted: true } : item
+      );
+      setHistoryItems(updatedHistory);
+      localStorage.setItem('xeroxq_history', JSON.stringify(updatedHistory));
+      
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      alert('Failed to delete file. Please try again or contact the shop.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ── FEEDBACK FUNCTIONS ────────────────────────────────────────────────────
+  
+  const fetchFeedbackQuestions = async (shopId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_feedback_questions', {
+        p_shop_id: shopId
+      });
+      
+      if (error) {
+        console.error('Error fetching feedback questions:', error);
+        return;
+      }
+      
+      if (data) {
+        setFeedbackQuestions(data.map((q: any) => ({
+          question_id: `${q.source}-${q.id}`,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          options: Array.isArray(q.options) ? q.options : (q.options ? JSON.parse(q.options) : []),
+          is_required: q.is_required,
+          display_order: q.display_order,
+          source: q.source
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching feedback questions:', error);
+    }
+  };
+
+  const handleOpenFeedback = async () => {
+    if (!shop) return;
+    
+    // Always show the feedback modal
+    // Check if feedback is enabled - but still show modal even if disabled
+    try {
+      const { data: enabledData } = await supabase.rpc('is_feedback_enabled_for_shop', {
+        p_shop_id: shop.id
+      });
+      setFeedbackEnabled(enabledData === true);
+    } catch {
+      setFeedbackEnabled(false);
+    }
+    
+    // Fetch questions if available
+    try {
+      await fetchFeedbackQuestions(shop.id);
+    } catch {
+      // If fetch fails, we'll show the default rating form
+      setFeedbackQuestions([]);
+    }
+    
+    // Always open the modal
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!shop || !token) return;
+    
+    // Validate required questions
+    const missingRequired = feedbackQuestions.filter(q => 
+      q.is_required && !feedbackResponses[q.question_id]
+    );
+    
+    if (missingRequired.length > 0) {
+      alert('Please answer all required questions');
+      return;
+    }
+    
+    setIsSubmittingFeedback(true);
+    
+    try {
+      // Separate default and custom responses
+      const defaultResponses: Record<string, string> = {};
+      const customResponses: Record<string, string> = {};
+      
+      feedbackQuestions.forEach(q => {
+        if (q.source === 'default') {
+          defaultResponses[q.question_id] = feedbackResponses[q.question_id] || '';
+        } else {
+          customResponses[q.question_id] = feedbackResponses[q.question_id] || '';
+        }
+      });
+      
+      // Include overall rating if provided (from default star rating)
+      if (feedbackResponses.overall_rating) {
+        defaultResponses.overall_rating = feedbackResponses.overall_rating;
+      }
+      
+      // Get job ID from token
+      const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('token', token)
+        .eq('shop_id', shop.id)
+        .single();
+      
+      if (jobError || !jobData) {
+        throw new Error('Could not find job');
+      }
+      
+      const { data, error } = await supabase.rpc('submit_feedback', {
+        p_job_id: jobData.id,
+        p_shop_id: shop.id,
+        p_customer_name: customerName,
+        p_customer_phone: customerPhone,
+        p_default_responses: defaultResponses,
+        p_custom_responses: customResponses,
+        p_written_feedback: writtenFeedback
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data[0]?.success) {
+        setFeedbackSubmitted(true);
+        setTimeout(() => {
+          setShowFeedbackModal(false);
+          window.location.reload();
+        }, 2000);
+      } else {
+        alert(data?.[0]?.message || 'Failed to submit feedback');
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('Failed to submit feedback. Please try again.');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   if (notFound) {
     return (
       <main className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans">
@@ -467,7 +717,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </p>
           <Button 
             onClick={() => window.location.href = "/"} 
-            className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold rounded-[5.57px] transition-all"
+            className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold rounded-[5.57px] transition-all cursor-pointer"
           >
             Go Back Home
           </Button>
@@ -580,7 +830,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
-                <button className="h-10 w-10 flex items-center justify-center rounded-[5.57px] border border-black/5 bg-white text-auth-slate-50 hover:text-black hover:bg-black/5 transition-all active:scale-95 shadow-sm">
+                <button className="h-10 w-10 flex items-center justify-center rounded-[5.57px] border border-black/5 bg-white text-auth-slate-50 hover:text-black hover:bg-black/5 transition-all active:scale-95 shadow-sm cursor-pointer">
                   <History className="w-[18px] h-[18px]" />
                 </button>
               </SheetTrigger>
@@ -611,11 +861,11 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                            <p className="text-[12px] font-bold text-auth-slate-30 uppercase tracking-[0.15em] max-w-[240px] px-4">Ready for your first high-fidelity print job?</p>
                         </div>
                       </div>
-                    ) : historyItems.map((item) => (
+                    ) : historyItems.map((item, idx) => (
                       <motion.div 
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        key={item.token} 
+                        key={`history-${idx}-${item.token}`} 
                         className="p-5 bg-white border border-black/5 rounded-[12px] flex items-center justify-between group shadow-sm hover:shadow-md transition-all"
                       >
                         <div className="flex flex-col min-w-0 pr-4">
@@ -630,7 +880,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                            </div>
                            <Dialog>
                              <DialogTrigger asChild>
-                               <button className="w-8 h-8 flex items-center justify-center text-auth-slate-30 hover:text-red-500 transition-colors">
+                               <button className="w-8 h-8 flex items-center justify-center text-auth-slate-30 hover:text-red-500 transition-colors cursor-pointer">
                                  <Trash2 className="w-4 h-4" />
                                </button>
                              </DialogTrigger>
@@ -646,13 +896,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                                </DialogHeader>
                                <div className="flex gap-3 pt-2">
                                  <DialogClose asChild>
-                                    <button className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all">
+                                    <button className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all cursor-pointer">
                                       Abort
                                     </button>
                                  </DialogClose>
                                  <button 
                                    onClick={() => deleteHistoryItem(item.token)}
-                                   className="flex-1 h-[40px] bg-red-500 text-white hover:bg-red-600 rounded-[5.57px] text-[12px] font-bold transition-all shadow-lg shadow-red-500/20"
+                                   className="flex-1 h-[40px] bg-red-500 text-white hover:bg-red-600 rounded-[5.57px] text-[12px] font-bold transition-all shadow-lg shadow-red-500/20 cursor-pointer"
                                  >
                                    Confirm Delete
                                  </button>
@@ -717,13 +967,54 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
               )}
             </AnimatePresence>
 
-            <div className="py-12 bg-black rounded-[5.57px] mb-8 shadow-2xl relative overflow-hidden group">
+            <div className="py-12 bg-black rounded-[5.57px] mb-6 shadow-2xl relative overflow-hidden group">
                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                <p className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase mb-4">{shop?.generate_token !== false ? "Your Print Code" : "Status Registered"}</p>
                <span className="text-[88px] font-black tracking-tighter text-white leading-none inline-block">
                   {shop?.generate_token !== false ? token : <CheckCircle2 className="w-20 h-20" />}
                </span>
             </div>
+
+            {/* Delete File Button - Only show if not deleted and not printed */}
+            {!isDeleted && jobStatus !== 'printed' && (
+              <div className="mb-6">
+                <button
+                  onClick={handleDeleteFile}
+                  disabled={isDeleting}
+                  className="flex items-center justify-center gap-2 w-full h-12 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 font-bold text-[13px] rounded-[5.57px] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete My File</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-[10px] text-auth-slate-30 mt-2 text-center">
+                  Once deleted, the shopkeeper cannot download this file.
+                </p>
+              </div>
+            )}
+
+            {/* Deleted Status Message */}
+            {isDeleted && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-red-100 border border-red-200 rounded-[5.57px] text-center"
+              >
+                <Trash2 className="w-5 h-5 text-red-600 mx-auto mb-2" />
+                <p className="text-[13px] font-bold text-red-700">File Deleted</p>
+                <p className="text-[11px] text-red-600 mt-1">
+                  Your file has been permanently removed from our system.
+                </p>
+              </motion.div>
+            )}
 
             <p className="text-[14px] font-medium text-auth-slate-50 leading-relaxed mb-10 max-w-[320px] mx-auto">
                {location === 'home' ? (
@@ -735,12 +1026,31 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                )}
             </p>
 
-            <button 
-               onClick={() => window.location.reload()}
-               className="w-full h-14 bg-black text-white hover:bg-black/90 font-black text-[14px] rounded-[5.57px] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-black/20"
-            >
-               Finish & Start New
-            </button>
+            <div className="flex gap-3">
+               <button 
+                  onClick={() => {
+                    setFile(null);
+                    setToken(null);
+                    setJobStatus("pending");
+                    setIsDeleted(false);
+                    setLocation('shop');
+                  }}
+                  className="flex-1 h-14 bg-white border-2 border-black text-black font-bold text-[14px] rounded-[5.57px] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:bg-gray-50 cursor-pointer"
+               >
+                  <Upload className="w-4 h-4 mr-2" /> Upload Another File
+               </button>
+               <button 
+                  onClick={handleOpenFeedback}
+                  className={cn(
+                    "flex-1 h-14 text-white font-black text-[14px] rounded-[5.57px] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl cursor-pointer",
+                    jobStatus === 'printed' 
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30" 
+                      : "bg-black hover:bg-black/90 shadow-black/20"
+                  )}
+               >
+                  {jobStatus === 'printed' ? '✓ Give Feedback' : 'Give Feedback'}
+               </button>
+            </div>
 
             {location === 'home' && (
                <div className="mt-8 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[18px] text-left shadow-sm">
@@ -819,7 +1129,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       <button 
                         onClick={() => setLocation('shop')}
                         className={cn(
-                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden",
+                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden cursor-pointer",
                           location === 'shop' ? "border-black bg-black text-white shadow-xl" : "border-black/5 bg-white hover:border-black/20"
                         )}
                       >
@@ -834,7 +1144,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       <button 
                         onClick={() => setLocation('home')}
                         className={cn(
-                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden",
+                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden cursor-pointer",
                           location === 'home' ? "border-black bg-black text-white shadow-xl" : "border-black/5 bg-white hover:border-black/20"
                         )}
                       >
@@ -850,7 +1160,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     <div className="flex justify-center">
                       <button 
                         onClick={() => setLocationConfirmed(true)}
-                        className="h-14 px-12 bg-black text-white rounded-full font-black text-[14px] uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                        className="h-14 px-12 bg-black text-white rounded-full font-black text-[14px] uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 cursor-pointer"
                       >
                         <span>Next Step</span>
                         <ArrowRight className="w-4 h-4" />
@@ -877,7 +1187,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                            <Badge variant="outline" className="bg-black/5 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">
                              {location === 'home' ? "Pre-order Mode" : "At Counter Mode"}
                            </Badge>
-                           <button onClick={() => setLocationConfirmed(false)} className="text-[9px] font-black uppercase tracking-widest text-auth-slate-30 hover:text-black transition-colors underline decoration-black/10 underline-offset-4">Change Location</button>
+                           <button onClick={() => setLocationConfirmed(false)} className="text-[9px] font-black uppercase tracking-widest text-auth-slate-30 hover:text-black transition-colors underline decoration-black/10 underline-offset-4 cursor-pointer">Change Location</button>
                          </div>
                        )}
                     </div>
@@ -1065,7 +1375,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                        ) : (
                          <div className="flex items-center gap-2">
                             <Zap className={cn("w-4 h-4", location === 'home' ? "animate-pulse" : "")} />
-                            <span>{location === 'home' ? "Authorize & Send to Shop" : "Send to Shop Terminal"}</span>
+                            <span>{location === 'home' ? "Authorize & Upload" : "Upload"}</span>
                          </div>
                        )}
                     </button>
@@ -1073,6 +1383,20 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                  </motion.div>
                )}
             </div>
+          
+          {/* WhatsApp Upload Button - After upload container */}
+          <div className="mt-8 flex flex-col items-center gap-3">
+             <button 
+               onClick={() => window.location.href = '/blog/whatsapp-virtual-number-system'}
+               className="flex items-center gap-3 px-6 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-[13px] rounded-[12px] transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+             >
+                <MessageCircle className="w-5 h-5" />
+                <span>Upload to WhatsApp</span>
+             </button>
+             <p className="text-[10px] font-medium text-auth-slate-30 text-center">
+                Quick upload via WhatsApp (Coming Soon)
+             </p>
+          </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1109,6 +1433,195 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FEEDBACK MODAL */}
+      <Dialog open={showFeedbackModal} onOpenChange={setShowFeedbackModal}>
+        <DialogContent className="sm:max-w-[520px] bg-white border border-[#E2E8F0] shadow-2xl p-0 rounded-[16px] overflow-hidden max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white">
+            <DialogHeader>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+                <span className="text-2xl">🎉</span>
+              </div>
+              <DialogTitle className="text-[22px] font-black tracking-tight text-white">
+                {feedbackSubmitted ? 'Thank You!' : 'How was your experience?'}
+              </DialogTitle>
+              <DialogDescription className="text-white/90 text-[13px] font-medium">
+                {feedbackSubmitted 
+                  ? 'Your feedback helps us improve our service.'
+                  : `Help ${shop?.name || 'us'} serve you better by sharing your thoughts.`
+                }
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="p-6">
+            {feedbackSubmitted ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-8"
+              >
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">✓</span>
+                </div>
+                <p className="text-[16px] font-bold text-green-700 mb-2">Feedback Submitted!</p>
+                <p className="text-[13px] text-gray-600">Redirecting you to start fresh...</p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Default Feedback Questions */}
+                {feedbackQuestions.filter(q => q.source === 'default').length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                      Platform Feedback
+                    </h3>
+                    <div className="space-y-4">
+                      {feedbackQuestions
+                        .filter(q => q.source === 'default')
+                        .map((question, idx) => (
+                        <div key={`question-${idx}-${question.question_id || 'unknown'}`} className="bg-[#F8FAFC] rounded-xl p-4">
+                          <p className="text-[14px] font-bold text-black mb-3">
+                            {question.question_text}
+                            {question.is_required && <span className="text-red-500 ml-1">*</span>}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {(question.options || []).map((option: string, optIdx: number) => (
+                              <button
+                                key={`default-${question.question_id}-${optIdx}`}
+                                onClick={() => {
+                                  const newResponses = { ...feedbackResponses, [question.question_id]: option };
+                                  setFeedbackResponses(newResponses);
+                                }}
+                                className={cn(
+                                  "px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  feedbackResponses[question.question_id] === option
+                                    ? "bg-black text-white shadow-lg"
+                                    : "bg-white border border-gray-200 text-gray-700 hover:border-black/30"
+                                )}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Shop Feedback Questions */}
+                {feedbackQuestions.filter(q => q.source === 'custom').length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                      {shop?.custom_feedback_title || 'About This Shop'}
+                    </h3>
+                    <div className="space-y-4">
+                      {feedbackQuestions
+                        .filter(q => q.source === 'custom')
+                        .map((question, idx) => (
+                        <div key={`custom-q-${idx}-${question.question_id || 'unknown'}`} className="bg-[#F8FAFC] rounded-xl p-4">
+                          <p className="text-[14px] font-bold text-black mb-3">
+                            {question.question_text}
+                            {question.is_required && <span className="text-red-500 ml-1">*</span>}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {(question.options || []).map((option: string, optIdx: number) => (
+                              <button
+                                key={`custom-${question.question_id}-${optIdx}`}
+                                onClick={() => {
+                                  const newResponses = { ...feedbackResponses, [question.question_id]: option };
+                                  setFeedbackResponses(newResponses);
+                                }}
+                                className={cn(
+                                  "px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  feedbackResponses[question.question_id] === option
+                                    ? "bg-black text-white shadow-lg"
+                                    : "bg-white border border-gray-200 text-gray-700 hover:border-black/30"
+                                )}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Default Star Rating - Always show if no other questions */}
+                {feedbackQuestions.length === 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                      Rate Your Experience
+                    </h3>
+                    <div className="bg-[#F8FAFC] rounded-xl p-4">
+                      <p className="text-[14px] font-bold text-black mb-3">How would you rate your overall experience?</p>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => setFeedbackResponses(prev => ({ ...prev, overall_rating: star.toString() }))}
+                            className="text-[28px] transition-all hover:scale-110"
+                          >
+                                <span className={feedbackResponses.overall_rating && parseInt(feedbackResponses.overall_rating) >= star ? 'text-yellow-400' : 'text-gray-300'}>
+                                  ★
+                                </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Written Feedback */}
+                <div className="mb-6">
+                  <label className="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
+                    Tell us about your experience (Optional)
+                  </label>
+                  <textarea
+                    value={writtenFeedback}
+                    onChange={(e) => setWrittenFeedback(e.target.value)}
+                    placeholder="What did you like? What can we improve?"
+                    className="w-full h-24 p-4 bg-[#F8FAFC] border border-gray-200 rounded-xl text-[14px] resize-none focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/20 transition-all"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowFeedbackModal(false);
+                      window.location.reload();
+                    }}
+                    className="flex-1 h-12 bg-gray-100 text-gray-700 font-bold text-[14px] rounded-xl hover:bg-gray-200 transition-all"
+                  >
+                    Skip & Start New
+                  </button>
+                  <button
+                    onClick={handleSubmitFeedback}
+                    disabled={isSubmittingFeedback}
+                    className="flex-1 h-12 bg-black text-white font-bold text-[14px] rounded-xl hover:bg-black/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingFeedback ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Submit Feedback</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       </main>
       <SiteFooter />
     </div>

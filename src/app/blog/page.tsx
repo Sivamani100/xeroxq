@@ -13,7 +13,8 @@ import {
   Zap,
   Cpu,
   Globe,
-  Lock
+  Lock,
+  MessageCircle
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -24,13 +25,73 @@ import { useEffect } from "react";
 
 const mockPosts = [
   {
+    title: "Best Printing Services in India 2026: Top 10 Ranked List with Prices & Reviews",
+    excerpt: "Discover India's best printing services 2026. Compare XeroxQ, Printo, Vistaprint & more. Get prices, reviews, security features, and find the #1 printing service for your needs.",
+    author: "XeroxQ Industry Analysis Team",
+    date: "May 08, 2026",
+    readTime: "20 min",
+    tag: "Industry Analysis",
+    icon: TrendingUp,
+    slug: "best-printing-services-india"
+  },
+  {
+    title: "Document Printing Near Me: Find Best Print Shops in India 2026 - Instant, Secure & Affordable",
+    excerpt: "Looking for document printing near me? XeroxQ connects you to 500+ verified print shops across India. Get instant printing, military-grade security, and same-day delivery. Find your nearest print shop now!",
+    author: "XeroxQ Local Services Team",
+    date: "May 08, 2026",
+    readTime: "12 min",
+    tag: "Local Printing",
+    icon: Globe,
+    slug: "document-printing-near-me"
+  },
+  {
+    title: "WhatsApp Printing Service India 2026: Secure Document Printing via WhatsApp - XeroxQ",
+    excerpt: "Discover India's best WhatsApp printing service with XeroxQ. Send documents via WhatsApp for secure, instant printing. Get military-grade security, 5-minute processing, and 500+ locations across India.",
+    author: "XeroxQ WhatsApp Integration Team",
+    date: "May 08, 2026",
+    readTime: "14 min",
+    tag: "Mobile Printing",
+    icon: MessageCircle,
+    slug: "whatsapp-printing-service"
+  },
+  {
+    title: "Secure Document Printing in India: Why XeroxQ is the #1 Choice for Privacy Protection in 2026",
+    excerpt: "Discover why XeroxQ is India's most secure document printing service with zero-knowledge encryption, volatile RAM storage, and military-grade privacy protection. Learn how to protect your sensitive documents from data breaches.",
+    author: "XeroxQ Security Team",
+    date: "May 08, 2026",
+    readTime: "15 min",
+    tag: "Security",
+    icon: ShieldCheck,
+    slug: "secure-document-printing-india"
+  },
+  {
+    title: "Online Printing Services India 2026: Complete Guide to Secure, Fast & Affordable Document Printing",
+    excerpt: "Discover India's top online printing services with detailed comparison of XeroxQ vs traditional printers. Learn about secure document printing, pricing, delivery times, and why XeroxQ is #1 for privacy and speed.",
+    author: "XeroxQ Research Team",
+    date: "May 08, 2026",
+    readTime: "18 min",
+    tag: "Digital Printing",
+    icon: Cpu,
+    slug: "online-printing-services-india"
+  },
+  {
+    title: "Revolutionizing Document Upload: How Virtual WhatsApp Numbers Are Transforming Print Services",
+    excerpt: "Discover how XeroxQ's virtual WhatsApp number system provides dedicated business numbers for print shops, ensuring privacy, security, and seamless dashboard integration.",
+    author: "XeroxQ Engineering Team",
+    date: "May 07, 2026",
+    readTime: "12 min",
+    tag: "Innovation",
+    icon: Zap,
+    slug: "whatsapp-virtual-number-system"
+  },
+  {
     title: "The Zero-Knowledge Print Protocol: A Deep Dive",
     excerpt: "Exploring how XeroxQ encrypts and purges documents locally using AES-256-GCM to ensure 100% data autonomy across the decentralized mesh.",
     author: "Sivamanikanta M.",
     date: "April 02, 2026",
     readTime: "8 min",
     tag: "Engineering",
-    icon: Cpu,
+    icon: Lock,
     slug: "zero-knowledge-print"
   },
   {
@@ -39,49 +100,9 @@ const mockPosts = [
     author: "XeroxQ Labs",
     date: "March 28, 2026",
     readTime: "6 min",
-    tag: "Vision",
+    tag: "Security",
     icon: ShieldCheck,
     slug: "whatsapp-privacy-hazard"
-  },
-  {
-    title: "Scaling to 500+ Verified Print Nodes in AP",
-    excerpt: "How we onboarded and verified over 500 commercial xerox shops in a single Indian state, building trust through hardware audits.",
-    author: "Network Operations",
-    date: "March 20, 2026",
-    readTime: "12 min",
-    tag: "Network",
-    icon: Globe,
-    slug: "scaling-ap-nodes"
-  },
-  {
-    title: "Ephemeral RAM: Why We Don't Use Databases for Files",
-    excerpt: "Traditional cloud platforms store your files on SSDs. XeroxQ holds them exclusively in volatile RAM that self-destructs after printing.",
-    author: "Saini Koyya",
-    date: "March 12, 2026",
-    readTime: "10 min",
-    tag: "Engineering",
-    icon: Zap,
-    slug: "ephemeral-ram-architecture"
-  },
-  {
-    title: "The Physical QR Handshake Explained",
-    excerpt: "How a simple QR code on a shop desk acts as a one-time cryptographic key, bridging the gap between digital encryption and physical hardware.",
-    author: "Sivamanikanta M.",
-    date: "March 05, 2026",
-    readTime: "7 min",
-    tag: "Engineering",
-    icon: Lock,
-    slug: "qr-handshake-explained"
-  },
-  {
-    title: "Building a Privacy-First Brand in India",
-    excerpt: "Most Indian consumers don't think about data privacy when printing. Here's how we're changing the conversation from the ground up.",
-    author: "XeroxQ Labs",
-    date: "February 22, 2026",
-    readTime: "5 min",
-    tag: "Vision",
-    icon: ShieldCheck,
-    slug: "privacy-first-brand-india"
   }
 ];
 
@@ -150,10 +171,10 @@ export default function Blog() {
                </div>
                
                <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
-                 The Future Of <br /> Physicalization.
+                 India's #1 <br /> Printing Blog.
                </h1>
                <p className="text-lg md:text-xl font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
-                 Deep dives into decentralized networks, zero-knowledge encryption, and building the secure print mesh across Andhra Pradesh.
+                 Expert insights on secure document printing, WhatsApp printing services, and India's best printing solutions. Discover why XeroxQ leads the industry in privacy and innovation.
                </p>
              </motion.div>
           </div>
@@ -163,7 +184,7 @@ export default function Blog() {
         <section className="sticky top-0 z-[500] py-4 bg-white/80 backdrop-blur-xl border-y border-gray-100">
            <div className="max-w-[1280px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-                 {["All", "Engineering", "Network", "Vision"].map(tag => (
+                 {["All", "Industry Analysis", "Local Printing", "Mobile Printing", "Security", "Digital Printing", "Innovation", "Engineering"].map(tag => (
                     <button 
                       key={tag}
                       onClick={() => setActiveTag(tag)}

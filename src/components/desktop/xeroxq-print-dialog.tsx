@@ -441,13 +441,13 @@ export default function XeroxQPrintDialog({
           <div className="flex items-center gap-2 px-1.5 py-1.5 bg-[#F8FAFC] rounded-[5.57px] border border-[#E2E8F0]">
              <button 
                onClick={() => setActiveTab('settings')}
-               className={cn("px-4 py-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-[0.1em] transition-all", activeTab === 'settings' ? "bg-white text-black shadow-sm border border-[#E2E8F0]" : "text-[#7E8B9E] hover:text-black")}
+               className={cn("px-4 py-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer", activeTab === 'settings' ? "bg-white text-black shadow-sm border border-[#E2E8F0]" : "text-[#7E8B9E] hover:text-black")}
              >
                Protocol
              </button>
              <button 
                onClick={() => setActiveTab('laboratory')}
-               className={cn("px-4 py-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-[0.1em] transition-all", activeTab === 'laboratory' ? "bg-white text-black shadow-sm border border-[#E2E8F0]" : "text-[#7E8B9E] hover:text-black")}
+               className={cn("px-4 py-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer", activeTab === 'laboratory' ? "bg-white text-black shadow-sm border border-[#E2E8F0]" : "text-[#7E8B9E] hover:text-black")}
              >
                Laboratory
              </button>
@@ -455,7 +455,7 @@ export default function XeroxQPrintDialog({
           
           <div className="flex items-center gap-2">
              {onClose && (
-               <button onClick={onClose} className="h-[36px] w-[36px] flex items-center justify-center border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors rounded-[5.57px] shadow-sm">
+               <button onClick={onClose} className="h-[36px] w-[36px] flex items-center justify-center border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors rounded-[5.57px] shadow-sm cursor-pointer">
                  <X className="w-[14px] h-[14px]" />
                </button>
              )}
@@ -489,11 +489,11 @@ export default function XeroxQPrintDialog({
                    <div className="flex items-center justify-between bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] p-3 shadow-sm">
                       <span className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] ml-1">Copies</span>
                       <div className="flex items-center gap-3">
-                         <button onClick={() => setCopies(Math.max(1, copies - 1))} className="h-[32px] w-[32px] flex items-center justify-center rounded-[4px] border border-[#E2E8F0] bg-white text-black font-bold shadow-sm hover:bg-[#F8FAFC] transition-all">
+                         <button onClick={() => setCopies(Math.max(1, copies - 1))} className="h-[32px] w-[32px] flex items-center justify-center rounded-[4px] border border-[#E2E8F0] bg-white text-black font-bold shadow-sm hover:bg-[#F8FAFC] transition-all cursor-pointer">
                             <Minus className="w-[14px] h-[14px]" />
                          </button>
                          <span className="text-[14px] font-bold w-6 text-center tabular-nums">{copies}</span>
-                         <button onClick={() => setCopies(copies + 1)} className="h-[32px] w-[32px] flex items-center justify-center rounded-[4px] border border-[#E2E8F0] bg-white text-black font-bold shadow-sm hover:bg-[#F8FAFC] transition-all">
+                         <button onClick={() => setCopies(copies + 1)} className="h-[32px] w-[32px] flex items-center justify-center rounded-[4px] border border-[#E2E8F0] bg-white text-black font-bold shadow-sm hover:bg-[#F8FAFC] transition-all cursor-pointer">
                             <Plus className="w-[14px] h-[14px]" />
                          </button>
                       </div>
@@ -504,8 +504,7 @@ export default function XeroxQPrintDialog({
                     <div className="grid grid-cols-2 gap-2">
                        <button 
                          onClick={() => setSides('simplex')} 
-                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all", sides === 'simplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}
-                       >
+                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all cursor-pointer", sides === 'simplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}>
                           <FileText className="w-4 h-4" />
                           <div className="text-center">
                              <div className="text-[10px] font-bold uppercase tracking-[0.1em]">Single</div>
@@ -514,8 +513,7 @@ export default function XeroxQPrintDialog({
                        </button>
                        <button 
                          onClick={() => setSides('duplex')} 
-                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all", sides === 'duplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}
-                       >
+                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all cursor-pointer", sides === 'duplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}>
                           <BookOpen className="w-4 h-4" />
                           <div className="text-center">
                              <div className="text-[10px] font-bold uppercase tracking-[0.1em]">Double</div>
@@ -527,27 +525,16 @@ export default function XeroxQPrintDialog({
                     <div className="grid grid-cols-2 gap-2">
                        <button 
                          onClick={() => setColorMode('color')} 
-                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all", colorMode === 'color' ? "bg-[#FF591E] text-white border-[#FF591E] shadow-lg shadow-[#FF591E]/20" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}
-                       >
+                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all cursor-pointer", colorMode === 'color' ? "bg-[#FF591E] text-white border-[#FF591E] shadow-lg shadow-[#FF591E]/20" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}>
                           <Droplet className="w-4 h-4" />
                           <div className="text-center">
                              <div className="text-[10px] font-bold uppercase tracking-[0.1em]">Full Color</div>
                              <div className={cn("text-[8px] font-bold uppercase tracking-[0.1em]", colorMode === 'color' ? "text-white/60" : "text-[#7E8B9E]/60")}>Vibrant</div>
                           </div>
                        </button>
-                       <button 
-                         onClick={() => setColorMode('monochrome')} 
-                         className={cn("flex flex-col items-center justify-center gap-1.5 py-2.5 px-2 rounded-[5.57px] border transition-all", colorMode === 'monochrome' ? "bg-[#323A46] text-white border-[#323A46] shadow-lg" : "bg-white text-[#7E8B9E] border-[#E2E8F0] hover:bg-[#F8FAFC]")}
-                       >
-                          <Layers className="w-4 h-4" />
-                          <div className="text-center">
-                             <div className="text-[10px] font-bold uppercase tracking-[0.1em]">Monochrome</div>
-                             <div className={cn("text-[8px] font-bold uppercase tracking-[0.1em]", colorMode === 'monochrome' ? "text-white/60" : "text-[#7E8B9E]/60")}>B&W Mesh</div>
-                          </div>
-                       </button>
                     </div>
 
-                   <button onClick={() => handleCycle(paperSupply, paperOptions, setPaperSupply)} className="w-full flex items-center justify-between p-3 rounded-[5.57px] border border-[#E2E8F0] hover:bg-[#F8FAFC] transition-all text-left bg-white shadow-sm">
+                   <button onClick={() => handleCycle(paperSupply, paperOptions, setPaperSupply)} className="w-full flex items-center justify-between p-3 rounded-[5.57px] border border-[#E2E8F0] hover:bg-[#F8FAFC] transition-all text-left bg-white shadow-sm cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-[4px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center shrink-0 text-[#323A46]">
                           <Layers className="w-4 h-4" />
@@ -681,10 +668,16 @@ export default function XeroxQPrintDialog({
 
                     {/* Quick Transform Grid */}
                     <div className="grid grid-cols-2 gap-2">
-                       <button onClick={() => setInvert(!invert)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all", invert ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
+                       <button onClick={() => setInvert(!invert)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer", invert ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
                          Invert
                        </button>
-                       <button onClick={() => setRotation(r => (r + 90) % 360)} className="h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-black text-[11px] font-bold uppercase tracking-[0.1em] transition-all">
+                       <button onClick={() => {
+                         setRotation(r => (r + 90) % 360);
+                         // Reset crop and position when rotating to ensure stability
+                         setCropRect({ t: 0, b: 0, l: 0, r: 0 });
+                         setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
+                         setIsCropMode(false);
+                       }} className="h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-black text-[11px] font-bold uppercase tracking-[0.1em] transition-all">
                          Rotate
                        </button>
                        <button onClick={() => setMirrorH(!mirrorH)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all", mirrorH ? "bg-[#3568FF] text-white border-[#3568FF]" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
@@ -695,8 +688,22 @@ export default function XeroxQPrintDialog({
                        </button>
                     </div>
                     
-                    <button onClick={() => setIsCropMode(!isCropMode)} className={cn("w-full h-[40px] flex items-center justify-center gap-2 rounded-[5.57px] border transition-all font-bold uppercase tracking-[0.1em] text-[11px] shadow-sm", isCropMode ? "bg-[#059669] text-white border-[#059669]" : "bg-black text-white border-black hover:bg-black/90")}>
-                       <Crop className="w-3.5 h-3.5" /> {isCropMode ? "Confirm Area" : "Select Crop Area"}
+                    <button 
+                      onClick={() => {
+                        if (rotation !== 0) return;
+                        if (!isCropMode) {
+                          // Reset position when entering crop mode for stability
+                          setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
+                        }
+                        setIsCropMode(!isCropMode);
+                      }} 
+                      disabled={rotation !== 0}
+                      className={cn("w-full h-[40px] flex items-center justify-center gap-2 rounded-[5.57px] border transition-all font-bold uppercase tracking-[0.1em] text-[11px] shadow-sm", 
+                        isCropMode ? "bg-[#059669] text-white border-[#059669]" : "bg-black text-white border-black hover:bg-black/90",
+                        rotation !== 0 && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                       <Crop className="w-3.5 h-3.5" /> {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm Crop" : "Crop Image")}
                     </button>
 
                     <div className="mt-2 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-[5.57px] flex gap-2">
@@ -719,7 +726,7 @@ export default function XeroxQPrintDialog({
                 className="w-full h-[42px] bg-black text-white hover:bg-black/90 font-bold text-[12px] uppercase tracking-[0.1em] rounded-[5.57px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
               >
                 {status === 'printing' ? <RefreshCw className="w-4 h-4 animate-spin" /> : status === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
-                {status === 'printing' ? 'Spooling...' : status === 'success' ? 'Ready' : 'Initiate Protocol'}
+                {status === 'printing' ? 'Spooling...' : status === 'success' ? 'Ready' : 'Print'}
               </button>
            </div>
         </div>
@@ -730,14 +737,14 @@ export default function XeroxQPrintDialog({
            {/* Studio Tools Bar */}
            <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white border border-[#E2E8F0] p-1.5 rounded-[5.57px] shadow-sm z-[100] animate-in slide-in-from-right duration-500">
               <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-[4px] border border-[#E2E8F0]">
-                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="h-[28px] w-[32px] flex items-center justify-center hover:bg-white border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:scale-95"><Minus className="w-[14px] h-[14px]" /></button>
+                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="h-[28px] w-[32px] flex items-center justify-center hover:bg-white border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:scale-95 cursor-pointer"><Minus className="w-[14px] h-[14px]" /></button>
                  <div className="w-12 text-center">
                     <span className="text-[11px] font-bold text-black">{Math.round(zoom * 100)}%</span>
                  </div>
-                 <button onClick={() => setZoom(z => Math.min(3.0, z + 0.1))} className="h-[28px] w-[32px] flex items-center justify-center hover:bg-white border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:scale-95"><Plus className="w-[14px] h-[14px]" /></button>
+                 <button onClick={() => setZoom(z => Math.min(3.0, z + 0.1))} className="h-[28px] w-[32px] flex items-center justify-center hover:bg-white border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:scale-95 cursor-pointer"><Plus className="w-[14px] h-[14px]" /></button>
               </div>
               <div className="w-[1px] h-6 bg-[#E2E8F0] mx-1" />
-              <button onClick={() => { setZoom(0.8); setRotation(0); }} className="h-[36px] w-[36px] flex items-center justify-center hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:rotate-180 duration-500"><RotateCcw className="w-[14px] h-[14px]" /></button>
+              <button onClick={() => { setZoom(0.8); setRotation(0); }} className="h-[36px] w-[36px] flex items-center justify-center hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:rotate-180 duration-500 cursor-pointer"><RotateCcw className="w-[14px] h-[14px]" /></button>
            </div>
 
            {/* Continuous Scroll Surface */}
@@ -767,6 +774,7 @@ export default function XeroxQPrintDialog({
                                className={cn("bg-white border border-[#E2E8F0] relative overflow-hidden transition-all duration-300", isCropMode ? "shadow-2xl ring-4 ring-black/5" : "shadow-[0px_4px_24px_rgba(0,0,0,0.06)]")}
                                style={{ width: '595.27px', height: '841.88px' }}
                              >
+                                {/* Image container with rotation */}
                                 <div 
                                   className="absolute"
                                   style={{ 
@@ -785,22 +793,22 @@ export default function XeroxQPrintDialog({
                                     setIsCropMode(!isCropMode);
                                   }}
                                 >
-                                   {/* The Full Image (Dimmed outside crop in Crop Mode) */}
-                                   <div className={cn("relative w-full h-full overflow-hidden transition-all", isCropMode ? "bg-[#F8FAFC]/80 backdrop-blur-[2px]" : "")}>
+                                   {/* The Full Image */}
+                                   <div className="relative w-full h-full overflow-hidden">
                                       <img 
                                         id="laboratory-preview-image"
                                         src={documentPath} 
                                         alt="Laboratory Mesh" 
                                         crossOrigin="anonymous"
-                                        className="absolute block m-0 p-0 pointer-events-none select-none transition-opacity"
+                                        className="absolute block m-0 p-0 pointer-events-none select-none"
                                         style={{ 
                                           left: -cropRect.l,
                                           top: -cropRect.t,
                                           width: imgRect.w,
                                           height: imgRect.h,
-                                          clipPath: isCropMode ? 'none' : `inset(${cropRect.t}px ${cropRect.r}px ${cropRect.b}px ${cropRect.l}px)`,
+                                          clipPath: isCropMode ? `inset(${cropRect.t}px ${cropRect.r}px ${cropRect.b}px ${cropRect.l}px)` : 'none',
                                           opacity: isCropMode ? 0.4 : 1,
-                                          filter: isCropMode ? 'none' : `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
+                                          filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
                                         }}
                                                                                  onLoad={(e) => {
                                            setNumPages(1);
@@ -823,66 +831,117 @@ export default function XeroxQPrintDialog({
 
                                       />
 
-                                      {/* The "Visible" Crop Area Highlighting */}
+                                      {/* Crop overlay - inside rotated container to rotate with image */}
                                       {isCropMode && (
-                                        <div 
-                                          className="absolute border-[3px] border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] z-10"
-                                          style={{
-                                            left: cropRect.l,
-                                            top: cropRect.t,
-                                            width: imgRect.w - cropRect.l - cropRect.r,
-                                            height: imgRect.h - cropRect.t - cropRect.b,
-                                            filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
-                                          }}
-                                        >
-                                          <img 
-                                            src={documentPath}
-                                            crossOrigin="anonymous"
-                                            className="absolute w-full h-full object-cover"
+                                        <>
+                                          {/* Dark overlay outside crop area */}
+                                          <div 
+                                            className="absolute bg-black/50 z-10 pointer-events-none"
                                             style={{
+                                              left: 0,
+                                              top: 0,
                                               width: imgRect.w,
-                                              height: imgRect.h,
-                                              left: -cropRect.l,
-                                              top: -cropRect.t
+                                              height: cropRect.t,
+                                            }}
+                                          />
+                                          <div 
+                                            className="absolute bg-black/50 z-10 pointer-events-none"
+                                            style={{
+                                              left: 0,
+                                              top: imgRect.h - cropRect.b,
+                                              width: imgRect.w,
+                                              height: cropRect.b,
+                                            }}
+                                          />
+                                          <div 
+                                            className="absolute bg-black/50 z-10 pointer-events-none"
+                                            style={{
+                                              left: 0,
+                                              top: cropRect.t,
+                                              width: cropRect.l,
+                                              height: imgRect.h - cropRect.t - cropRect.b,
+                                            }}
+                                          />
+                                          <div 
+                                            className="absolute bg-black/50 z-10 pointer-events-none"
+                                            style={{
+                                              left: imgRect.w - cropRect.r,
+                                              top: cropRect.t,
+                                              width: cropRect.r,
+                                              height: imgRect.h - cropRect.t - cropRect.b,
                                             }}
                                           />
 
-                                          {/* Floating Confirmation Button */}
-                                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex items-center justify-center">
-                                             <button 
-                                               onClick={() => setIsCropMode(false)}
-                                               className="bg-[#059669] text-white px-4 py-2 rounded-[5.57px] text-[10px] font-bold uppercase tracking-[0.1em] shadow-lg flex items-center gap-2 hover:bg-[#047857] transition-all active:scale-95"
-                                             >
-                                                <CheckCircle2 className="w-[14px] h-[14px]" /> Apply Crop
-                                             </button>
+                                          {/* Crop selection box */}
+                                          <div 
+                                            className="absolute z-20 border-2 border-white shadow-lg pointer-events-auto"
+                                            style={{
+                                              left: cropRect.l,
+                                              top: cropRect.t,
+                                              width: imgRect.w - cropRect.l - cropRect.r,
+                                              height: imgRect.h - cropRect.t - cropRect.b,
+                                              boxShadow: '0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.5)',
+                                            }}
+                                          >
+                                            {/* Grid lines */}
+                                            <div className="absolute inset-0 pointer-events-none">
+                                              <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/50" />
+                                              <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/50" />
+                                              <div className="absolute top-1/3 left-0 right-0 h-px bg-white/50" />
+                                              <div className="absolute top-2/3 left-0 right-0 h-px bg-white/50" />
+                                            </div>
+
+                                            {/* Dimensions label */}
+                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 rounded whitespace-nowrap">
+                                              {Math.round(imgRect.w - cropRect.l - cropRect.r)} × {Math.round(imgRect.h - cropRect.t - cropRect.b)} px
+                                            </div>
                                           </div>
-                                        </div>
+
+                                          {/* Handles */}
+                                          <div className="absolute inset-0 z-30 pointer-events-auto">
+                                            {['nw', 'ne', 'sw', 'se'].map(h => (
+                                              <div 
+                                                key={h}
+                                                className={cn(
+                                                  "absolute transition-all hover:scale-110",
+                                                  "w-5 h-5 bg-white border-2 border-[#3568FF] rounded-full shadow-md",
+                                                  h === 'nw' && "cursor-nw-resize",
+                                                  h === 'ne' && "cursor-ne-resize", 
+                                                  h === 'sw' && "cursor-sw-resize",
+                                                  h === 'se' && "cursor-se-resize"
+                                                )}
+                                                style={{
+                                                  left: h === 'nw' || h === 'sw' ? cropRect.l - 10 : imgRect.w - cropRect.r - 10,
+                                                  top: h === 'nw' || h === 'ne' ? cropRect.t - 10 : imgRect.h - cropRect.b - 10,
+                                                }}
+                                                onMouseDown={(e) => onStartResize(e, h)}
+                                              />
+                                            ))}
+                                            {['n', 's'].map(h => (
+                                              <div 
+                                                key={h}
+                                                className="absolute transition-all hover:scale-110 w-8 h-3 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ns-resize"
+                                                style={{
+                                                  left: cropRect.l + (imgRect.w - cropRect.l - cropRect.r) / 2 - 16,
+                                                  top: h === 'n' ? cropRect.t - 6 : imgRect.h - cropRect.b - 6,
+                                                }}
+                                                onMouseDown={(e) => onStartResize(e, h)}
+                                              />
+                                            ))}
+                                            {['e', 'w'].map(h => (
+                                              <div 
+                                                key={h}
+                                                className="absolute transition-all hover:scale-110 w-3 h-8 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ew-resize"
+                                                style={{
+                                                  left: h === 'w' ? cropRect.l - 6 : imgRect.w - cropRect.r - 6,
+                                                  top: cropRect.t + (imgRect.h - cropRect.t - cropRect.b) / 2 - 16,
+                                                }}
+                                                onMouseDown={(e) => onStartResize(e, h)}
+                                              />
+                                            ))}
+                                          </div>
+                                        </>
                                       )}
-                                   </div>
-                                   
-                                   {/* Manipulation Handles */}
-                                   <div className="absolute inset-0 pointer-events-none z-20">
-                                      {['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'].map(h => (
-                                         <div 
-                                           key={h}
-                                           className={cn(
-                                             "absolute pointer-events-auto shadow-sm transition-all",
-                                             isCropMode ? "bg-[#3568FF] w-4 h-4 rounded-[4px]" : "bg-white w-3 h-3 border-2 border-[#3568FF] rounded-full",
-                                             h === 'nw' && (isCropMode ? "-top-1 -left-1 border-t-2 border-l-2 border-white" : "-top-1.5 -left-1.5"),
-                                             h === 'ne' && (isCropMode ? "-top-1 -right-1 border-t-2 border-r-2 border-white" : "-top-1.5 -right-1.5"),
-                                             h === 'sw' && (isCropMode ? "-bottom-1 -left-1 border-b-2 border-l-2 border-white" : "-bottom-1.5 -left-1.5"),
-                                             h === 'se' && (isCropMode ? "-bottom-1 -right-1 border-b-2 border-r-2 border-white" : "-bottom-1.5 -right-1.5"),
-                                             h === 'nw' && "cursor-nw-resize", h === 'ne' && "cursor-ne-resize",
-                                             h === 'sw' && "cursor-sw-resize", h === 'se' && "cursor-se-resize",
-                                             h === 'n' && "hidden", h === 's' && "hidden", h === 'e' && "hidden", h === 'w' && "hidden"
-                                           )}
-                                           style={isCropMode ? {
-                                               left: h === 'nw' || h === 'sw' ? cropRect.l - 4 : h === 'ne' || h === 'se' ? imgRect.w - cropRect.r - 12 : 'auto',
-                                               top: h === 'nw' || h === 'ne' ? cropRect.t - 4 : h === 'sw' || h === 'se' ? imgRect.h - cropRect.b - 12 : 'auto',
-                                           } : {}}
-                                           onMouseDown={(e) => onStartResize(e, h)}
-                                         />
-                                      ))}
                                    </div>
                                 </div>
                              </div>

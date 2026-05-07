@@ -21,6 +21,11 @@ export const ShopSchema = z.object({
     .max(50)
     .optional()
     .nullable(),
+  shop_location: z.string()
+    .min(5, "Location must be at least 5 characters")
+    .max(200, "Location is too long")
+    .optional()
+    .nullable(),
   price_mono: z.number().min(0).max(100).optional(),
   price_color: z.number().min(0).max(200).optional(),
   is_open: z.boolean().optional(),

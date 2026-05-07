@@ -1,0 +1,63 @@
+# XeroxQ Robots.txt - India's Most Secure Document Printing Platform
+# Generated: 2026-05-08
+
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the entire site
+Allow: /$
+Allow: /blog
+Allow: /about
+Allow: /contact
+Allow: /help-center
+Allow: /admin
+Allow: /search
+
+# Block crawling of sensitive or non-public endpoints
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/api/
+Disallow: /static/
+Disallow: /*.json$
+Disallow: /*?*$
+Disallow: /*.pdf$
+Disallow: /temp/
+Disallow: /uploads/
+Disallow: /private/
+
+# Allow specific API endpoints that are public
+Allow: /api/public/shops
+Allow: /api/public/locations
+
+# Sitemap locations
+Sitemap: https://xeroxq.arkio.in/sitemap.xml
+Sitemap: https://xeroxq.arkio.in/blog-sitemap.xml
+Sitemap: https://xeroxq.arkio.in/image-sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Special directives for major search engines
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/api/
+
+User-agent: Slurp
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/api/
+
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/api/
