@@ -102,7 +102,7 @@ export function generateJsonLd(props: SEOHeadProps) {
     '@type': 'BlogPosting',
     headline: title,
     description,
-    image: image.startsWith('http') ? image : `${siteUrl}${image}`,
+    image: image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : `${siteUrl}/og-image.jpg`,
     url: fullUrl,
     datePublished: publishDate,
     dateModified: modifiedDate || publishDate,

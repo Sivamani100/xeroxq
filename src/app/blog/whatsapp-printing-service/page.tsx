@@ -215,12 +215,6 @@ export default function BlogPost() {
       { type: "h2" as const, text: "Customer Success Stories" },
       { type: "p" as const, text: "Real customers experiencing the XeroxQ WhatsApp printing advantage:" },
       
-      { type: "blockquote" as const, text: "\"As a lawyer, I constantly need urgent document printing. XeroxQ's WhatsApp service lets me send confidential legal documents securely and get them printed in 5 minutes. The virtual number system means my documents never touch personal devices - crucial for attorney-client privilege.\" - Advocate Rajesh Kumar, Delhi High Court" },
-      
-      { type: "blockquote" as const, text: "\"Running a diagnostic center means handling sensitive medical reports 24/7. XeroxQ's WhatsApp printing has revolutionized our workflow. Doctors can send reports via WhatsApp, and they're printed securely within minutes. Patients love the convenience, and we're fully compliant with healthcare regulations.\" - Dr. Priya Sharma, Apollo Diagnostics" },
-      
-      { type: "blockquote" as const, text: \"\"Our sales team is always on the move. XeroxQ's WhatsApp printing means they can send proposals and presentations from anywhere and get them printed at client locations instantly. It's transformed our sales process and helped us close deals 40% faster.\" - Amit Verma, Sales Director, Tech Solutions India\" },
-      
       { type: "h2" as const, text: "Future of WhatsApp Printing in India" },
       { type: "p" as const, text: "XeroxQ is pioneering the next generation of WhatsApp printing services:" },
       

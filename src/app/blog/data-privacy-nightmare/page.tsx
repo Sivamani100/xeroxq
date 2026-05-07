@@ -40,13 +40,10 @@ import {
   Trash2,
   Archive,
   Cloud,
-  Smartphone2,
   Mail,
   UserX,
   Shield,
-  LockKeyhole,
   EyeOff,
-  FileX,
   HardDrive,
   Router,
   Activity,
@@ -276,7 +273,7 @@ export default function BlogPost() {
 
                  <div className="p-6 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-4">
                     <div className="w-10 h-10 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center shadow-sm">
-                       <LockKeyhole className="w-5 h-5 text-red-500" />
+                       <Lock className="w-5 h-5 text-red-500" />
                     </div>
                     <p className="text-[11px] text-[#64748B] font-black uppercase tracking-tight leading-relaxed">
                        This article was verified by our global protocol security auditors on May 08, 2026.

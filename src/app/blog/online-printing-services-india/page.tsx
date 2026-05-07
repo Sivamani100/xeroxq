@@ -88,14 +88,12 @@ export default function BlogPost() {
       { type: "h2" as const, text: "Security Comparison: Which Services Protect Your Documents?" },
       { type: "p" as const, text: "Security is where XeroxQ completely dominates the competition:" },
       
-      { type: "table" as const, items: [
-        "**Security Feature** | **XeroxQ** | **Traditional Services** | **Importance**",
-        "--- | --- | --- | ---",
-        "**End-to-End Encryption** | ✅ AES-256-GCM | ❌ Basic HTTPS | Critical",
-        "**Zero-Knowledge Storage** | ✅ Documents never accessible | ❌ Company can access files | Essential",
-        "**Volatile RAM Only** | ✅ No persistent storage | ❌ Stored on servers | Game-changer",
-        "**Automatic Deletion** | ✅ After 24 hours | ❌ Indefinite storage | Mandatory",
-        "**Compliance Certifications** | ✅ Full Indian compliance | ❌ Limited compliance | Legal requirement"
+      { type: "ul" as const, items: [
+        "🔒 **End-to-End Encryption**: XeroxQ ✅ AES-256-GCM vs Traditional Services ❌ Basic HTTPS - Critical",
+        "🛡️ **Zero-Knowledge Storage**: XeroxQ ✅ Documents never accessible vs Traditional Services ❌ Company can access files - Essential",
+        "💾 **Volatile RAM Only**: XeroxQ ✅ No persistent storage vs Traditional Services ❌ Stored on servers - Game-changer",
+        "🗑️ **Automatic Deletion**: XeroxQ ✅ After 24 hours vs Traditional Services ❌ Indefinite storage - Mandatory",
+        "📋 **Compliance Certifications**: XeroxQ ✅ Full Indian compliance vs Traditional Services ❌ Limited compliance - Legal requirement"
       ]},
       
       { type: "blockquote" as const, text: "XeroxQ is the only online printing service in India that guarantees 100% document destruction through volatile RAM storage. All traditional services store your documents permanently on their servers.", highlight: true },

@@ -87,13 +87,8 @@ export const fontPerformance = {
       // Log performance metrics
       console.log(`Font ${fontFamily} loaded in ${loadTime.toFixed(2)}ms`);
       
-      // Send to analytics if needed
-      if (typeof gtag !== 'undefined') {
-        gtag('event', 'font_load_time', {
-          font_family: fontFamily,
-          load_time: Math.round(loadTime),
-        });
-      }
+      // Send to analytics (stub - gtag not available)
+      console.log(`Font load time metric: ${fontFamily} - ${Math.round(loadTime)}ms`);
     });
   },
 

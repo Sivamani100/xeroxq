@@ -196,5 +196,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...blogPosts, ...locationPages, ...blogCategoryPages];
+  return [...staticPages, ...blogPosts, ...locationPages, ...blogCategoryPages] as MetadataRoute.Sitemap;
 }

@@ -44,11 +44,8 @@ import {
   PieChart,
   LineChart,
   Activity,
-  ArrowTrendingUp,
-  ArrowTrendingDown,
   Percent,
   Timer,
-  Users2,
   Building,
   Store,
   ShoppingCart,
@@ -63,12 +60,9 @@ import {
   Mouse,
   Cable,
   Plug,
-  Zap2,
   Battery,
   Thermometer,
-  Gauge,
-  Speedometer,
-  Tachometer
+  Gauge
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
