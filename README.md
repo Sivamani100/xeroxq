@@ -182,7 +182,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 ## 🌐 Platform Access
 
-- **Web Platform**: [https://xeroxq.vercel.app](https://xeroxq.vercel.app)
+- **Web Platform**: [https://xeroxq.vercel.app](https://xeroxq.arkio.in)
 - **Shop Registration**: Available through the web platform
 - **Mobile App**: Coming soon to iOS and Android stores
 
