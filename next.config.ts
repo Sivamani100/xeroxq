@@ -114,6 +114,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,        // Remove "X-Powered-By: Next.js" from responses
   reactStrictMode: true,         // Catch React lifecycle bugs in development
 
+  // ── Turbopack Options ───────────────────────────────────────────────────────
+  turbopack: {
+    root: process.cwd(),
+  },
+
   // ── Experimental ─────────────────────────────────────────────────────────────
   experimental: {
     // Per-route body size limits to prevent memory exhaustion
