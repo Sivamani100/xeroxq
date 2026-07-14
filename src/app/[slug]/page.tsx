@@ -1317,7 +1317,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       )}
 
                       {/* 3. Side Preference Row */}
-                      <div className="flex flex-col gap-3">
+                      <div className="hidden flex flex-col gap-3">
                          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-auth-slate-50 ml-1">Side Preference</span>
                          <button 
                            type="button"
