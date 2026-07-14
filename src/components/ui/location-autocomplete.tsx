@@ -135,7 +135,7 @@ export function LocationAutocomplete({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={`auth-input w-full h-[42px] px-3 pr-10 text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white ${className}`}
+          className={`auth-input w-full px-3 pr-10 text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white ${className}`}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading ? (
