@@ -901,7 +901,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         key={`history-${idx}-${item.token}`} 
-                        className="p-5 bg-white border border-black/5 rounded-[12px] flex items-center justify-between group shadow-sm hover:shadow-md transition-all"
+                        className="p-5 bg-white border border-black/5 rounded-2xl flex items-center justify-between group shadow-sm hover:shadow-md transition-all"
                       >
                         <div className="flex flex-col min-w-0 pr-4">
                           <p className="text-[14px] font-black text-black truncate mb-0.5">{item.fileName}</p>
@@ -910,7 +910,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                           <div className="h-9 w-9 bg-black/5 border border-black/5 rounded-[6px] flex items-center justify-center">
+                           <div className="h-9 w-9 bg-black/5 border border-black/5 rounded-xl flex items-center justify-center">
                              <span className="text-[14px] font-black text-black">{item.token}</span>
                            </div>
                            <Dialog>
@@ -919,9 +919,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                                  <Trash2 className="w-4 h-4" />
                                </button>
                              </DialogTrigger>
-                             <DialogContent className="sm:max-w-md rounded-[5.57px] p-8 bg-white border border-[#E2E8F0] shadow-2xl">
+                             <DialogContent className="sm:max-w-md rounded-2xl p-8 bg-white border border-[#E2E8F0] shadow-2xl">
                                <DialogHeader className="text-left mb-6">
-                                 <div className="w-10 h-10 bg-red-50 rounded-[5.57px] flex items-center justify-center mb-3 shadow-lg shadow-red-100/50">
+                                 <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-red-100/50">
                                    <Trash2 className="w-5 h-5 text-red-500" />
                                  </div>
                                  <DialogTitle className="text-[20px] font-bold text-black tracking-tight">Delete From History?</DialogTitle>
@@ -931,13 +931,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                                </DialogHeader>
                                <div className="flex gap-3 pt-2">
                                  <DialogClose asChild>
-                                    <button className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all cursor-pointer">
+                                    <button className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-2xl text-[12px] font-bold transition-all cursor-pointer">
                                       Abort
                                     </button>
                                  </DialogClose>
                                  <button 
                                    onClick={() => deleteHistoryItem(item.token)}
-                                   className="flex-1 h-[40px] bg-red-500 text-white hover:bg-red-600 rounded-[5.57px] text-[12px] font-bold transition-all shadow-lg shadow-red-500/20 cursor-pointer"
+                                   className="flex-1 h-[40px] bg-red-500 text-white hover:bg-red-600 rounded-2xl text-[12px] font-bold transition-all shadow-lg shadow-red-500/20 cursor-pointer"
                                  >
                                    Confirm Delete
                                  </button>
