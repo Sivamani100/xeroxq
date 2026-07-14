@@ -1056,18 +1056,6 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Check if job is already completed (printed)
-    if (job.status === 'printed') {
-      setNotifications(prev => [{
-        id: `download-blocked-${Date.now()}`,
-        type: 'error',
-        message: "Download Blocked: Job Already Completed",
-        subMessage: `This job has been marked as completed. Files cannot be downloaded after completion for security.`,
-        timestamp: new Date()
-      }, ...prev]);
-      return;
-    }
-
     setActiveDownloadId(job.id);
 
     try {
@@ -2560,9 +2548,10 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => initiateVerification(job, 'complete')}
-                          className="flex-1 h-10 bg-white border border-[#E2E8F0] text-black rounded-xl text-[12px] font-bold hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
+                          className="h-10 w-10 bg-white border border-[#E2E8F0] text-black rounded-xl hover:bg-[#F8FAFC] transition-all flex items-center justify-center cursor-pointer"
+                          title="Complete"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                          <CheckCircle2 className="w-4 h-4" />
                         </button>
                       </>
                     ) : (
@@ -2575,16 +2564,17 @@ export default function AdminDashboard() {
                     )}
                     <button
                       onClick={() => handleDownload(job)}
-                      disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.status === 'printed'}
+                      disabled={activeDownloadId === job.id || job.is_deleted_by_user}
                       className={cn(
-                        "h-10 w-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-                        job.is_deleted_by_user || job.status === 'printed'
+                        "flex-1 h-10 border rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer",
+                        job.is_deleted_by_user
                           ? "border-gray-200 text-gray-300 cursor-not-allowed"
                           : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
                       )}
-                      title={job.is_deleted_by_user ? "File deleted by user" : job.status === 'printed' ? "Job already completed" : "Download"}
+                      title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
                     >
                       {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      Download
                     </button>
                     <button
                       onClick={() => setDeleteConfirmJob(job)}
@@ -2724,9 +2714,10 @@ export default function AdminDashboard() {
                         {job.status !== "printed" ? (
                           <button
                             onClick={() => initiateVerification(job, 'complete')}
-                            className="h-[34px] px-3 bg-white border border-black/10 text-black rounded-[5.57px] text-[10px] font-bold hover:bg-black/5 transition-all shadow-sm flex items-center gap-1.5 uppercase tracking-widest cursor-pointer"
+                            className="h-[34px] w-[34px] bg-white border border-black/10 text-black rounded-[5.57px] hover:bg-black/5 transition-all shadow-sm flex items-center justify-center cursor-pointer"
+                            title="Complete"
                           >
-                            <div className="w-1.5 h-1.5 rounded-full bg-black/20" /> Complete
+                            <CheckCircle2 className="w-4 h-4" />
                           </button>
                         ) : (
                           <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
@@ -2736,16 +2727,17 @@ export default function AdminDashboard() {
                         )}
                         <button
                           onClick={() => handleDownload(job)}
-                          disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.status === 'printed'}
+                          disabled={activeDownloadId === job.id || job.is_deleted_by_user}
                           className={cn(
-                            "h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] transition-colors cursor-pointer",
-                            job.is_deleted_by_user || job.status === 'printed'
-                              ? "text-gray-300 cursor-not-allowed"
-                              : "text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC]"
+                            "h-[34px] px-3 border rounded-[5.57px] text-[10px] font-bold transition-all flex items-center gap-1.5 uppercase tracking-widest cursor-pointer",
+                            job.is_deleted_by_user
+                              ? "text-gray-300 border-gray-100 cursor-not-allowed"
+                              : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC]"
                           )}
-                          title={job.is_deleted_by_user ? "File deleted by user" : job.status === 'printed' ? "Job already completed" : "Download"}
+                          title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
                         >
                           {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                          Download
                         </button>
                         <button
                           onClick={() => setDeleteConfirmJob(job)}

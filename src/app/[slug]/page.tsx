@@ -95,6 +95,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const [isConverting, setIsConverting] = useState(false);
   const [conversionStep, setConversionStep] = useState(0);
   const [token, setToken] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<{
     color: boolean;
     copies: number;
@@ -471,6 +472,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       localStorage.setItem("xeroxq_history", JSON.stringify(updatedHistory));
 
       setToken(newToken);
+      setJobId(dbData.id);
       setJobStatus("pending");
     } catch (error) {
       console.error("Mercury Upload Terminal Error Snapshot:", error);
@@ -502,16 +504,36 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         p_job_id: null, // We'll find by token instead
       });
       
-      // Alternative: Update directly via the jobs table
-      const { data: jobData, error: fetchError } = await supabase
-        .from('jobs')
-        .select('id, file_path, status, is_deleted_by_user')
-        .eq('token', token)
-        .eq('shop_id', shop.id)
-        .single();
+      // Get job from state or query latest by token
+      let jobData = null;
+      let fetchError = null;
+      
+      if (jobId) {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('id, file_path, status, is_deleted_by_user')
+          .eq('id', jobId)
+          .single();
+        jobData = data;
+        fetchError = error;
+      } else {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('id, file_path, status, is_deleted_by_user')
+          .eq('token', token)
+          .eq('shop_id', shop.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (data && data.length > 0) {
+          jobData = data[0];
+        } else {
+          fetchError = error || new Error('No job found');
+        }
+      }
       
       if (fetchError || !jobData) {
         alert('Could not find your file. It may have already been processed or deleted.');
+        setIsDeleting(false);
         return;
       }
       
@@ -657,20 +679,26 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         defaultResponses.overall_rating = feedbackResponses.overall_rating;
       }
       
-      // Get job ID from token
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .select('id')
-        .eq('token', token)
-        .eq('shop_id', shop.id)
-        .single();
+      // Get job ID from state or fallback to token lookup
+      let targetJobId = jobId;
       
-      if (jobError || !jobData) {
-        throw new Error('Could not find job');
+      if (!targetJobId) {
+        const { data: jobData, error: jobError } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('token', token)
+          .eq('shop_id', shop.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (jobError || !jobData || jobData.length === 0) {
+          throw new Error('Could not find job');
+        }
+        targetJobId = jobData[0].id;
       }
       
       const { data, error } = await supabase.rpc('submit_feedback', {
-        p_job_id: jobData.id,
+        p_job_id: targetJobId,
         p_shop_id: shop.id,
         p_customer_name: customerName,
         p_customer_phone: customerPhone,
@@ -1031,6 +1059,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   onClick={() => {
                     setFile(null);
                     setToken(null);
+                    setJobId(null);
                     setJobStatus("pending");
                     setIsDeleted(false);
                     setLocation('shop');
