@@ -963,12 +963,12 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="w-full max-w-[480px] bg-white border border-black/5 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] rounded-[5.57px] p-8 sm:p-12 text-center mt-12"
+            className="w-full max-w-[480px] bg-white border border-black/5 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] rounded-3xl p-8 sm:p-12 text-center mt-12"
           >
             <motion.div 
                animate={{ rotate: 360 }}
                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-               className="w-20 h-20 bg-green-50 rounded-[5.57px] flex items-center justify-center mx-auto mb-8 border border-green-100 shadow-inner"
+               className="w-20 h-20 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-green-100 shadow-inner"
             >
                <CheckCircle2 className="w-10 h-10 text-green-600" />
             </motion.div>
@@ -986,7 +986,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                 <motion.div 
                   initial={{ opacity: 0, y: -20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="mb-8 p-5 bg-emerald-500 text-white rounded-[5.57px] shadow-[0_20px_40px_rgba(16,185,129,0.2)] flex flex-col items-center gap-2 relative overflow-hidden"
+                  className="mb-8 p-5 bg-emerald-500 text-white rounded-2xl shadow-[0_20px_40px_rgba(16,185,129,0.2)] flex flex-col items-center gap-2 relative overflow-hidden"
                 >
                   <motion.div 
                     animate={{ y: [0, -4, 0] }}
@@ -1002,7 +1002,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
               )}
             </AnimatePresence>
 
-            <div className="py-12 bg-black rounded-[5.57px] mb-6 shadow-2xl relative overflow-hidden group">
+            <div className="py-12 bg-black rounded-2xl mb-6 shadow-2xl relative overflow-hidden group">
                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                <p className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase mb-4">{shop?.generate_token !== false ? "Your Print Code" : "Status Registered"}</p>
                <span className="text-[88px] font-black tracking-tighter text-white leading-none inline-block">
@@ -1016,7 +1016,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                 <button
                   onClick={handleDeleteFile}
                   disabled={isDeleting}
-                  className="flex items-center justify-center gap-2 w-full h-12 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 font-bold text-[13px] rounded-[5.57px] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center justify-center gap-2 w-full h-12 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 font-bold text-[13px] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isDeleting ? (
                     <>
@@ -1041,7 +1041,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-4 bg-red-100 border border-red-200 rounded-[5.57px] text-center"
+                className="mb-6 p-4 bg-red-100 border border-red-200 rounded-2xl text-center"
               >
                 <Trash2 className="w-5 h-5 text-red-600 mx-auto mb-2" />
                 <p className="text-[13px] font-bold text-red-700">File Deleted</p>
@@ -1071,20 +1071,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     setIsDeleted(false);
                     setLocation('shop');
                   }}
-                  className="flex-1 h-14 bg-white border-2 border-black text-black font-bold text-[14px] rounded-[5.57px] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:bg-gray-50 cursor-pointer"
+                  className="flex-1 h-14 bg-white border-2 border-black text-black font-bold text-[14px] rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:bg-gray-50 cursor-pointer"
                >
                   <Upload className="w-4 h-4 mr-2" /> Upload Another File
-               </button>
-               <button 
-                  onClick={handleOpenFeedback}
-                  className={cn(
-                    "flex-1 h-14 text-white font-black text-[14px] rounded-[5.57px] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl cursor-pointer",
-                    jobStatus === 'printed' 
-                      ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-green-500/30" 
-                      : "bg-black hover:bg-black/90 shadow-black/20"
-                  )}
-               >
-                  {jobStatus === 'printed' ? '✓ Give Feedback' : 'Give Feedback'}
                </button>
             </div>
 
@@ -1136,7 +1125,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                </p>
             </div>
 
-            <div className="w-full bg-white border border-black/5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] rounded-[5.57px] p-2 md:p-8 overflow-hidden relative">
+            <div className="w-full bg-white border border-black/5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] rounded-3xl p-2 md:p-8 overflow-hidden relative">
                <input
                  type="file"
                  ref={fileInputRef}
@@ -1146,7 +1135,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                />
                {shop.is_open === false ? (
                  <div className="p-10 flex flex-col items-center text-center">
-                   <div className="w-20 h-20 bg-red-50 border border-red-100 rounded-[5.57px] flex items-center justify-center mb-8 transform rotate-3">
+                   <div className="w-20 h-20 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center mb-8 transform rotate-3">
                       <ShieldCheck className="w-10 h-10 text-red-500" />
                    </div>
                    <h3 className="text-[24px] font-black text-black tracking-tight uppercase mb-2">Shop Closed</h3>
@@ -1165,7 +1154,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       <button 
                         onClick={() => setLocation('shop')}
                         className={cn(
-                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden cursor-pointer",
+                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-2xl group relative overflow-hidden cursor-pointer",
                           location === 'shop' ? "border-black bg-black text-white shadow-xl" : "border-black/5 bg-white hover:border-black/20"
                         )}
                       >
@@ -1180,7 +1169,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       <button 
                         onClick={() => setLocation('home')}
                         className={cn(
-                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-[12px] group relative overflow-hidden cursor-pointer",
+                          "flex flex-col items-center gap-4 p-6 border-2 transition-all rounded-2xl group relative overflow-hidden cursor-pointer",
                           location === 'home' ? "border-black bg-black text-white shadow-xl" : "border-black/5 bg-white hover:border-black/20"
                         )}
                       >
@@ -1206,12 +1195,12 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                ) : !file ? (
                  <motion.div 
                    whileHover={{ scale: 0.995 }}
-                   className="w-full min-h-[340px] border-2 border-dashed border-black/10 rounded-[5.57px] flex flex-col items-center justify-center gap-6 bg-[#F9F9F9]/50 hover:bg-[#F9F9F9] transition-all cursor-pointer p-8 group relative overflow-hidden"
+                   className="w-full min-h-[340px] border-2 border-dashed border-black/10 rounded-2xl flex flex-col items-center justify-center gap-6 bg-[#F9F9F9]/50 hover:bg-[#F9F9F9] transition-all cursor-pointer p-8 group relative overflow-hidden"
                    onClick={() => fileInputRef.current?.click()}
                  >
                     <motion.div 
                       whileHover={{ y: -5 }}
-                      className="w-20 h-20 bg-white border border-black/5 shadow-2xl rounded-[5.57px] flex items-center justify-center relative z-10"
+                      className="w-20 h-20 bg-white border border-black/5 shadow-2xl rounded-2xl flex items-center justify-center relative z-10"
                     >
                        <Upload className="w-8 h-8 text-black" />
                     </motion.div>
@@ -1249,13 +1238,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                             placeholder="Enter your name..."
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-[5.57px] focus:bg-white focus:shadow-xl focus:border-black/10 transition-all outline-none"
+                            className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-2xl focus:bg-white focus:shadow-xl focus:border-black/10 transition-all outline-none"
                          />
                       </div>
                     )}
 
-                    <div className="flex items-center gap-5 p-5 border border-black/5 rounded-[18px] bg-[#F8F8F8] group">
-                       <div className="w-14 h-14 bg-white border border-black/5 rounded-[14px] shrink-0 flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 relative">
+                    <div className="flex items-center gap-5 p-5 border border-black/5 rounded-2xl bg-[#F8F8F8] group">
+                       <div className="w-14 h-14 bg-white border border-black/5 rounded-2xl shrink-0 flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 relative">
                           <FileText className="w-7 h-7 text-black" />
                           <div className="absolute -top-1 -right-1 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
                              {file.name.split('.').pop()}
@@ -1360,13 +1349,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                           placeholder="+91 XXXXX XXXXX"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-[5.57px] outline-none focus:bg-white transition-all"
+                          className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-2xl outline-none focus:bg-white transition-all"
                         />
                       </div>
                     )}
 
                     {location === 'home' && (
-                       <div className="p-6 bg-black text-white rounded-[18px] flex items-center justify-between shadow-2xl relative overflow-hidden">
+                       <div className="p-6 bg-black text-white rounded-2xl flex items-center justify-between shadow-2xl relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.05] rounded-full blur-2xl" />
                           <div className="flex flex-col relative z-10">
                              <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Total Est. Price</span>
@@ -1395,7 +1384,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                        }}
 
                        disabled={uploading || (shop.require_customer_name !== false && !customerName.trim()) || (location === 'home' && !customerPhone.trim())}
-                       className="w-full h-14 bg-black text-white hover:bg-black/90 disabled:bg-black/10 disabled:text-black/20 font-black text-[15px] tracking-tight rounded-[5.57px] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-black/20 transform hover:scale-[1.01] active:scale-[0.99]"
+                       className="w-full h-14 bg-black text-white hover:bg-black/90 disabled:bg-black/10 disabled:text-black/20 font-black text-[15px] tracking-tight rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl shadow-black/20 transform hover:scale-[1.01] active:scale-[0.99]"
                     >
                        {uploading ? (
                          <div className="flex items-center gap-3">
@@ -1424,7 +1413,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           <div className="mt-8 flex flex-col items-center gap-3">
              <button 
                onClick={() => window.location.href = '/blog/whatsapp-virtual-number-system'}
-               className="flex items-center gap-3 px-6 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-[13px] rounded-[12px] transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+               className="flex items-center gap-3 px-6 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-[13px] rounded-2xl transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
              >
                 <MessageCircle className="w-5 h-5" />
                 <span>Upload to WhatsApp</span>
