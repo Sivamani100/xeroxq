@@ -965,15 +965,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             exit={{ scale: 0.9, opacity: 0 }}
             className="w-full max-w-[480px] bg-white border border-black/5 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] rounded-3xl p-8 sm:p-12 text-center mt-12"
           >
-            <motion.div 
-               animate={{ rotate: 360 }}
-               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-               className="w-20 h-20 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-green-100 shadow-inner"
-            >
-               <CheckCircle2 className="w-10 h-10 text-green-600" />
-            </motion.div>
-            
-            <h2 className="text-[28px] font-black tracking-tight text-black leading-none mb-3 uppercase">File Sent!</h2>
+<h2 className="text-[28px] font-black tracking-tight text-black leading-none mb-3 uppercase">File Sent!</h2>
             <div className="flex items-center justify-center gap-2 mb-8">
                <div className={cn("w-2 h-2 rounded-full", jobStatus === 'printed' ? "bg-green-500" : "bg-orange-500 animate-pulse")} />
                <span className="text-[11px] font-black tracking-[0.15em] uppercase text-auth-slate-50">
