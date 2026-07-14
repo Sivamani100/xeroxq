@@ -16,8 +16,7 @@ import {
   RefreshCw,
   History,
   Crop,
-  Palette,
-  MessageCircle
+  Palette
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -1407,19 +1406,6 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                )}
             </div>
           
-          {/* WhatsApp Upload Button - After upload container */}
-          <div className="mt-8 flex flex-col items-center gap-3">
-             <button 
-               onClick={() => window.location.href = '/blog/whatsapp-virtual-number-system'}
-               className="flex items-center gap-3 px-6 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-[13px] rounded-2xl transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-             >
-                <MessageCircle className="w-5 h-5" />
-                <span>Upload to WhatsApp</span>
-             </button>
-             <p className="text-[10px] font-medium text-auth-slate-30 text-center">
-                Quick upload via WhatsApp (Coming Soon)
-             </p>
-          </div>
           </motion.div>
         )}
       </AnimatePresence>
