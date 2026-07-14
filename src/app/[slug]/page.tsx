@@ -1061,7 +1061,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                )}
             </p>
 
-            <div className="flex gap-3">
+            <div className="w-full">
                <button 
                   onClick={() => {
                     setFile(null);
@@ -1071,9 +1071,15 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     setIsDeleted(false);
                     setLocation('shop');
                   }}
-                  className="flex-1 h-14 bg-white border-2 border-black text-black font-bold text-[14px] rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:bg-gray-50 cursor-pointer"
+                  className="group relative w-full h-14 bg-black text-white font-black text-[15px] rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-black/30 cursor-pointer overflow-hidden flex items-center justify-center gap-3"
                >
-                  <Upload className="w-4 h-4 mr-2" /> Upload Another File
+                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                 <div className="relative flex items-center gap-2.5">
+                   <div className="w-7 h-7 bg-white/10 rounded-xl flex items-center justify-center">
+                     <Upload className="w-3.5 h-3.5 text-white" />
+                   </div>
+                   <span className="tracking-tight">Upload Another File</span>
+                 </div>
                </button>
             </div>
 
