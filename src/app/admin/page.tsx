@@ -1535,7 +1535,7 @@ export default function AdminDashboard() {
     return (
       <div className="flex w-full h-screen bg-white overflow-x-hidden relative">
         {/* Left Side (Form) */}
-        <div className="w-full lg:w-[630px] h-full flex flex-col justify-center px-6 lg:px-[40px] lg:pl-[60px] shrink-0 relative z-10 bg-white items-center lg:items-start">
+        <div className="w-full lg:w-[630px] h-full flex flex-col justify-center px-6 lg:px-[40px] lg:pl-[100px] shrink-0 relative z-10 bg-white items-center lg:items-start">
           <form onSubmit={handleCreateShop} className="flex flex-col gap-[31.54px] w-full max-w-[378px]">
             <div className="flex flex-col gap-[1.75px] mb-4 text-center lg:text-left">
               <h1 className="text-[40px] lg:text-[42.06px] leading-[1.2] font-bold text-black whitespace-nowrap">
