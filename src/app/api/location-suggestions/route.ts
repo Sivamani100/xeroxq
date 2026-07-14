@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
       district: location.district,
       type: location.type,
       displayText: `${location.name}, ${location.district}, ${location.state}`,
+      fullAddress: `${location.name}, ${location.district}, ${location.state}`,
+      lat: (location as any).lat,
+      lng: (location as any).lng,
     }));
 
     return NextResponse.json(suggestions);

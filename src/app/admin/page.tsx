@@ -1584,7 +1584,12 @@ export default function AdminDashboard() {
                 <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Location <span className="text-auth-slate-50 font-medium">(Required)</span></label>
                 <LocationAutocomplete
                   value={newShopData.shop_location}
-                  onChange={(value) => setNewShopData({ ...newShopData, shop_location: value })}
+                  onChange={(value, lat, lng) => setNewShopData({ 
+                    ...newShopData, 
+                    shop_location: value, 
+                    shop_lat: lat ?? null, 
+                    shop_lng: lng ?? null 
+                  })}
                   placeholder="e.g., Rajamundry, Andhra Pradesh"
                   className="h-[46.79px]"
                 />
@@ -1838,7 +1843,12 @@ export default function AdminDashboard() {
                             <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Location <span className="text-primary-blue">*</span></label>
                             <LocationAutocomplete
                               value={shop?.shop_location || ""}
-                              onChange={(value) => setShop({ ...shop!, shop_location: value })}
+                              onChange={(value, lat, lng) => setShop({ 
+                                ...shop!, 
+                                shop_location: value, 
+                                shop_lat: lat ?? undefined, 
+                                shop_lng: lng ?? undefined 
+                              })}
                               placeholder="e.g., Rajamundry, Andhra Pradesh"
                             />
                             

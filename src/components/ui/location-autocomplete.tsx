@@ -11,11 +11,13 @@ interface LocationSuggestion {
   state: string;
   type: string;
   fullAddress: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface LocationAutocompleteProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, lat?: number, lng?: number) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -94,7 +96,7 @@ export function LocationAutocomplete({
   };
 
   const selectSuggestion = (suggestion: LocationSuggestion) => {
-    onChange(suggestion.fullAddress);
+    onChange(suggestion.fullAddress, suggestion.lat, suggestion.lng);
     setIsOpen(false);
     setSelectedIndex(-1);
     inputRef.current?.blur();
@@ -131,9 +133,9 @@ export function LocationAutocomplete({
             addr.city || addr.county,
             addr.state,
           ].filter(Boolean);
-          onChange(parts.join(", ") || data.display_name || "");
+          onChange(parts.join(", ") || data.display_name || "", latitude, longitude);
         } catch {
-          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude);
         } finally {
           setGeoLoading(false);
         }
