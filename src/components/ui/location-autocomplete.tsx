@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin } from "lucide-react";
+import { MapPin, LocateFixed } from "lucide-react";
 
 interface LocationSuggestion {
   id: string;
@@ -31,6 +31,7 @@ export function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -112,6 +113,36 @@ export function LocationAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const addr = data.address || {};
+          const parts = [
+            addr.village || addr.town || addr.city_district || addr.suburb || addr.neighbourhood,
+            addr.city || addr.county,
+            addr.state,
+          ].filter(Boolean);
+          onChange(parts.join(", ") || data.display_name || "");
+        } catch {
+          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        } finally {
+          setGeoLoading(false);
+        }
+      },
+      () => setGeoLoading(false),
+      { timeout: 8000 }
+    );
+  };
+
   useEffect(() => {
     if (selectedIndex >= 0 && listRef.current) {
       const selectedElement = listRef.current.children[selectedIndex] as HTMLElement;
@@ -177,6 +208,21 @@ export function LocationAutocomplete({
           ))}
         </ul>
       )}
+
+      {/* Use Current Location button */}
+      <button
+        type="button"
+        onClick={handleUseCurrentLocation}
+        disabled={disabled || geoLoading}
+        className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-primary-blue hover:underline disabled:opacity-50 transition-all"
+      >
+        {geoLoading ? (
+          <div className="w-3.5 h-3.5 border-2 border-primary-blue border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <LocateFixed className="w-3.5 h-3.5" />
+        )}
+        {geoLoading ? "Detecting location..." : "Use current location"}
+      </button>
     </div>
   );
 }

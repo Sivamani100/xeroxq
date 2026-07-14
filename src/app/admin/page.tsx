@@ -133,7 +133,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showQR, setShowQR] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
-  const [newShopData, setNewShopData] = useState({ name: "", slug: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
+  const [newShopData, setNewShopData] = useState({ name: "", phone: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
   const [printingJobId, setPrintingJobId] = useState<string | null>(null);
   const [showingSettings, setShowingSettings] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
@@ -753,7 +753,8 @@ export default function AdminDashboard() {
     }
 
     try {
-      const slug = newShopData.slug.toLowerCase().replace(/[^a-z0-9-]/g, "");
+      // Auto-generate a unique slug from the shop name
+      const slug = newShopData.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 30) + "-" + Date.now().toString(36);
 
       const res = await fetch("/api/create-shop", {
         method: "POST",
@@ -765,6 +766,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           name: newShopData.name,
           slug,
+          phone: newShopData.phone,
           upi_id: newShopData.upi_id,
           shop_location: newShopData.shop_location,
           shop_lat: newShopData.shop_lat,
@@ -1533,11 +1535,11 @@ export default function AdminDashboard() {
     return (
       <div className="flex w-full h-screen bg-white overflow-x-hidden relative">
         {/* Left Side (Form) */}
-        <div className="w-full lg:w-[630px] h-full flex flex-col justify-center px-6 lg:px-[82px] lg:pl-[180px] shrink-0 relative z-10 bg-white items-center lg:items-start">
+        <div className="w-full lg:w-[630px] h-full flex flex-col justify-center px-6 lg:px-[40px] lg:pl-[60px] shrink-0 relative z-10 bg-white items-center lg:items-start">
           <form onSubmit={handleCreateShop} className="flex flex-col gap-[31.54px] w-full max-w-[378px]">
             <div className="flex flex-col gap-[1.75px] mb-4 text-center lg:text-left">
               <h1 className="text-[40px] lg:text-[42.06px] leading-[1.2] font-bold text-black whitespace-nowrap">
-                Setup<br /> Your Shop
+                Setup Your Shop
               </h1>
               <p className="text-[14px] lg:text-[14.02px] font-medium text-auth-slate-50 tracking-[0.01em]">
                 Connect your shop to the network.
@@ -1557,14 +1559,14 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Link</label>
+                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Phone Number</label>
                 <input
-                  type="text"
+                  type="tel"
                   required
-                  placeholder="unique-slug"
-                  className="auth-input w-full h-[46.79px] font-mono"
-                  value={newShopData.slug}
-                  onChange={(e) => setNewShopData({ ...newShopData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                  placeholder="+91 98765 43210"
+                  className="auth-input w-full h-[46.79px]"
+                  value={newShopData.phone}
+                  onChange={(e) => setNewShopData({ ...newShopData, phone: e.target.value.replace(/[^0-9+\s-]/g, "") })}
                 />
               </div>
               <div className="flex flex-col gap-[5.57px]">

@@ -14,8 +14,12 @@ export const ShopSchema = z.object({
     .max(80, "Shop name is too long"),
   slug: z.string()
     .min(3, "Shop link must be at least 3 characters")
-    .max(40, "Shop link is too long")
+    .max(50, "Shop link is too long")
     .regex(/^[a-z0-9-]+$/, "Shop link can only contain letters, numbers, and hyphens"),
+  phone: z.string()
+    .max(20, "Phone number is too long")
+    .optional()
+    .nullable(),
   upi_id: z.string()
     .regex(/^[\w.\-+]+@[\w.]+$/, "Invalid UPI ID format")
     .max(50)
