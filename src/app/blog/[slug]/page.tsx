@@ -127,7 +127,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
                 </div>
 
                 <div className="prose prose-slate max-w-none space-y-10">
-                  {post.content.map((item, i) => {
+                  {post.content.map((item: any, i: number) => {
                     if (item.type === "p") return <p key={i} className="text-lg text-[#475569] font-medium leading-[1.6]">{item.text}</p>;
                     if (item.type === "h2") return <h2 key={i} className="text-2xl font-bold text-black tracking-tight pt-8 uppercase">{item.text}</h2>;
                     return null;

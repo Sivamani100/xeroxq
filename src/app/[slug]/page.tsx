@@ -414,13 +414,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       if (uploadError) throw new Error(`Storage Error: ${uploadError.message || JSON.stringify(uploadError)}`);
 
       // 3. Insert into DB (with Retry Logic for collisions)
+      let dbData: { id: string } | null = null;
       let newToken = "";
       let dbError: { code?: string; message?: string } | null = null;
       let retries = 3;
 
       while (retries > 0) {
         newToken = generateToken();
-        const { error } = await supabase.from("jobs").insert({
+        const { data, error } = await supabase.from("jobs").insert({
           token: newToken,
           customer_name: customerName || "Guest",
           file_path: storagePath,
@@ -432,10 +433,11 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           customer_phone: customerPhone,
           shop_id: shop.id,
           expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-        });
+        }).select("id").single();
 
         if (!error) {
           dbError = null;
+          dbData = data;
           // Increment persistent billing counter (survives job deletion)
           await supabase.rpc('increment_shop_files', { shop_row_id: shop.id });
           break;
@@ -472,7 +474,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       localStorage.setItem("xeroxq_history", JSON.stringify(updatedHistory));
 
       setToken(newToken);
-      setJobId(dbData.id);
+      if (dbData) setJobId(dbData.id);
       setJobStatus("pending");
     } catch (error) {
       console.error("Mercury Upload Terminal Error Snapshot:", error);

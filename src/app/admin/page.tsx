@@ -34,7 +34,8 @@ import {
   Crop,
   Bell,
   BellOff,
-  Smartphone
+  Smartphone,
+  MapPin
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { TableVirtuoso } from "react-virtuoso";
@@ -49,6 +50,11 @@ import { QRCodeSVG } from "qrcode.react";
 
 const XeroxQPrintDialog = dynamic(
   () => import("@/components/desktop/xeroxq-print-dialog"),
+  { ssr: false }
+);
+
+const LocationMap = dynamic(
+  () => import("@/components/maps/LocationMap").then((mod) => mod.LocationMap),
   { ssr: false }
 );
 
@@ -1844,7 +1850,30 @@ export default function AdminDashboard() {
                               onChange={(value) => setShop({ ...shop!, shop_location: value })}
                               placeholder="e.g., Rajamundry, Andhra Pradesh"
                             />
-                            <p className="text-[8px] font-bold text-auth-slate-50 uppercase tracking-[0.05em] ml-1">Visible to customers for navigation</p>
+                            
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <span className="text-[9.5px] text-gray-500 font-bold uppercase tracking-wider ml-1">
+                                Coordinates: {shop?.shop_lat ? `${Number(shop.shop_lat).toFixed(4)}, ${Number(shop.shop_lng).toFixed(4)}` : 'Not set'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={getCurrentLocation}
+                                className="h-7 px-3 bg-black hover:bg-black/90 text-white rounded-[5.57px] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <MapPin className="w-3 h-3 text-white" /> Pin Current Location
+                              </button>
+                            </div>
+
+                            {shop?.shop_lat && shop?.shop_lng && (
+                              <div className="mt-2 h-[120px] rounded-[5.57px] overflow-hidden border border-[#E2E8F0] shadow-sm relative z-0">
+                                <LocationMap
+                                  lat={Number(shop.shop_lat)}
+                                  lng={Number(shop.shop_lng)}
+                                  height="120px"
+                                />
+                              </div>
+                            )}
+                            <p className="text-[8px] font-bold text-auth-slate-50 uppercase tracking-[0.05em] ml-1 mt-1">Visible to customers for navigation and mapping</p>
                           </div>
                           <div className="flex flex-col gap-1.5">
                             <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Contact (For Pre-orders)</label>

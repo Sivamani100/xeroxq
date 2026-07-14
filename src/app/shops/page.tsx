@@ -20,7 +20,8 @@ interface Shop {
   id: string;
   name: string;
   slug: string;
-  address: string;
+  address?: string;
+  shop_location?: string;
   is_open: boolean;
 }
 
@@ -49,7 +50,7 @@ export default function ShopsPage() {
 
   const filteredShops = shops.filter(shop => 
     shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (shop.address?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+    (shop.shop_location?.toLowerCase() || shop.address?.toLowerCase() || "").includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -148,7 +149,7 @@ export default function ShopsPage() {
                           
                           <div className="flex items-start gap-2.5 text-[#64748B] mb-2">
                              <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-black/20 group-hover:text-[#FB432C]/60 transition-colors" />
-                             <p className="text-sm font-medium leading-relaxed italic line-clamp-2">{node.address || "Verified XeroxQ Partner Location in Andhra Pradesh."}</p>
+                             <p className="text-sm font-medium leading-relaxed italic line-clamp-2">{node.shop_location || node.address || "Verified XeroxQ Partner Location in Andhra Pradesh."}</p>
                           </div>
                         </div>
                         
