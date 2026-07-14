@@ -30,7 +30,7 @@ const securityHeaders = [
   },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    value: "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=()",
   },
   {
     // Full CSP — covers all external sources used by the app
@@ -38,10 +38,10 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "style-src 'self' 'unsafe-inline' 'unsafe-hashes' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://eisdlhbrigmwsfycvkdy.supabase.co https://api.qrserver.com https://i.pravatar.cc",
-      "connect-src 'self' https://eisdlhbrigmwsfycvkdy.supabase.co wss://eisdlhbrigmwsfycvkdy.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com",
+      "img-src 'self' data: blob: https://eisdlhbrigmwsfycvkdy.supabase.co https://api.qrserver.com https://i.pravatar.cc https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com",
+      "connect-src 'self' https://eisdlhbrigmwsfycvkdy.supabase.co wss://eisdlhbrigmwsfycvkdy.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",

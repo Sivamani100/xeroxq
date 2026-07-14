@@ -4,12 +4,15 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix for default markers in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+// Create custom icon to avoid standard bundler asset loading issues
+const customIcon = L.icon({
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
 interface LocationMapProps {
@@ -39,13 +42,16 @@ export function LocationMap({
       mapInstanceRef.current = L.map(mapRef.current).setView([lat, lng], 15);
 
       // Add tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '© OpenStreetMap contributors'
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '© OpenStreetMap contributors © CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20
       }).addTo(mapInstanceRef.current);
 
       // Add marker
       const marker = L.marker([lat, lng], {
-        draggable: draggable
+        draggable: draggable,
+        icon: customIcon
       }).addTo(mapInstanceRef.current);
 
       markerRef.current = marker;
@@ -68,6 +74,16 @@ export function LocationMap({
       }
     }
   }, [lat, lng, onLocationChange, draggable]);
+
+  // Invalidate size to ensure tiles load correctly when container dimensions become active
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      const timer = setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [lat, lng]);
 
   return (
     <div 
