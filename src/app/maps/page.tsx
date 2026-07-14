@@ -22,17 +22,7 @@ import dynamic from "next/dynamic";
 // Dynamically import the Leaflet map component to prevent SSR evaluation errors
 const AllShopsMap = dynamic(
   () => import("@/components/maps/AllShopsMap"),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="w-full bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] flex items-center justify-center" style={{ height: "500px" }}>
-        <div className="flex flex-col items-center gap-3 text-[#94A3B8]">
-          <div className="w-8 h-8 border-2 border-[#E2E8F0] border-t-black rounded-full animate-spin" />
-          <span className="text-[12px] font-bold uppercase tracking-widest">Loading Map...</span>
-        </div>
-      </div>
-    )
-  }
+  { ssr: false }
 );
 
 interface Shop {
