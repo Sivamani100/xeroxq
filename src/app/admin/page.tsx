@@ -421,11 +421,8 @@ export default function AdminDashboard() {
         if (result.state === 'denied') {
           setLocationError("Location access previously denied. Please enable location permissions in your browser settings and refresh.");
           setIsGettingLocation(false);
-          // Still show fallback map
-          const fallbackLat = 28.6139;
-          const fallbackLng = 77.2090;
-          setTempLocation({ lat: fallbackLat, lng: fallbackLng });
-          setShop(prev => prev ? { ...prev, shop_lat: fallbackLat, shop_lng: fallbackLng } : null);
+          // Show center of India as display-only fallback (NOT saved to DB)
+          setTempLocation({ lat: 20.5937, lng: 78.9629 });
           return;
         }
         
@@ -492,11 +489,8 @@ export default function AdminDashboard() {
           setLocationError(errorMsg);
           setIsGettingLocation(false);
           
-          // Set a fallback location (e.g., Delhi, India) so user can still see a map
-          const fallbackLat = 28.6139;
-          const fallbackLng = 77.2090;
-          setTempLocation({ lat: fallbackLat, lng: fallbackLng });
-          setShop(prev => prev ? { ...prev, shop_lat: fallbackLat, shop_lng: fallbackLng } : null);
+          // Show center of India as display-only fallback (NOT saved to DB)
+          setTempLocation({ lat: 20.5937, lng: 78.9629 });
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -544,16 +538,11 @@ export default function AdminDashboard() {
         
         // Ensure map shows immediately by setting default coordinates if missing
         if (!shopData.shop_lat || !shopData.shop_lng) {
-          console.log("[checkUser] Shop missing coordinates, setting default and requesting location...");
-          // Set default coordinates immediately so map shows
-          const defaultLat = 28.6139; // Delhi
-          const defaultLng = 77.2090;
-          setShop(prev => prev ? { ...prev, shop_lat: defaultLat, shop_lng: defaultLng } : null);
-          
-          // Then request actual location
+          console.log("[checkUser] Shop missing coordinates, requesting location...");
+          // Request actual location — do NOT set fake Delhi coords
           setTimeout(() => {
             getCurrentLocation();
-          }, 1000); // Small delay to let page load first
+          }, 1000);
         }
 
         const channelName = `jobs-${shopData.id}-${Date.now()}`;
