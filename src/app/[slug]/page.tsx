@@ -625,7 +625,12 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const handleOpenFeedback = async () => {
     if (!shop) return;
     
-    // Always show the feedback modal
+    // Reset previous responses every time modal is opened
+    setFeedbackResponses({});
+    setWrittenFeedback('');
+    setFeedbackSubmitted(false);
+    setFeedbackQuestions([]);
+    
     // Check if feedback is enabled - but still show modal even if disabled
     try {
       const { data: enabledData } = await supabase.rpc('is_feedback_enabled_for_shop', {
@@ -1518,16 +1523,17 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                           <div className="flex flex-wrap gap-2">
                             {(question.options || []).map((option: string, optIdx: number) => (
                               <button
+                                type="button"
                                 key={`default-${question.question_id}-${optIdx}`}
-                                onClick={() => {
-                                  const newResponses = { ...feedbackResponses, [question.question_id]: option };
-                                  setFeedbackResponses(newResponses);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackResponses(prev => ({ ...prev, [question.question_id]: option }));
                                 }}
                                 className={cn(
-                                  "px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  "px-3 py-2 rounded-lg text-[13px] font-semibold transition-all border-2",
                                   feedbackResponses[question.question_id] === option
-                                    ? "bg-black text-white shadow-lg"
-                                    : "bg-white border border-gray-200 text-gray-700 hover:border-black/30"
+                                    ? "bg-black text-white border-black shadow-lg scale-105"
+                                    : "bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-50"
                                 )}
                               >
                                 {option}
@@ -1558,16 +1564,17 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                           <div className="flex flex-wrap gap-2">
                             {(question.options || []).map((option: string, optIdx: number) => (
                               <button
+                                type="button"
                                 key={`custom-${question.question_id}-${optIdx}`}
-                                onClick={() => {
-                                  const newResponses = { ...feedbackResponses, [question.question_id]: option };
-                                  setFeedbackResponses(newResponses);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackResponses(prev => ({ ...prev, [question.question_id]: option }));
                                 }}
                                 className={cn(
-                                  "px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  "px-3 py-2 rounded-lg text-[13px] font-semibold transition-all border-2",
                                   feedbackResponses[question.question_id] === option
-                                    ? "bg-black text-white shadow-lg"
-                                    : "bg-white border border-gray-200 text-gray-700 hover:border-black/30"
+                                    ? "bg-black text-white border-black shadow-lg scale-105"
+                                    : "bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-50"
                                 )}
                               >
                                 {option}

@@ -2586,16 +2586,17 @@ export default function AdminDashboard() {
                     ) : (
                       <button
                         onClick={() => initiateVerification(job, 'reprint')}
-                        className="flex-1 h-10 bg-white border border-green-200 text-green-700 rounded-xl text-[12px] font-bold hover:bg-green-50 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                        className="h-10 w-10 bg-white border border-green-200 text-green-700 rounded-xl hover:bg-green-50 transition-all flex items-center justify-center cursor-pointer"
+                        title="Reprint"
                       >
-                        <Printer className="w-3.5 h-3.5" /> Reprint
+                        <Printer className="w-4 h-4" />
                       </button>
                     )}
                     <button
                       onClick={() => handleDownload(job)}
                       disabled={activeDownloadId === job.id || job.is_deleted_by_user}
                       className={cn(
-                        "flex-1 h-10 border rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer",
+                        "h-10 flex-1 border rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer",
                         job.is_deleted_by_user
                           ? "border-gray-200 text-gray-300 cursor-not-allowed"
                           : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
@@ -2603,7 +2604,7 @@ export default function AdminDashboard() {
                       title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
                     >
                       {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                      Download
+                      {job.status !== "printed" && "Download"}
                     </button>
                     <button
                       onClick={() => setDeleteConfirmJob(job)}
@@ -2766,7 +2767,7 @@ export default function AdminDashboard() {
                           title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
                         >
                           {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                          Download
+                          {job.status !== "printed" && "Download"}
                         </button>
                         <button
                           onClick={() => setDeleteConfirmJob(job)}
