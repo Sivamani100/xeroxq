@@ -73,9 +73,6 @@ export async function POST(req: NextRequest) {
   // Extract coordinates from body (validated separately as they are optional)
   const shop_lat = body.shop_lat ? Number(body.shop_lat) : null;
   const shop_lng = body.shop_lng ? Number(body.shop_lng) : null;
-  // Extract pricing from body (optional — default to common rates if not provided)
-  const price_mono = body.price_mono != null && !isNaN(Number(body.price_mono)) ? Number(body.price_mono) : 3;
-  const price_color = body.price_color != null && !isNaN(Number(body.price_color)) ? Number(body.price_color) : 10;
 
   // ── 4. Database Operations ────────────────────────────────────────────────
   const supabaseAdmin = createClient(
@@ -123,8 +120,8 @@ export async function POST(req: NextRequest) {
       shop_location: cleanLocation,
       shop_lat: shop_lat,
       shop_lng: shop_lng,
-      price_mono: price_mono,
-      price_color: price_color,
+      price_mono: 3,
+      price_color: 10,
       is_open: true,
     })
     .select()
