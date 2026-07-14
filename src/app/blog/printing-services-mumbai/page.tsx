@@ -1,160 +1,49 @@
 "use client";
 
-import { SEOBlogPost } from "@/components/blog/seo-blog-post";
+import { motion } from "framer-motion";
+import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { 
+  ArrowLeft, 
+  Share2, 
+  Bookmark, 
+  User,
+  ShieldCheck,
+  Globe,
+  Clock
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function BlogPost() {
-  const postContent = {
+  const router = useRouter();
+
+  const post = {
     title: "Best Printing Services in Mumbai 2026: Top 50 Print Shops with Prices & Locations",
-    description: "Find top printing services in Mumbai with XeroxQ network covering all areas. Get instant printing, secure document services, best prices in Mumbai, Thane, Navi Mumbai. 92+ verified locations.",
     author: "XeroxQ Mumbai Team",
     role: "Mumbai Printing Specialists",
     date: "May 08, 2026",
     readTime: "15 min",
     category: "Local Printing",
-    tags: ["printing services mumbai", "print shop mumbai", "document printing mumbai", "xerox mumbai", "printing thane", "printing navi mumbai", "same day printing mumbai", "secure printing mumbai"],
-    slug: "printing-services-mumbai",
-    featuredImage: "/blog/printing-services-mumbai.jpg",
-    tableOfContents: [
-      { title: "Mumbai Printing Market Overview 2026", id: "market-overview", level: 2 },
-      { title: "Top 50 Printing Services in Mumbai", id: "top-50", level: 2 },
-      { title: "South Mumbai Printing Services", id: "south-mumbai", level: 2 },
-      { title: "Western Mumbai Printing Services", id: "western-mumbai", level: 2 },
-      { title: "Central Mumbai Printing Services", id: "central-mumbai", level: 2 },
-      { title: "Thane & Navi Mumbai Printing", id: "thane-navi", level: 2 },
-      { title: "Pricing Comparison Mumbai", id: "pricing", level: 2 },
-      { title: "Business Printing Solutions Mumbai", id: "business", level: 2 },
-      { title: "Bollywood & Media Printing", id: "bollywood", level: 2 },
-      { title: "Why XeroxQ Leads Mumbai Printing", id: "xeroxq-mumbai", level: 2 },
-    ],
     content: [
-      { type: "p" as const, text: "Mumbai, India's financial capital, processes over 3 million documents daily through its extensive printing network. From Wall Street-style financial documents in Bandra Kurla Complex to Bollywood scripts in Film City, and academic papers in University areas, Mumbai's printing needs are diverse and demanding. XeroxQ has established Mumbai's most comprehensive secure printing network with 92+ verified locations across Mumbai, Thane, and Navi Mumbai, offering military-grade security and 5-minute processing for the city that never sleeps." },
-      
-      { type: "h2" as const, text: "Mumbai Printing Market Overview 2026" },
-      { type: "p" as const, text: "Mumbai's printing ecosystem is India's largest and most sophisticated:" },
-      
-      { type: "ul" as const, items: [
-        "📊 **Market Size**: ₹4,200 crore annual printing market in Mumbai",
-        "🏪 **Service Count**: 18,000+ printing services across Mumbai region",
-        "📱 **Digital Adoption**: 82% of Mumbaikars prefer online printing",
-        "⚡ **Speed Demand**: 70% need same-day printing services",
-        "🔐 **Security Focus**: Highest demand for secure printing in India",
-        "🌐 **Coverage**: Services across Mumbai, Thane, Navi Mumbai, and beyond"
-      ]},
-      
-      { type: "blockquote" as const, text: "Bandra Kurla Complex alone processes 100,000+ business documents daily, making it India's busiest printing hub with the highest security requirements for financial and legal documents.", highlight: true },
-      
-      { type: "h2" as const, text: "Top 50 Printing Services in Mumbai" },
-      { type: "p" as const, text: "Based on security, quality, speed, and customer satisfaction, here are Mumbai's top printing services:" },
-      
-      { type: "h3" as const, text: "XeroxQ Network (92+ Locations)" },
-      { type: "ul" as const, items: [
-        "🥇 **XeroxQ Bandra Kurla Complex**: Financial district premium services",
-        "🥇 **XeroxQ Nariman Point**: Business headquarters printing",
-        "🥇 **XeroxQ Andheri**: 24/7 commercial printing hub",
-        "🥇 **XeroxQ Powai**: IT and business park services",
-        "🥇 **XeroxQ Churchgate**: South Mumbai business center",
-        "🥇 **XeroxQ Worli**: Corporate and residential services",
-        "🥇 **XeroxQ Dadar**: Central Mumbai transit hub",
-        "🥇 **XeroxQ Borivali**: Western suburb coverage"
-      ]},
-      
-      { type: "h3" as const, text: "Premium Printing Services" },
-      { type: "ul" as const, items: [
-        "🏢 **Printo Mumbai**: Multiple premium locations",
-        "📊 **Vistaprint Mumbai**: International quality standards",
-        "🌟 **Hi-Tech Printing**: Luxury printing services",
-        "💼 **PrintStop**: Business and marketing solutions",
-        "🎬 **Media Printing**: Bollywood and media specialists"
-      ]},
-      
-      { type: "h2" as const, text: "South Mumbai Printing Services" },
-      { type: "p" as const, text: "South Mumbai houses India's most prestigious business and financial centers:" },
-      
-      { type: "h3" as const, text: "Financial District" },
-      { type: "ul" as const, items: [
-        "🏢 **Bandra Kurla Complex**: 12 XeroxQ locations, financial printing hub",
-        "🏢 **Nariman Point**: 8 XeroxQ locations, headquarters printing",
-        "🏢 **Fort**: 6 XeroxQ locations, heritage business district",
-        "🏢 **Churchgate**: 5 XeroxQ locations, premium business services",
-        "🏢 **Cuffe Parade**: 4 XeroxQ locations, corporate printing"
-      ]},
-      
-      { type: "h3" as const, text: "Premium Residential Areas" },
-      { type: "ul" as const, items: [
-        "🌴 **Colaba**: Luxury residential and hotel printing",
-        "🌴 **Cuffe Parade**: High-end residential printing",
-        "🌴 **Worli Sea Face**: Premium residential services",
-        "🌴 **Marine Drive**: Iconic location printing services",
-        "🌴 **Malabar Hill**: Exclusive residential printing"
-      ]},
-      
-      { type: "h2" as const, text: "Western Mumbai Printing Services" },
-      { type: "p" as const, text: "Western Mumbai combines residential, commercial, and entertainment printing:" },
-      
-      { type: "h3" as const, text: "Commercial Hubs" },
-      { type: "ul" as const, items: [
-        "🏪 **Andheri**: 15 XeroxQ locations, 24/7 printing services",
-        "🏪 **Bandra**: 10 XeroxQ locations, entertainment and business",
-        "🏪 **Juhu**: 6 XeroxQ locations, celebrity and premium printing",
-        "🏪 **Versova**: 5 XeroxQ locations, media and creative printing",
-        "🏪 **Goregaon**: 8 XeroxQ locations, film industry services"
-      ]},
-      
-      { type: "h3" as const, text: "Residential Areas" },
-      { type: "ul" as const, items: [
-        "🏠 **Borivali**: 8 XeroxQ locations, large residential coverage",
-        "🏠 **Dahisar**: 5 XeroxQ locations, suburban printing",
-        "🏠 **Kandivali**: 6 XeroxQ locations, family printing services",
-        "🏠 **Malad**: 7 XeroxQ locations, modern residential printing",
-        "🏠 **Mira Road**: 4 XeroxQ locations, extended suburb services"
-      ]},
-      
-      { type: "h2" as const, text: "Central Mumbai Printing Services" },
-      { type: "p" as const, text: "Central Mumbai is the heart of Mumbai's commercial and printing activities:" },
-      
-      { type: "h3" as const, text: "Business Districts" },
-      { type: "ul" as const, items: [
-        "🏢 **Dadar**: 12 XeroxQ locations, central business hub",
-        "🏢 **Parel**: 8 XeroxQ locations, corporate printing center",
-        "🏢 **Lower Parel**: 6 XeroxQ locations, media and entertainment",
-        "🏢 **Mahalaxmi**: 5 XeroxQ locations, business district",
-        "🏢 **Byculla**: 4 XeroxQ locations, commercial services"
-      ]},
-      
-      { type: "h3" as const, text: "Educational Hubs" },
-      { type: "ul" as const, items: [
-        "🎓 **Matunga**: Educational institution printing",
-        "🎓 **Sion**: Academic and research printing",
-        "🎓 **Wadala**: Student and professional printing",
-        "🎓 **Chembur**: Educational complex printing"
-      ]},
-      
-      { type: "h2" as const, text: "Thane & Navi Mumbai Printing" },
-      { type: "p" as const, text: "Satellite cities offer comprehensive printing services:" },
-      
-      { type: "h3" as const, text: "Thane Printing Services" },
-      { type: "ul" as const, items: [
-        "🏪 **Thane West**: 8 XeroxQ locations, commercial printing",
-        "🏪 **Thane East**: 6 XeroxQ locations, business services",
-        "🏪 **Ghodbunder Road**: 5 XeroxQ locations, growing commercial area",
-        "🏪 **Vasai**: 4 XeroxQ locations, residential printing",
-        "🏪 **Virar**: 3 XeroxQ locations, suburban services"
-      ]},
-      
-      { type: "h3" as const, text: "Navi Mumbai Printing Services" },
-      { type: "ul" as const, items: [
-        "🌴 **Vashi**: 8 XeroxQ locations, Navi Mumbai hub",
-        "🌴 **Nerul**: 6 XeroxQ locations, educational and residential",
-        "🌴 **Kharghar**: 5 XeroxQ locations, modern township printing",
-        "🌴 **Panvel**: 4 XeroxQ locations, growing commercial area",
-        "🌴 **Airoli**: 4 XeroxQ locations, IT park printing"
-      ]},
-      
-      { type: "h2" as const, text: "Pricing Comparison Mumbai" },
-      { type: "p" as const, text: "Mumbai's premium locations command higher printing prices:" },
-      
-      { type: "h3" as const, text: "Black & White Printing (per page)" },
-      { type: "ul" as const, items: [
+      { type: "p", text: "Mumbai, India's financial capital, processes over 3 million documents daily through its extensive printing network. From Wall Street-style financial documents in Bandra Kurla Complex to Bollywood scripts in Film City, and academic papers in University areas, Mumbai's printing needs are diverse and demanding. XeroxQ has established Mumbai's most comprehensive secure printing network with 92+ verified locations across Mumbai, Thane, and Navi Mumbai, offering military-grade security and 5-minute processing for the city that never sleeps." },
+      { type: "h2", text: "Mumbai Printing Market Overview 2026" },
+      { type: "p", text: "Mumbai's printing ecosystem is India's largest and most sophisticated with a ₹4,200 crore annual market, 18,000+ services, 82% digital adoption, and 70% demand for same-day printing. The city has the highest security requirements for financial and legal documents." },
+      { type: "h2", text: "Top 50 Printing Services in Mumbai" },
+      { type: "p", text: "Based on security, quality, speed, and customer satisfaction, XeroxQ leads Mumbai with 92+ verified locations offering unmatched security, 5-minute processing, and comprehensive coverage across Mumbai, Thane, and Navi Mumbai." },
+      { type: "h2", text: "South Mumbai Printing Services" },
+      { type: "p", text: "South Mumbai's premium business districts including Fort, Colaba, and Churchgate host high-security printing services for financial institutions, legal firms, and corporate headquarters with XeroxQ locations at every major business hub." },
+      { type: "h2", text: "Western Mumbai Printing Services" },
+      { type: "p", text: "Western Mumbai from Bandra to Andheri serves as the entertainment and startup hub, with specialized printing for media companies, Bollywood productions, and tech startups requiring fast, secure document processing." },
+      { type: "h2", text: "Central Mumbai Printing Services" },
+      { type: "p", text: "Central Mumbai's business districts including Worli, Lower Parel, and Parel host major corporate printing needs with XeroxQ providing enterprise-grade security and 5-minute processing for business-critical documents." },
+      { type: "h2", text: "Thane & Navi Mumbai Printing" },
+      { type: "p", text: "Thane and Navi Mumbai's rapidly developing business corridors require comprehensive printing services with XeroxQ locations covering all major commercial complexes and residential areas with same-day service." },
+      { type: "h2", text: "Why XeroxQ Leads Mumbai Printing" },
+      { type: "p", text: "XeroxQ dominates Mumbai with 92+ locations versus competitors 15-20, military-grade security for financial documents, 5-minute processing, 40% better pricing, and 24/7 support in multiple languages for India's most demanding market." },
+      { type: "h2", text: "Pricing Comparison Mumbai" },
+      { type: "p", text: "Mumbai's premium locations command higher printing prices:" },
+      { type: "h3", text: "Black & White Printing (per page)" },
+      { type: "ul", items: [
         "💰 **XeroxQ**: ₹2 (consistent across Mumbai)",
         "🏢 **Bandra Kurla**: ₹4-6 (financial district premium)",
         "🏢 **Nariman Point**: ₹5-7 (headquarters pricing)",
@@ -276,5 +165,122 @@ export default function BlogPost() {
     ]
   };
 
-  return <SEOBlogPost {...postContent} />;
+  return (
+    <div className="min-h-screen bg-white">
+      <SiteHeader />
+      
+      <main className="pt-32 pb-16">
+        <article className="max-w-[1280px] mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+            
+            <aside className="hidden lg:block lg:col-span-3 sticky top-32">
+              <div className="space-y-10">
+                 <button 
+                  onClick={() => router.push('/blog')}
+                  className="flex items-center gap-3 text-[10px] font-black text-[#94A3B8] hover:text-black uppercase tracking-[0.3em] transition-all group"
+                 >
+                   <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" /> Back to Registry
+                 </button>
+
+                 <div className="space-y-8">
+                    <div className="flex flex-col gap-2">
+                       <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Written By</span>
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                             <Globe className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                             <div className="font-bold text-black text-xs tracking-tight">{post.author}</div>
+                             <div className="text-[10px] font-black text-[#64748B] uppercase tracking-tighter">{post.role}</div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4 pt-8 border-t border-[#E2E8F0]">
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Published</span>
+                          <span className="text-xs font-bold text-black mt-1 uppercase tracking-tight">{post.date}</span>
+                       </div>
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Read Time</span>
+                          <span className="text-xs font-bold text-black uppercase tracking-tight">{post.readTime}</span>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4">
+                       <button className="w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-black hover:text-white transition-all text-[#64748B]">
+                          <Share2 className="w-3.5 h-3.5" />
+                       </button>
+                       <button className="w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-black hover:text-white transition-all text-[#64748B]">
+                          <Bookmark className="w-3.5 h-3.5" />
+                       </button>
+                    </div>
+                 </div>
+
+                 <div className="p-6 bg-blue-50 rounded-xl border border-blue-200 space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-blue-600 border border-blue-700 flex items-center justify-center shadow-sm">
+                       <Globe className="w-5 h-5 text-white" />
+                    </div>
+                    <p className="text-[11px] text-blue-700 font-black uppercase tracking-tight leading-relaxed">
+                       FINANCIAL CAPITAL: 92+ verified locations across Mumbai with enterprise-grade security for financial documents.
+                    </p>
+                 </div>
+              </div>
+            </aside>
+
+            <div className="lg:col-span-9 max-w-3xl">
+              <div className="space-y-12 text-left">
+                <div className="space-y-6">
+                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600/10 rounded-md border border-blue-600/20">
+                      <Globe className="w-3.5 h-3.5 text-blue-700" />
+                      <span className="text-[10px] font-black tracking-[0.2em] text-blue-800 uppercase">{post.category}</span>
+                   </div>
+                   <h1 className="text-4xl lg:text-6xl font-bold text-black tracking-tighter leading-[0.95]">
+                      {post.title}
+                   </h1>
+                </div>
+
+                <div className="prose prose-slate max-w-none space-y-10">
+                  {post.content.map((item, i) => {
+                    if (item.type === "p") return <p key={i} className="text-lg text-[#475569] font-medium leading-[1.6]">{item.text}</p>;
+                    if (item.type === "h2") return <h2 key={i} className="text-2xl font-bold text-black tracking-tight pt-8 uppercase">{item.text}</h2>;
+                    return null;
+                  })}
+                </div>
+
+                <div className="mt-20 p-8 bg-blue-50 rounded-xl border border-blue-200 relative overflow-hidden group">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                       <div className="w-14 h-14 shrink-0 rounded-lg bg-blue-600 border border-blue-700 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                          <ShieldCheck className="w-8 h-8 text-white" />
+                       </div>
+                       <div className="space-y-3 text-left flex-1">
+                          <h4 className="text-xl font-bold text-blue-800 tracking-tight leading-none uppercase">FIND MUMBAI'S BEST PRINTING SERVICES</h4>
+                          <p className="text-[13px] text-blue-700 font-medium leading-relaxed">Connect to 92+ verified print shops across Mumbai with enterprise-grade security and 5-minute processing.</p>
+                          <button className="mt-4 px-6 py-3 bg-blue-700 hover:bg-blue-800 text-white font-black text-[10px] uppercase tracking-widest rounded-md transition-all active:scale-95">
+                             PRINT IN MUMBAI
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                <div className="flex items-center justify-between pt-16 border-t border-[#E2E8F0]">
+                   <button className="group flex flex-col gap-2 items-start text-left">
+                      <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest">Previous Article</span>
+                      <span className="text-base font-bold text-black tracking-tight group-hover:underline">Printing Services Delhi</span>
+                   </button>
+                   <button className="group flex flex-col gap-2 items-end text-right">
+                      <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest">Next Article</span>
+                      <span className="text-base font-bold text-black tracking-tight group-hover:underline">Secure Document Printing India</span>
+                   </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </article>
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
 }

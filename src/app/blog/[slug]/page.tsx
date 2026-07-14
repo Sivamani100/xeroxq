@@ -11,20 +11,25 @@ import {
   ShieldCheck,
   Zap,
   Globe,
-  Clock
+  Clock,
+  AlertTriangle,
+  MessageCircle,
+  TrendingUp,
+  Cpu,
+  Lock
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 
-export default function BlogPost({ params }: { params: { slug: string } }) {
-  const router = useRouter();
-
-  const post = {
+const blogPostData: Record<string, any> = {
+  "zero-knowledge-print": {
     title: "The Zero-Knowledge Print Protocol: A Deep Dive",
     author: "XeroxQ Engineering",
     role: "Core Protocol Leads",
     date: "April 02, 2026",
     readTime: "8 min",
     category: "Engineering",
+    icon: Lock,
     content: [
       { type: "p", text: "At its core, the XeroxQ protocol is designed to solve a fundamental flaw in traditional printing infrastructure: the 'Centralized Payload Leak.' In a standard document workflow, files are often transmitted and stored on centralized servers, creating a massive attack surface for sensitive document theft." },
       { type: "h2", text: "Local Payload Encryption" },
@@ -34,7 +39,17 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
       { type: "p", text: "Security doesn't stop at physicalization. Once the Shop Node completes the print job, the protocol triggers an 'Autonomous Purge.' The transient document fragment is wiped from the shop's memory using a 7-pass secure delete process." },
       { type: "p", text: "This zero-persistence architecture ensures that the shopkeeper never 'owns' your data—they only facilitate its physical arrival." }
     ]
-  };
+  }
+};
+
+export default function BlogPost({ params }: { params: { slug: string } }) {
+  const router = useRouter();
+  
+  const post = blogPostData[params.slug];
+  
+  if (!post) {
+    notFound();
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -90,7 +105,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
 
                  <div className="p-6 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-4">
                     <div className="w-10 h-10 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center shadow-sm">
-                       <ShieldCheck className="w-5 h-5 text-black" />
+                       {post.icon === Lock ? <Lock className="w-5 h-5 text-black" /> : <ShieldCheck className="w-5 h-5 text-black" />}
                     </div>
                     <p className="text-[11px] text-[#64748B] font-black uppercase tracking-tight leading-relaxed">
                        This article was verified by our global protocol security auditors on April 04, 2026.

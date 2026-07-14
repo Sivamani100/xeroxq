@@ -1219,6 +1219,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const downloadQRAsImage = async () => {
+    const qrContainer = document.getElementById("admin-qr-container");
+    if (!qrContainer) return;
+    try {
+      if (!html2canvas) return;
+      const canvas = await html2canvas(qrContainer as HTMLElement, {
+        scale: 4,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = `${shop?.slug || "shop"}_qr.png`;
+      link.click();
+    } catch (err) {
+      console.error("Error downloading QR:", err);
+    }
+  };
+
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdatingSettings(true);
@@ -1590,7 +1609,7 @@ export default function AdminDashboard() {
 
             <button
               disabled={creatingShop}
-              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-2 cursor-pointer"
+              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-2"
             >
               {creatingShop ? "Connecting..." : "Create Shop"}
             </button>
@@ -1598,7 +1617,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-6 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors cursor-pointer"
+              className="mt-6 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors"
             >
               Signing Out? <span className="text-black ml-1">Logout</span>
             </button>
@@ -1718,7 +1737,7 @@ export default function AdminDashboard() {
             </div>
             <button
               onClick={() => setShowingSettings(true)}
-              className="text-[10px] font-bold text-white/90 hover:text-white underline underline-offset-2 cursor-pointer"
+              className="text-[10px] font-bold text-white/90 hover:text-white underline underline-offset-2"
             >
               Update Settings
             </button>
@@ -1742,7 +1761,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
                     className={cn(
-                      "w-2 h-2 rounded-full transition-all cursor-pointer",
+                      "w-2 h-2 rounded-full transition-all",
                       shop?.is_open !== false ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"
                     )}
                   />
@@ -1767,7 +1786,7 @@ export default function AdminDashboard() {
               <button
                 onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
                 className={cn(
-                  "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer",
+                  "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]",
                   isSoundEnabled
                     ? "bg-orange-50 border-orange-100 text-[#FF591E]"
                     : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
@@ -1782,7 +1801,7 @@ export default function AdminDashboard() {
               <Dialog open={showingSettings} onOpenChange={setShowingSettings}>
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer"
+                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
                     title="Shop Settings"
                   >
                     <Settings className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
@@ -1855,7 +1874,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
                               className={cn(
-                                "flex items-center justify-between px-4 h-[42px] rounded-[5.57px] border transition-all duration-300 shadow-sm cursor-pointer",
+                                "flex items-center justify-between px-4 h-[42px] rounded-[5.57px] border transition-all duration-300 shadow-sm",
                                 shop?.is_open !== false ? "bg-white border-green-200 text-green-700" : "bg-white border-red-200 text-red-700"
                               )}
                             >
@@ -1904,7 +1923,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={() => setShop({ ...shop!, [toggle.key]: !(shop?.[toggle.key as keyof Shop] !== false) })}
                                 className={cn(
-                                  "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner disabled:opacity-50 cursor-pointer",
+                                  "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
                                   shop?.[toggle.key as keyof Shop] !== false ? "bg-black" : "bg-[#E2E8F0]"
                                 )}
                               >
@@ -1965,7 +1984,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={handleFlushQueue}
                               disabled={updatingSettings || jobs.length === 0}
-                              className="w-full h-full bg-red-500 text-white font-black text-[11px] uppercase tracking-widest rounded-[4px] hover:bg-red-600 active:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-30 cursor-pointer"
+                              className="w-full h-full bg-red-500 text-white font-black text-[11px] uppercase tracking-widest rounded-[4px] hover:bg-red-600 active:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-30"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Delete All Data
                             </button>
@@ -2039,7 +2058,7 @@ export default function AdminDashboard() {
                                   setShowFeedbackManager(true);
                                   fetchCustomFeedbackQuestions();
                                 }}
-                                className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-[4px] hover:bg-black/80 transition-all cursor-pointer"
+                                className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-[4px] hover:bg-black/80 transition-all"
                               >
                                 Manage Questions
                               </button>
@@ -2064,7 +2083,7 @@ export default function AdminDashboard() {
                                 fetchFeedbackResponses();
                                 fetchFeedbackAnalytics();
                               }}
-                              className="px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0] text-black text-[10px] font-black uppercase rounded-[4px] hover:bg-black hover:text-white hover:border-black transition-all cursor-pointer"
+                              className="px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0] text-black text-[10px] font-black uppercase rounded-[4px] hover:bg-black hover:text-white hover:border-black transition-all"
                             >
                               View All
                             </button>
@@ -2077,7 +2096,7 @@ export default function AdminDashboard() {
                       <DialogClose asChild>
                         <button
                           type="button"
-                          className="h-12 px-8 bg-white border border-[#E2E8F0] text-black hover:bg-[#F1F5F9] active:bg-[#E2E8F0] rounded-[5.57px] text-[12px] font-black uppercase tracking-tight transition-all active:scale-95 cursor-pointer"
+                          className="h-12 px-8 bg-white border border-[#E2E8F0] text-black hover:bg-[#F1F5F9] active:bg-[#E2E8F0] rounded-[5.57px] text-[12px] font-black uppercase tracking-tight transition-all active:scale-95"
                         >
                           Cancel
                         </button>
@@ -2089,7 +2108,7 @@ export default function AdminDashboard() {
                           handleUpdateSettings(e as any);
                         }}
                         disabled={updatingSettings}
-                        className="flex-1 h-12 bg-black text-white font-black text-[13px] uppercase tracking-tighter rounded-[5.57px] transition-all flex items-center justify-center shadow-xl active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="flex-1 h-12 bg-black text-white hover:bg-black/90 active:bg-black/80 font-black text-[13px] uppercase tracking-tighter rounded-[5.57px] transition-all flex items-center justify-center shadow-xl active:scale-95 disabled:opacity-50"
                       >
                         {updatingSettings ? (
                           <div className="flex items-center gap-2">
@@ -2146,7 +2165,7 @@ export default function AdminDashboard() {
                       <button
                         onClick={handleAddCustomQuestion}
                         disabled={addingQuestion || !newQuestionText.trim()}
-                        className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {addingQuestion ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                         Add Question
@@ -2168,7 +2187,7 @@ export default function AdminDashboard() {
                               </div>
                               <button
                                 onClick={() => handleDeleteCustomQuestion(q.id)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -2182,7 +2201,7 @@ export default function AdminDashboard() {
                   <DialogFooter className="p-6 border-t">
                     <button
                       onClick={() => setShowFeedbackManager(false)}
-                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg cursor-pointer"
+                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg"
                     >
                       Done
                     </button>
@@ -2277,7 +2296,7 @@ export default function AdminDashboard() {
                   <DialogFooter className="p-6 border-t">
                     <button
                       onClick={() => setShowFeedbackResponses(false)}
-                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg cursor-pointer"
+                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg"
                     >
                       Close
                     </button>
@@ -2289,7 +2308,7 @@ export default function AdminDashboard() {
               <Dialog open={showQR} onOpenChange={setShowQR}>
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px] cursor-pointer"
+                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
                     title="Customer QR"
                   >
                     <QrCode className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
@@ -2309,24 +2328,33 @@ export default function AdminDashboard() {
                   <div className="flex flex-col items-center gap-4 mt-2">
                     <div className="p-6 bg-white border border-[#E2E8F0] rounded-[24px] w-full flex justify-center shadow-inner group relative">
                       <div className="absolute inset-4 border border-dashed border-black/5 rounded-[20px] group-hover:border-black/10 transition-colors" />
-                      <div className="relative z-10 p-2 bg-white rounded-xl transition-transform duration-500 group-hover:scale-105">
+                      <div id="admin-qr-container" className="smooth-qr relative z-10 p-2 bg-white rounded-xl transition-transform duration-500 group-hover:scale-105">
+                        <style dangerouslySetInnerHTML={{ __html: `
+                          .smooth-qr svg path:nth-of-type(2) {
+                            shape-rendering: auto !important;
+                            stroke: #000000 !important;
+                            stroke-width: 0.22px !important;
+                            stroke-linejoin: round !important;
+                            stroke-linecap: round !important;
+                          }
+                        `}} />
                         {qrUrl ? (
                           <QRCodeSVG
                             value={qrUrl}
-                            size={160}
+                            size={200}
                             level="H"
                             includeMargin={false}
                             imageSettings={{
-                              src: "/logo.png",
+                              src: "/xeroxqlogo.svg",
                               x: undefined,
                               y: undefined,
-                              height: 24,
-                              width: 24,
+                              height: 20,
+                              width: 60,
                               excavate: true,
                             }}
                           />
                         ) : (
-                          <div className="w-[160px] h-[160px] flex items-center justify-center text-slate-400">
+                          <div className="w-[200px] h-[200px] flex items-center justify-center text-slate-400">
                             Generating...
                           </div>
                         )}
@@ -2343,12 +2371,18 @@ export default function AdminDashboard() {
 
                       <div className="flex gap-3 pt-2">
                         <button
-                          onClick={() => window.open(`/admin/poster?name=${encodeURIComponent(shop.name)}&slug=${shop.slug}&upi=${shop.upi_id || ''}`, '_blank')}
-                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                          onClick={() => window.open(`/admin/poster?name=${encodeURIComponent(shop?.name || "")}&slug=${shop?.slug || ""}&upi=${shop?.upi_id || ""}`, '_blank')}
+                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
                         >
                           <Printer className="w-3.5 h-3.5" /> Poster
                         </button>
-                        <button onClick={() => setShowQR(false)} className="flex-1 h-[40px] bg-black text-white hover:bg-black/90 rounded-[5.57px] text-[12px] font-bold transition-all flex items-center justify-center shadow-lg shadow-black/10 cursor-pointer">
+                        <button
+                          onClick={downloadQRAsImage}
+                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </button>
+                        <button onClick={() => setShowQR(false)} className="flex-1 h-[40px] bg-black text-white hover:bg-black/90 rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center shadow-lg shadow-black/10 cursor-pointer">
                           Dismiss
                         </button>
                       </div>
@@ -2405,7 +2439,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-admin max-h-[calc(100vh-8rem)]">
+      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-thin">
 
         {/* ── EMPTY STATE ── */}
         {filteredJobs.length === 0 && (
@@ -2422,7 +2456,7 @@ export default function AdminDashboard() {
 
         {/* ── MOBILE CARDS (shown below lg) ── */}
         {filteredJobs.length > 0 && (
-          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-admin">
+          <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-thin">
             {filteredJobs.map((job) => {
               const isExpired = new Date(job.expires_at) < currentTime;
               const diff = new Date(job.expires_at).getTime() - currentTime.getTime();

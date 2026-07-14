@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * XeroxQ — Edge Middleware
@@ -8,7 +9,62 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
  * Protects the /admin route server-side BEFORE React renders.
  * This prevents any client-side bypass via direct URL navigation.
  * Also protects against open redirects from the auth callback.
+ * 
+ * NEW: Global Maintenance Protocol - Locks all customer routes when maintenance mode is active
  */
+
+// Create a Supabase client for server-side operations (maintenance mode)
+const supabaseService = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Routes that should remain accessible during maintenance
+const MAINTENANCE_ALLOWED_ROUTES = [
+  '/admin',
+  '/platform-admin',
+  '/login',
+  '/api/health',
+  '/api/auth/callback',
+  '/api/maintenance',
+  '/_next',
+  '/favicon.ico',
+  '/robots.txt',
+  '/sitemap.xml'
+];
+
+// Customer routes that should be blocked during maintenance
+const CUSTOMER_ROUTES = [
+  '/',
+  '/about',
+  '/contact',
+  '/help-center',
+  '/shops',
+  '/blog',
+  '/register',
+  '/demo-request',
+  '/enterprise',
+  '/for-shops',
+  '/integrations',
+  '/partners',
+  '/careers',
+  '/community',
+  '/news',
+  '/case-studies',
+  '/docs',
+  '/use-cases',
+  '/vision',
+  '/privacy',
+  '/terms',
+  '/security',
+  '/pricing',
+  '/mobile-app',
+  '/api',
+  '/status',
+  '/quality',
+  '/cookies',
+  '/data'
+];
 
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 
@@ -39,7 +95,39 @@ function applyRateLimit(ip: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   
-  // ── 0. API Rate Limiting protection ───────────────────────────────────────
+  // ── 0. Global Maintenance Protocol Check ───────────────────────────────────
+  // Check if current path is allowed during maintenance
+  const isAllowedRoute = MAINTENANCE_ALLOWED_ROUTES.some(route => 
+    pathname.startsWith(route)
+  ) || pathname.startsWith('/_next') || pathname.startsWith('/favicon');
+
+  // Check if it's a customer route that should be blocked
+  const isCustomerRoute = CUSTOMER_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
+
+  // If it's a customer route and not allowed, check maintenance mode
+  if (isCustomerRoute && !isAllowedRoute) {
+    try {
+      const { data, error } = await supabaseService
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+
+      // If maintenance mode is active, redirect to maintenance page
+      if (!error && data?.value === true) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/maintenance';
+        return NextResponse.redirect(url);
+      }
+    } catch (error) {
+      console.error('Maintenance check error:', error);
+      // If there's an error checking maintenance, allow access to prevent breaking the site
+    }
+  }
+  
+  // ── 1. API Rate Limiting protection ───────────────────────────────────────
   if (pathname.startsWith("/api/")) {
     const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
     if (applyRateLimit(ip)) {
@@ -154,6 +242,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Match all routes except static files and images for maintenance mode
+    "/((?!_next/static|_next/image|favicon.ico).*)",
     // Rate limit all backend infrastructure endpoints
     "/api/:path*",
     // Match /admin and all sub-routes

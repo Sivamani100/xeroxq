@@ -3,16 +3,24 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Hammer, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Hammer, Loader2, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   useEffect(() => {
     const checkMaintenance = async () => {
-      // Platform admin should always be able to see the site to turn it off
-      if (window.location.pathname.startsWith('/platform-admin') || window.location.pathname === '/login') {
+      const pathname = window.location.pathname;
+      
+      // Check if user is on admin route
+      const adminRoutes = ['/platform-admin', '/admin', '/login'];
+      const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
+      setIsAdminMode(isAdminRoute);
+
+      // Don't show maintenance overlay on admin routes
+      if (isAdminRoute) {
         setLoading(false);
         return;
       }
@@ -46,7 +54,13 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
         table: 'platform_settings',
         filter: 'key=eq.maintenance_mode'
       }, (payload) => {
-        setIsMaintenance(!!payload.new.value);
+        const newMaintenanceState = !!payload.new.value;
+        setIsMaintenance(newMaintenanceState);
+        
+        // If maintenance is turned off and we're on maintenance page, redirect home
+        if (!newMaintenanceState && window.location.pathname === '/maintenance') {
+          window.location.href = '/';
+        }
       })
       .subscribe();
 
@@ -60,7 +74,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AnimatePresence>
-        {isMaintenance && (
+        {isMaintenance && !isAdminMode && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -98,7 +112,20 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
                       <span className="flex items-center gap-2"><ShieldCheck className="w-3 h-3" /> Security Audit</span>
                       <span className="text-emerald-500">Verified</span>
                    </div>
+                   <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                      <span className="flex items-center gap-2"><Eye className="w-3 h-3" /> Admin Access</span>
+                      <span className="text-blue-500">Active</span>
+                   </div>
                 </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => window.location.href = '/admin'}
+                  className="w-full bg-blue-600 text-white rounded-2xl py-4 font-bold text-[11px] uppercase tracking-widest hover:bg-blue-700 transition-colors mt-6"
+                >
+                  Admin Portal Access
+                </motion.button>
 
                 <p className="mt-12 text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em]">
                    Powered by Mercury Protocol v2.4

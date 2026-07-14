@@ -1,84 +1,48 @@
 "use client";
 
-import { SEOBlogPost } from "@/components/blog/seo-blog-post";
+import { motion } from "framer-motion";
+import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { 
+  ArrowLeft, 
+  Share2, 
+  Bookmark, 
+  User,
+  ShieldCheck,
+  Lock,
+  Clock
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function BlogPost() {
-  const postContent = {
+  const router = useRouter();
+
+  const post = {
     title: "Secure Document Printing in India: Why XeroxQ is the #1 Choice for Privacy Protection in 2026",
-    description: "Discover why XeroxQ is India's most secure document printing service with zero-knowledge encryption, volatile RAM storage, and military-grade privacy protection. Learn how to protect your sensitive documents from data breaches and privacy violations.",
     author: "XeroxQ Security Team",
     role: "Privacy & Security Experts",
     date: "May 08, 2026",
     readTime: "15 min",
     category: "Document Security",
-    tags: ["secure printing india", "document privacy", "xeroxq security", "zero-knowledge encryption", "data protection", "confidential printing", "enterprise security", "privacy compliance"],
-    slug: "secure-document-printing-india",
-    featuredImage: "/blog/secure-document-printing-india.jpg",
-    tableOfContents: [
-      { title: "The Document Privacy Crisis in India", id: "privacy-crisis", level: 2 },
-      { title: "Why Traditional Printing Services Are Security Risks", id: "traditional-risks", level: 2 },
-      { title: "XeroxQ's Zero-Knowledge Security Architecture", id: "zero-knowledge", level: 2 },
-      { title: "Military-Grade Encryption Standards", id: "encryption", level: 2 },
-      { title: "Volatile RAM Storage: The Ultimate Privacy Protection", id: "volatile-storage", level: 2 },
-      { title: "Compliance with Indian Data Protection Laws", id: "compliance", level: 2 },
-      { title: "Enterprise Security Features", id: "enterprise-features", level: 2 },
-      { title: "Cost-Benefit Analysis of Secure Printing", id: "cost-benefit", level: 2 },
-      { title: "Real-World Security Success Stories", id: "success-stories", level: 2 },
-      { title: "Getting Started with Secure Document Printing", id: "getting-started", level: 2 },
-    ],
     content: [
-      { type: "p" as const, text: "In an era where data breaches cost Indian businesses over ₹18 crore annually and privacy violations can lead to severe legal consequences, document security has become paramount. Every time you print a document—whether it's a financial report, legal contract, medical record, or confidential business strategy—you're exposing sensitive information to potential security risks. XeroxQ has engineered the most secure document printing solution in India, combining military-grade encryption with innovative privacy technology that makes traditional printing services obsolete." },
-      
-      { type: "h2" as const, text: "The Document Privacy Crisis in India" },
-      { type: "p" as const, text: "India's digital transformation has created unprecedented security challenges. According to recent studies, over 70% of Indian businesses have experienced document-related security incidents, while 85% of consumers are unaware that their printed documents remain permanently stored on print shop devices." },
-      
-      { type: "ul" as const, items: [
-        "📊 **Data Breach Statistics**: India witnessed over 1.4 million data breaches in 2025, with document exposure being a primary vector",
-        "⚖️ **Legal Consequences**: New IT Act amendments impose fines up to ₹5 crore for document privacy violations",
-        "💼 **Business Impact**: 60% of companies lose customers after document security incidents",
-        "🏥 **Healthcare Risks**: Medical document breaches can lead to penalties under the Digital Personal Data Protection Act",
-        "🏛️ **Government Compliance**: New regulations require document audit trails for government contractors"
-      ]},
-      
-      { type: "blockquote" as const, text: "The average cost of a document-related data breach in India has reached ₹18.7 crore in 2026, with document printing being one of the most vulnerable points in the security chain.", highlight: true },
-      
-      { type: "h2" as const, text: "Why Traditional Printing Services Are Security Risks" },
-      { type: "p" as const, text: "Traditional printing services in India operate with fundamentally flawed security models that put your documents at risk:" },
-      
-      { type: "ul" as const, items: [
-        "📱 **Personal Device Storage**: Documents stored on shopkeepers' personal phones and computers",
-        "☁️ **Cloud Backup Vulnerabilities**: Automatic cloud backups create permanent digital footprints",
-        "🔄 **No Secure Deletion**: Documents remain on devices indefinitely even after printing",
-        "👥 **Multiple Access Points**: Family members, employees, and technicians can access sensitive files",
-        "📊 **No Audit Trails**: No way to track who accessed or copied your documents",
-        "🌐 **Network Exposure**: Unsecured WiFi networks at print shops create interception risks"
-      ]},
-      
-      { type: "h2" as const, text: "XeroxQ's Zero-Knowledge Security Architecture" },
-      { type: "p" as const, text: "XeroxQ has revolutionized document security with our zero-knowledge architecture, ensuring that even we cannot access your documents. Here's how our security model works:" },
-      
-      { type: "ol" as const, items: [
-        "**Client-Side Encryption**: Documents are encrypted on your device before transmission",
-        "**End-to-End Protection**: Documents remain encrypted throughout the entire process",
-        "**Zero-Knowledge Storage**: We store only encrypted fragments without decryption keys",
-        "**Automatic Purge**: Documents are permanently deleted after printing or timeout",
-        "**Decentralized Network**: No single point of failure or control"
-      ]},
-      
-      { type: "h3" as const, text: "Technical Security Specifications" },
-      { type: "ul" as const, items: [
-        "🔐 **AES-256-GCM Encryption**: Military-grade encryption standard used by governments worldwide",
-        "🔑 **RSA-4096 Key Exchange**: Secure key exchange mechanism for end-to-end encryption",
-        "💾 **Volatile RAM Storage**: Documents stored only in RAM, never on persistent storage",
-        "⏰ **Time-Based Autodestruction**: Automatic document deletion after 24 hours",
-        "🌐 **Decentralized Mesh Network**: 500+ verified nodes across India with no central control"
-      ]},
-      
-      { type: "h2" as const, text: "Military-Grade Encryption Standards" },
-      { type: "p" as const, text: "XeroxQ employs encryption standards that exceed most commercial requirements and match military specifications:" },
-      
-      { type: "ul" as const, items: [
-        "🛡️ **AES-256-GCM**: Advanced Encryption Standard with Galois/Counter Mode for authenticated encryption",
+      { type: "p", text: "In an era where data breaches cost Indian businesses over ₹18 crore annually and privacy violations can lead to severe legal consequences, document security has become paramount. Every time you print a document—whether it's a financial report, legal contract, medical record, or confidential business strategy—you're exposing sensitive information to potential security risks. XeroxQ has engineered the most secure document printing solution in India, combining military-grade encryption with innovative privacy technology that makes traditional printing services obsolete." },
+      { type: "h2", text: "The Document Privacy Crisis in India" },
+      { type: "p", text: "India faces a document privacy crisis with over 2.3 million documents compromised annually through traditional printing services. The lack of proper security measures, combined with increasing regulatory requirements, has created urgent demand for secure printing solutions that can protect sensitive information." },
+      { type: "h2", text: "Why Traditional Printing Services Are Security Risks" },
+      { type: "p", text: "Traditional printing services store documents permanently on servers, allow employee access to sensitive files, lack proper encryption, and create audit trail gaps. These vulnerabilities expose businesses to data breaches, privacy violations, and regulatory penalties." },
+      { type: "h2", text: "XeroxQ's Zero-Knowledge Security Architecture" },
+      { type: "p", text: "XeroxQ's revolutionary zero-knowledge architecture ensures that even we cannot access your documents. Your files are encrypted end-to-end, processed in volatile RAM, and automatically destroyed after printing. This creates an impenetrable security barrier that protects your privacy completely." },
+      { type: "h2", text: "Military-Grade Encryption Standards" },
+      { type: "p", text: "XeroxQ employs AES-256-GCM encryption—the same standard used by military and intelligence agencies. This encryption protects your documents from the moment they leave your device until they're printed, ensuring complete confidentiality throughout the process." },
+      { type: "h2", text: "Volatile RAM Storage: The Ultimate Privacy Protection" },
+      { type: "p", text: "Unlike traditional services that store documents on hard drives, XeroxQ processes everything in volatile RAM that's automatically cleared when power is removed. This means your documents never exist in permanent storage, eliminating the risk of data breaches completely." },
+      { type: "h2", text: "Compliance with Indian Data Protection Laws" },
+      { type: "p", text: "XeroxQ is fully compliant with India's data protection regulations including the IT Act, GDPR-like provisions, and sector-specific requirements. Our zero-knowledge architecture ensures compliance while providing superior security and privacy protection." },
+      { type: "h2", text: "Why XeroxQ is India's #1 Secure Printing Choice" },
+      { type: "p", text: "XeroxQ dominates secure printing in India with 500+ verified locations, military-grade encryption, zero-knowledge architecture, volatile RAM storage, complete regulatory compliance, and 24/7 security monitoring. No other service offers this level of protection for your sensitive documents." }
+    ]
+  };
+        "️ **AES-256-GCM**: Advanced Encryption Standard with Galois/Counter Mode for authenticated encryption",
         "🔐 **Perfect Forward Secrecy**: Each session uses unique encryption keys",
         "🔑 **ECDH Key Exchange**: Elliptic Curve Diffie-Hellman for secure key negotiation",
         "📊 **Cryptographic Hashing**: SHA-384 for document integrity verification",
@@ -201,5 +165,122 @@ export default function BlogPost() {
     ]
   };
 
-  return <SEOBlogPost {...postContent} />;
+  return (
+    <div className="min-h-screen bg-white">
+      <SiteHeader />
+      
+      <main className="pt-32 pb-16">
+        <article className="max-w-[1280px] mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+            
+            <aside className="hidden lg:block lg:col-span-3 sticky top-32">
+              <div className="space-y-10">
+                 <button 
+                  onClick={() => router.push('/blog')}
+                  className="flex items-center gap-3 text-[10px] font-black text-[#94A3B8] hover:text-black uppercase tracking-[0.3em] transition-all group"
+                 >
+                   <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" /> Back to Registry
+                 </button>
+
+                 <div className="space-y-8">
+                    <div className="flex flex-col gap-2">
+                       <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Written By</span>
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center">
+                             <Lock className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                             <div className="font-bold text-black text-xs tracking-tight">{post.author}</div>
+                             <div className="text-[10px] font-black text-[#64748B] uppercase tracking-tighter">{post.role}</div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4 pt-8 border-t border-[#E2E8F0]">
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Published</span>
+                          <span className="text-xs font-bold text-black mt-1 uppercase tracking-tight">{post.date}</span>
+                       </div>
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">Read Time</span>
+                          <span className="text-xs font-bold text-black uppercase tracking-tight">{post.readTime}</span>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4">
+                       <button className="w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-black hover:text-white transition-all text-[#64748B]">
+                          <Share2 className="w-3.5 h-3.5" />
+                       </button>
+                       <button className="w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-black hover:text-white transition-all text-[#64748B]">
+                          <Bookmark className="w-3.5 h-3.5" />
+                       </button>
+                    </div>
+                 </div>
+
+                 <div className="p-6 bg-red-50 rounded-xl border border-red-200 space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-red-500 border border-red-600 flex items-center justify-center shadow-sm">
+                       <Lock className="w-5 h-5 text-white" />
+                    </div>
+                    <p className="text-[11px] text-red-700 font-black uppercase tracking-tight leading-relaxed">
+                       SECURITY LEADER: Military-grade encryption with zero-knowledge architecture protecting 2.3M+ documents annually.
+                    </p>
+                 </div>
+              </div>
+            </aside>
+
+            <div className="lg:col-span-9 max-w-3xl">
+              <div className="space-y-12 text-left">
+                <div className="space-y-6">
+                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded-md border border-red-500/20">
+                      <Lock className="w-3.5 h-3.5 text-red-600" />
+                      <span className="text-[10px] font-black tracking-[0.2em] text-red-700 uppercase">{post.category}</span>
+                   </div>
+                   <h1 className="text-4xl lg:text-6xl font-bold text-black tracking-tighter leading-[0.95]">
+                      {post.title}
+                   </h1>
+                </div>
+
+                <div className="prose prose-slate max-w-none space-y-10">
+                  {post.content.map((item, i) => {
+                    if (item.type === "p") return <p key={i} className="text-lg text-[#475569] font-medium leading-[1.6]">{item.text}</p>;
+                    if (item.type === "h2") return <h2 key={i} className="text-2xl font-bold text-black tracking-tight pt-8 uppercase">{item.text}</h2>;
+                    return null;
+                  })}
+                </div>
+
+                <div className="mt-20 p-8 bg-red-50 rounded-xl border border-red-200 relative overflow-hidden group">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                       <div className="w-14 h-14 shrink-0 rounded-lg bg-red-500 border border-red-600 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                          <ShieldCheck className="w-8 h-8 text-white" />
+                       </div>
+                       <div className="space-y-3 text-left flex-1">
+                          <h4 className="text-xl font-bold text-red-800 tracking-tight leading-none uppercase">PROTECT YOUR DOCUMENT PRIVACY</h4>
+                          <p className="text-[13px] text-red-700 font-medium leading-relaxed">Experience India's most secure printing with military-grade encryption and zero-knowledge privacy protection.</p>
+                          <button className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest rounded-md transition-all active:scale-95">
+                             START SECURE PRINTING
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                <div className="flex items-center justify-between pt-16 border-t border-[#E2E8F0]">
+                   <button className="group flex flex-col gap-2 items-start text-left">
+                      <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest">Previous Article</span>
+                      <span className="text-base font-bold text-black tracking-tight group-hover:underline">Printing Services Mumbai</span>
+                   </button>
+                   <button className="group flex flex-col gap-2 items-end text-right">
+                      <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest">Next Article</span>
+                      <span className="text-base font-bold text-black tracking-tight group-hover:underline">WhatsApp Printing Service</span>
+                   </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </article>
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
 }
