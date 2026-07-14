@@ -202,7 +202,6 @@ export default function BlogPost() {
         "🎯 **Best Overall**: XeroxQ - highest comprehensive score"
       ]}
     ]
-    ]
   };
 
   return (

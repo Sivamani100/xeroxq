@@ -125,7 +125,6 @@ export default function BlogPost() {
         "📞 **For Support**: 24/7 assistance in 10 Indian languages"
       ]}
     ]
-    ]
   };
 
   return (

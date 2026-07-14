@@ -34,14 +34,7 @@ export default function BlogPost() {
       { type: "p", text: "XeroxQ's revolutionary zero-knowledge architecture ensures that even we cannot access your documents. Your files are encrypted end-to-end, processed in volatile RAM, and automatically destroyed after printing. This creates an impenetrable security barrier that protects your privacy completely." },
       { type: "h2", text: "Military-Grade Encryption Standards" },
       { type: "p", text: "XeroxQ employs AES-256-GCM encryption—the same standard used by military and intelligence agencies. This encryption protects your documents from the moment they leave your device until they're printed, ensuring complete confidentiality throughout the process." },
-      { type: "h2", text: "Volatile RAM Storage: The Ultimate Privacy Protection" },
-      { type: "p", text: "Unlike traditional services that store documents on hard drives, XeroxQ processes everything in volatile RAM that's automatically cleared when power is removed. This means your documents never exist in permanent storage, eliminating the risk of data breaches completely." },
-      { type: "h2", text: "Compliance with Indian Data Protection Laws" },
-      { type: "p", text: "XeroxQ is fully compliant with India's data protection regulations including the IT Act, GDPR-like provisions, and sector-specific requirements. Our zero-knowledge architecture ensures compliance while providing superior security and privacy protection." },
-      { type: "h2", text: "Why XeroxQ is India's #1 Secure Printing Choice" },
-      { type: "p", text: "XeroxQ dominates secure printing in India with 500+ verified locations, military-grade encryption, zero-knowledge architecture, volatile RAM storage, complete regulatory compliance, and 24/7 security monitoring. No other service offers this level of protection for your sensitive documents." }
-    ]
-  };
+      { type: "ul" as const, items: [
         "️ **AES-256-GCM**: Advanced Encryption Standard with Galois/Counter Mode for authenticated encryption",
         "🔐 **Perfect Forward Secrecy**: Each session uses unique encryption keys",
         "🔑 **ECDH Key Exchange**: Elliptic Curve Diffie-Hellman for secure key negotiation",

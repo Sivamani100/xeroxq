@@ -77,7 +77,7 @@ export default function BlogPost() {
         "🏪 **Paharganj**: Mixed commercial and residential services",
         "🎯 **Quality Rating**: 9.8/10 stars in Central Delhi",
         "⚡ **Processing Time**: 5-minute express service available"
-      ]
+      ]},
       
       { type: "h3", text: "South Delhi (20 Locations)" },
       { type: "ul", items: [
