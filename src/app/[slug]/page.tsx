@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { generateToken, cn } from "@/lib/utils";
 import { ImageCropper } from "@/components/editing/image-cropper";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { FileSelector } from "@/components/editing/file-selector";
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const [showCropper, setShowCropper] = useState(false);
   const [docxFileToProcess, setDocxFileToProcess] = useState<File | null>(null);
   const [showDocxChoice, setShowDocxChoice] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
   
   const [location, setLocation] = useState<'shop' | 'home'>('shop');
   const [customerPhone, setCustomerPhone] = useState("");
@@ -230,14 +232,10 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
   const ALL_ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "doc", "xlsx", "xls", "jpg", "jpeg", "png", "webp"]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
+  const processSelectedFile = (selectedFile: File) => {
     // ── Size Check ────────────────────────────────────────────────────────
     if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
       alert(`File too large!\n\nYour file is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.\n\nPlease compress your file and try again.`);
-      e.target.value = ""; // Reset the input
       return;
     }
 
@@ -245,7 +243,6 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
     if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
       alert(`Unsupported file type ".${ext}".\n\nAllowed types: PDF, Word (DOCX/DOC), Excel (XLSX/XLS), Images (JPG, PNG, WebP).`);
-      e.target.value = "";
       return;
     }
 
@@ -258,7 +255,6 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       // Double check extension since MIME can be unreliable
       if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
         alert(`This file type is not supported for printing.\n\nAllowed types: PDF, Word, Excel, JPG, PNG.`);
-        e.target.value = "";
         return;
       }
     }
@@ -280,6 +276,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       setIsPricingLoading(false);
     };
     runDetection();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    processSelectedFile(selectedFile);
+    e.target.value = ""; // Reset input value
   };
 
 
@@ -1193,7 +1196,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                  <motion.div 
                    whileHover={{ scale: 0.995 }}
                    className="w-full min-h-[340px] border-2 border-dashed border-black/10 rounded-2xl flex flex-col items-center justify-center gap-6 bg-[#F9F9F9]/50 hover:bg-[#F9F9F9] transition-all cursor-pointer p-8 group relative overflow-hidden"
-                   onClick={() => fileInputRef.current?.click()}
+                   onClick={() => setShowFileSelector(true)}
                  >
                     <motion.div 
                       whileHover={{ y: -5 }}
@@ -1632,6 +1635,12 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           </div>
         </DialogContent>
       </Dialog>
+
+      <FileSelector
+        isOpen={showFileSelector}
+        onClose={() => setShowFileSelector(false)}
+        onFileSelect={processSelectedFile}
+      />
 
       </main>
       <SiteFooter />
