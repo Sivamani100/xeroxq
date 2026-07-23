@@ -1410,6 +1410,7 @@ export default function AdminDashboard() {
       require_customer_name: shop?.require_customer_name !== false,
       show_copies: shop?.show_copies !== false,
       show_color_mode: shop?.show_color_mode !== false,
+      show_duplex: shop?.show_duplex === true,
       generate_token: shop?.generate_token !== false,
       accept_preorders: shop?.accept_preorders === true,
       contact_number: shop?.contact_number || ""
@@ -2724,16 +2725,16 @@ export default function AdminDashboard() {
 
                   {/* Row 2: File info */}
                   <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5">
-                    <div className="w-9 h-9 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-[#323A46]" />
+                    <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-xl flex items-center justify-center shrink-0 shadow-xs relative">
+                      <FileText className="w-5 h-5 text-black" />
+                      <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider shadow-sm leading-none">
+                        {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-[13px] text-black truncate">{job.file_name}</p>
                       <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
                     </div>
-                    <span className="text-[11px] font-black text-red-500 uppercase shrink-0">
-                      {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                    </span>
                   </div>
 
                   {/* Row 3: Print detail tags — always shown */}
@@ -2834,9 +2835,8 @@ export default function AdminDashboard() {
                 fixedHeaderContent={() => (
                   <tr className="bg-[#F8FAFC]">
                     <th className="py-4 pl-10 text-left text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
-                    <th className="py-4 px-4 text-center text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[20%] border-b border-[#E2E8F0]">File Information by Customer</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%] border-b border-[#E2E8F0]">Print Details</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%] border-b border-[#E2E8F0]">Format</th>
+                    <th className="py-4 px-4 text-center text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[22%] border-b border-[#E2E8F0]">File Information by Customer</th>
+                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[26%] border-b border-[#E2E8F0]">Print Requirements</th>
                     <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%] border-b border-[#E2E8F0]">Print</th>
                     <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[18%] border-b border-[#E2E8F0]">Useful Actions , Delete</th>
                   </tr>
@@ -2892,8 +2892,11 @@ export default function AdminDashboard() {
                     </td>
                     <td className="py-5 px-4 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-[#323A46]" />
+                        <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-xl flex items-center justify-center shrink-0 shadow-xs relative">
+                          <FileText className="w-5 h-5 text-black" />
+                          <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider shadow-sm leading-none">
+                            {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                          </div>
                         </div>
                         <div className="min-w-0 relative group/filename">
                           <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
@@ -2908,26 +2911,29 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <p className="text-[11px] font-black uppercase tracking-[0.12em]">
-                          <span className={job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}>
+                    <td className="py-5 px-4 border-b border-[#E2E8F0]">
+                      <div className="flex items-center justify-center rounded-[8px] border border-[#E2E8F0] overflow-hidden divide-x divide-[#E2E8F0]">
+                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
+                          <span className={`text-[11px] font-black uppercase tracking-tight ${job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}`}>
                             {job.preferences?.color ? 'Color' : 'B&W'}
                           </span>
-                          <span className="text-[#D1D9E0] mx-1">·</span>
-                          <span className="text-[#2563EB]">{job.preferences?.doubleSided ? '2-Sided' : '1-Sided'}</span>
-                        </p>
-                        <p className="text-[11px] font-black uppercase tracking-[0.12em]">
-                          <span className="text-[#16A34A]">{job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? 'Copy' : 'Copies'}</span>
-                          <span className="text-[#D1D9E0] mx-1">·</span>
-                          <span className="text-[#7C3AED]">{job.page_count || 1}P</span>
-                        </p>
+                        </div>
+                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
+                          <span className="text-[11px] font-black uppercase tracking-tight text-[#2563EB]">
+                            {job.preferences?.doubleSided ? '2-Side' : '1-Side'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
+                          <span className="text-[11px] font-black uppercase tracking-tight text-[#16A34A]">
+                            {job.preferences?.copies ?? 1}x
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
+                          <span className="text-[11px] font-black uppercase tracking-tight text-[#7C3AED]">
+                            {job.page_count || 1}p
+                          </span>
+                        </div>
                       </div>
-                    </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
-                      <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
-                        {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                      </span>
                     </td>
                     <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
                       {job.status !== "printed" ? (

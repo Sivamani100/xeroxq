@@ -1459,47 +1459,46 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                                <span className="font-black text-[18px] text-black tabular-nums">{preferences.copies}</span>
                                <span className="text-[9px] font-bold text-auth-slate-30 uppercase tracking-widest">{preferences.copies > 1 ? 'Total Copies' : 'Single Copy'}</span>
                              </div>
-                             <motion.button 
-                               type="button" 
-                               whileTap={{ scale: 0.95 }} 
-                               onClick={() => setPreferences({ ...preferences, copies: preferences.copies + 1 })} 
-                               className="w-10 h-10 flex items-center justify-center rounded-[10px] bg-white border border-black/5 text-black font-black text-[22px] shadow-sm hover:bg-[#FDFDFD]"
-                             >
-                               +
-                             </motion.button>
-                          </div>
-                        </div>
-                      )}
+                              <motion.button 
+                                type="button" 
+                                whileTap={{ scale: 0.95 }} 
+                                onClick={() => setPreferences({ ...preferences, copies: preferences.copies + 1 })} 
+                                className="w-10 h-10 flex items-center justify-center rounded-[10px] bg-white border border-black/5 text-black font-black text-[22px] shadow-sm hover:bg-[#FDFDFD]"
+                              >
+                                +
+                              </motion.button>
+                           </div>
+                         </div>
+                       )}
 
-                      {/* 3. Side Preference Row */}
-                      {shop.show_duplex !== false && (
-                        <div className="flex flex-col gap-3">
-                           <span className="text-[11px] font-black uppercase tracking-[0.2em] text-auth-slate-50 ml-1">Print Side</span>
-                           <button 
-                             type="button"
-                             onClick={() => setPreferences({ ...preferences, doubleSided: !preferences.doubleSided })}
-                             className={cn(
-                               "flex items-center justify-between px-6 h-14 rounded-[14px] border transition-all",
-                               preferences.doubleSided ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-[#F8F8F8] border-black/5 text-black"
-                             )}
-                           >
-                             <div className="flex items-center gap-3">
-                               <FileText className={cn("w-4 h-4", preferences.doubleSided ? "text-white" : "text-black/40")} />
-                               <span className="text-[14px] font-black uppercase">{preferences.doubleSided ? "Double Sided Print" : "Single Sided Print"}</span>
-                             </div>
-                             <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", preferences.doubleSided ? "border-white bg-white" : "border-black/10")}>
-                               {preferences.doubleSided && <CheckCircle2 className="w-3.5 h-3.5 text-black" />}
-                             </div>
-                           </button>
-                        </div>
-                      )}
-                    </div>
+                       {/* 3. Side Preference Row */}
+                       {shop.show_duplex === true && (
+                         <div className="flex flex-col gap-3">
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-auth-slate-50 ml-1">Print Side</span>
+                            <button 
+                              type="button"
+                              onClick={() => setPreferences({ ...preferences, doubleSided: !preferences.doubleSided })}
+                              className={cn(
+                                "flex items-center justify-between px-6 h-14 rounded-[14px] border transition-all",
+                                preferences.doubleSided ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-[#F8F8F8] border-black/5 text-black"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <FileText className={cn("w-4 h-4", preferences.doubleSided ? "text-white" : "text-black/40")} />
+                                <span className="text-[14px] font-black uppercase">{preferences.doubleSided ? "Double Sided Print" : "Single Sided Print"}</span>
+                              </div>
+                              <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", preferences.doubleSided ? "border-white bg-white" : "border-black/10")}>
+                                {preferences.doubleSided && <CheckCircle2 className="w-3.5 h-3.5 text-black" />}
+                              </div>
+                            </button>
+                         </div>
+                       )}
+                     </div>
 
-                    {location === 'home' && (
-                      <div className="flex flex-col gap-2 bg-[#F8FAFC] p-4 rounded-2xl border-2 border-slate-200 focus-within:border-black transition-all mt-2">
-                        <div className="flex items-center justify-between">
-                           <label className="text-[12px] font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
-                              <Phone className="w-3.5 h-3.5 text-black" />
+                     {location === 'home' && (
+                       <div className="flex flex-col gap-2 bg-[#F8FAFC] p-4 rounded-2xl border-2 border-slate-200 focus-within:border-black transition-all mt-2">
+                         <div className="flex items-center justify-between">
+                            <label className="text-[12px] font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
                               Your Mobile Number <span className="text-red-500">*</span>
                            </label>
                            {customerPhone ? (
