@@ -142,6 +142,7 @@ export default function AdminDashboard() {
   const [showingSettings, setShowingSettings] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [viewReadOnlyQueue, setViewReadOnlyQueue] = useState(false);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [activePrintJob, setActivePrintJob] = useState<Job | null>(null);
 
@@ -532,28 +533,33 @@ export default function AdminDashboard() {
   };
 
   const checkApprovalStatus = async (silent: boolean = false) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from("shops")
-        .select("approval_status, total_files_processed, is_open")
-        .eq("owner_id", user.id)
-        .single();
+    if (!silent) setIsCheckingApproval(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("shops")
+          .select("approval_status, total_files_processed, is_open")
+          .eq("owner_id", user.id)
+          .single();
 
-      if (data) {
-        setShop(prev => prev ? { ...prev, ...data } : null);
-        if (data.approval_status === "approved") {
-          setShowApprovalModal(false);
-          setViewReadOnlyQueue(false);
-          if (!silent) {
-            alert("🎉 Congratulations! Your shop has been APPROVED by Platform Admin. Unlimited printing unlocked!");
-          }
-        } else {
-          if (!silent) {
-            alert("⏳ Your shop is still pending Platform Admin approval. Please check back shortly!");
+        if (data) {
+          setShop(prev => prev ? { ...prev, ...data } : null);
+          if (data.approval_status === "approved") {
+            setShowApprovalModal(false);
+            setViewReadOnlyQueue(false);
+            if (!silent) {
+              alert("🎉 Congratulations! Your shop has been APPROVED by Platform Admin. Unlimited printing unlocked!");
+            }
+          } else {
+            if (!silent) {
+              alert("⏳ Your shop is still pending Platform Admin approval. Please check back shortly!");
+            }
           }
         }
       }
+    } finally {
+      if (!silent) setIsCheckingApproval(false);
     }
   };
 
@@ -1067,6 +1073,10 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteJob = async (job: Job) => {
+    if (isTrialLimitReached) {
+      setShowApprovalModal(true);
+      return;
+    }
     setIsDeleting(true);
     try {
       // 1. Remove from Storage
@@ -1199,6 +1209,10 @@ export default function AdminDashboard() {
   };
 
   const handleDownload = async (job: Job) => {
+    if (isTrialLimitReached) {
+      setShowApprovalModal(true);
+      return;
+    }
     // ── SECURITY CHECKS ─────────────────────────────────────────────────────
     if (job.is_deleted_by_user) {
       setNotifications(prev => [{
@@ -2598,34 +2612,26 @@ export default function AdminDashboard() {
 
         {/* SHOPKEEPER TRIAL & APPROVAL ALERT BANNER */}
         {shop && !isShopApproved && (
-          <div className={cn(
-            "w-full py-2.5 px-4 lg:px-[82px] border-t flex items-center justify-between text-[12px] font-bold transition-all",
-            isTrialLimitReached
-              ? "bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse"
-              : "bg-amber-50 text-amber-900 border-amber-200"
-          )}>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>
-                {isTrialLimitReached
-                  ? `🛑 Trial Limit Reached (${filesProcessedCount}/3 Free Scans Used). Document printing is locked until Platform Admin approval.`
-                  : `✨ New Shop Free Trial Active (${filesProcessedCount}/3 free scans used). Request Platform Admin approval for unlimited file sharing.`}
-              </span>
+          <div className="w-full py-2.5 bg-orange-500 text-white border-t border-orange-600 shadow-sm">
+            <div className="max-w-[1440px] w-full mx-auto px-6 lg:px-[82px] flex items-center justify-between text-[12px] font-bold">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-white" />
+                <span className="text-white">
+                  {isTrialLimitReached
+                    ? `Trial Limit Reached (${filesProcessedCount}/3 Free Scans Used). Document printing is locked until Platform Admin approval.`
+                    : `New Shop Free Trial Active (${filesProcessedCount}/3 free scans used). Request Platform Admin approval for unlimited file sharing.`}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setViewReadOnlyQueue(false);
+                  setShowApprovalModal(true);
+                }}
+                className="px-3.5 py-1 rounded-[2px] text-[10px] font-extrabold uppercase tracking-wider bg-white text-orange-600 hover:bg-orange-50 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                {isTrialLimitReached ? "View Approval Screen" : "Trial Details"}
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setViewReadOnlyQueue(false);
-                setShowApprovalModal(true);
-              }}
-              className={cn(
-                "px-3.5 py-1 rounded-[6px] text-[10px] font-extrabold uppercase tracking-wider transition-all shadow-sm shrink-0 cursor-pointer",
-                isTrialLimitReached
-                  ? "bg-white text-amber-900 hover:bg-amber-50"
-                  : "bg-amber-600 text-white hover:bg-amber-700"
-              )}
-            >
-              {isTrialLimitReached ? "View Approval Screen" : "Trial Details"}
-            </button>
           </div>
         )}
       </div>
@@ -3126,6 +3132,73 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* SHOPKEEPER APPROVAL REQUIRED MODAL SCREEN */}
+      <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
+        <DialogContent className="sm:max-w-[480px] bg-white border border-[#E2E8F0] shadow-2xl p-8 rounded-2xl overflow-hidden selection:bg-black selection:text-white">
+          <DialogHeader className="text-left mb-6">
+            <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-amber-500/20">
+              <ShieldCheck className="w-6 h-6 text-white" />
+            </div>
+            <DialogTitle className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+              Account Approval Required
+            </DialogTitle>
+            <DialogDescription className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl text-[11px] uppercase tracking-wider mt-3">
+              🛑 Free Scan Trial Limit Reached ({filesProcessedCount}/3 Used)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <p className="text-[13px] font-medium text-slate-600 leading-relaxed">
+              Your shop account is currently awaiting verification &amp; approval by the Platform Administrator. Printing and processing customer files is locked until approved.
+            </p>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <span className="text-slate-500 uppercase tracking-wider">Account Status</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-extrabold uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Pending Admin Approval
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <span className="text-slate-500 uppercase tracking-wider">Shop Name</span>
+                <span className="text-slate-900 font-extrabold">{shop?.name || "Your Shop"}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                onClick={() => checkApprovalStatus(false)}
+                disabled={isCheckingApproval}
+                className="w-full h-12 bg-black text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl hover:bg-slate-900 shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isCheckingApproval ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Checking Status...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Check Approval Status Now</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setViewReadOnlyQueue(true);
+                  setShowApprovalModal(false);
+                }}
+                className="w-full h-10 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+              >
+                View Queue (Read-Only Mode)
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* IN-APP NOTIFICATION TOASTS */}
       <div className="fixed bottom-6 right-4 sm:right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none items-end w-[calc(100vw-32px)] sm:w-auto max-w-[440px]">
         <AnimatePresence mode="popLayout">
@@ -3162,11 +3235,11 @@ function XeroxQNotification({ notification, onClose }: { notification: Notificat
       initial={{ opacity: 0, x: 50, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 50, scale: 0.9, transition: { duration: 0.2 } }}
-      className="pointer-events-auto w-full sm:w-[380px] bg-white/95 backdrop-blur-xl border border-[#E2E8F0] shadow-2xl rounded-2xl p-4 relative overflow-hidden font-sans group transition-all"
+      className="pointer-events-auto w-full sm:w-[380px] bg-white/95 backdrop-blur-xl border border-[#E2E8F0] shadow-lg rounded-lg p-4 relative overflow-hidden font-sans group transition-all"
     >
       <div className="flex items-start gap-3.5">
         <div className={cn(
-          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 transition-transform group-hover:scale-105",
+          "w-9 h-9 rounded-md flex items-center justify-center shrink-0 shadow-xs mt-0.5 transition-transform group-hover:scale-105",
           isNewJob ? "bg-black text-white" : isError ? "bg-red-100 text-red-600" : isSuccess ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-700"
         )}>
           {isNewJob ? (
@@ -3185,15 +3258,15 @@ function XeroxQNotification({ notification, onClose }: { notification: Notificat
             <span className="text-[13px] font-black text-slate-900 leading-snug break-words">
               {isNewJob ? "New Print Job Received" : notification.message}
             </span>
-            <span className="text-[10px] font-bold text-slate-400 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-500 shrink-0 bg-slate-100 px-2 py-0.5 rounded-md">
               {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </div>
-          <p className="text-[12px] font-bold text-slate-800 leading-normal break-words">
+          <p className="text-[12px] font-semibold text-slate-700 leading-normal break-words">
             {isNewJob ? notification.message.replace('Incoming Document: ', '') : notification.subMessage}
           </p>
           {isNewJob && notification.subMessage && (
-            <p className="text-[11px] font-semibold text-slate-600 leading-normal break-words mt-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
+            <p className="text-[11px] font-semibold text-slate-600 leading-normal break-words mt-1.5 bg-slate-50 p-2 rounded-md border border-slate-100">
               {notification.subMessage}
             </p>
           )}
@@ -3201,7 +3274,7 @@ function XeroxQNotification({ notification, onClose }: { notification: Notificat
 
         <button
           onClick={() => onClose(notification.id)}
-          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-black hover:bg-slate-100 rounded-full transition-all shrink-0 -mt-1 -mr-1 cursor-pointer"
+          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-black hover:bg-slate-100 rounded-md transition-all shrink-0 -mt-1 -mr-1 cursor-pointer"
           title="Dismiss"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

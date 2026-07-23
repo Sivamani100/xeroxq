@@ -870,7 +870,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-50 w-full flex flex-col items-center mb-0 py-2 bg-[#FDFDFD]/80 backdrop-blur-md"
+        className="sticky top-0 z-50 w-full flex flex-col items-center mb-0 pt-[30px] pb-2 bg-[#FDFDFD]/80 backdrop-blur-md"
       >
         <div className="w-full max-w-[800px] bg-white/80 backdrop-blur-xl border border-black/5 rounded-[16px] px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
@@ -1157,7 +1157,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             key="upload"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-[600px] flex flex-col items-center pt-12 pb-12"
+            className="w-full max-w-[600px] flex flex-col items-center pt-[30px] pb-12"
           >
             <div className="text-center mb-10">
                <motion.div 
@@ -1176,7 +1176,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                </p>
             </div>
 
-            <div className="w-full bg-white border border-black/5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] rounded-3xl p-2 md:p-8 overflow-hidden relative">
+            <div className="w-full bg-white border border-black/5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] rounded-3xl p-3 sm:p-6 overflow-hidden relative">
                <input
                  type="file"
                  ref={fileInputRef}
@@ -1244,33 +1244,57 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     </div>
                   </div>
                ) : !file ? (
-                 <motion.div 
-                   whileHover={{ scale: 0.995 }}
-                   className="w-full min-h-[340px] border-2 border-dashed border-black/10 rounded-2xl flex flex-col items-center justify-center gap-6 bg-[#F9F9F9]/50 hover:bg-[#F9F9F9] transition-all cursor-pointer p-8 group relative overflow-hidden"
+                 <motion.div
+                   whileHover={{ scale: 1.008 }}
+                   whileTap={{ scale: 0.98 }}
                    onClick={() => fileInputRef.current?.click()}
+                   className="w-full max-w-[440px] mx-auto cursor-pointer group py-2"
                  >
-                    <motion.div 
-                      whileHover={{ y: -5 }}
-                      className="w-20 h-20 bg-white border border-black/5 shadow-2xl rounded-2xl flex items-center justify-center relative z-10"
-                    >
-                       <Upload className="w-8 h-8 text-black" />
-                    </motion.div>
-                    <div className="text-center relative z-10">
-                       <p className="text-[20px] font-black text-black tracking-tight">Upload Document</p>
-                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: All Formats (PDF, PPTX, Word, Excel, Images, CAD & More)</p>
-                       {shop.accept_preorders && (
-                         <div className="mt-4 flex items-center justify-center gap-2">
-                           <Badge variant="outline" className="bg-black/5 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">
-                             {location === 'home' ? "Pre-order Mode" : "At Counter Mode"}
-                           </Badge>
-                           <button onClick={() => setLocationConfirmed(false)} className="text-[9px] font-black uppercase tracking-widest text-auth-slate-30 hover:text-black transition-colors underline decoration-black/10 underline-offset-4 cursor-pointer">Change Location</button>
-                         </div>
-                       )}
-                    </div>
-                    
-                    {/* Background visual cues */}
-                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
-                    <div className="absolute -top-8 -left-8 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-colors" />
+                   <div className="relative w-full aspect-square rounded-[32px] border-2 border-dashed border-black/15 group-hover:border-black/40 group-hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.12)] bg-gradient-to-b from-[#FAFDFB] via-[#F8FAFC] to-white transition-all duration-500 ease-out flex flex-col items-center justify-center gap-5 p-6 sm:p-8 overflow-hidden">
+                     {/* Ambient floating glow orb */}
+                     <div className="absolute w-40 h-40 bg-black/5 rounded-full blur-2xl group-hover:bg-black/10 group-hover:scale-125 transition-all duration-700 pointer-events-none" />
+
+                     {/* Animated upload icon with float and pulse */}
+                     <motion.div
+                       animate={{ y: [0, -6, 0] }}
+                       transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                       className="relative z-10"
+                     >
+                       <div className="w-20 h-20 sm:w-24 sm:h-24 bg-black rounded-[24px] sm:rounded-[28px] flex items-center justify-center shadow-2xl shadow-black/25 group-hover:shadow-black/40 group-hover:scale-105 transition-all duration-300">
+                         <Upload className="w-9 h-9 sm:w-11 sm:h-11 text-white group-hover:translate-y-[-2px] transition-transform" />
+                       </div>
+                       <div className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white">
+                         <span className="text-white text-[11px] font-black leading-none">+</span>
+                       </div>
+                     </motion.div>
+
+                     {/* Text content */}
+                     <div className="text-center space-y-1 z-10">
+                       <p className="text-[20px] sm:text-[22px] font-black text-black tracking-tight group-hover:text-black transition-colors">Tap or drop file here</p>
+                       <p className="text-[12px] sm:text-[13px] font-medium text-slate-500">or <span className="text-black font-black underline underline-offset-4 decoration-black/30 group-hover:decoration-black transition-all">browse from device</span></p>
+                     </div>
+
+                     {/* Supported format pills */}
+                     <div className="flex flex-wrap items-center justify-center gap-1.5 z-10 max-w-[90%]">
+                       {['PDF', 'DOCX', 'PPTX', 'JPG', 'PNG', 'CAD'].map(fmt => (
+                         <span key={fmt} className="px-2.5 py-1 bg-black/5 group-hover:bg-black/10 text-slate-800 text-[9px] sm:text-[10px] font-extrabold tracking-wider uppercase rounded-full border border-black/5 transition-colors">{fmt}</span>
+                       ))}
+                       <span className="px-2.5 py-1 bg-black text-white text-[9px] sm:text-[10px] font-black tracking-wider uppercase rounded-full shadow-sm">+ More</span>
+                     </div>
+
+                     {shop.accept_preorders && (
+                       <div className="flex items-center gap-2 z-10 pt-1">
+                         <Badge variant="outline" className="bg-black/5 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">
+                           {location === 'home' ? 'Pre-order Mode' : 'At Counter Mode'}
+                         </Badge>
+                         <button onClick={(e) => { e.stopPropagation(); setLocationConfirmed(false); }} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black transition-colors underline decoration-black/10 underline-offset-4 cursor-pointer">Change</button>
+                       </div>
+                     )}
+
+                     {/* Corner accent gradients */}
+                     <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-black/[0.04] to-transparent rounded-3xl pointer-events-none" />
+                     <div className="absolute bottom-0 left-0 w-36 h-36 bg-gradient-to-tr from-black/[0.04] to-transparent rounded-3xl pointer-events-none" />
+                   </div>
                  </motion.div>
                ) : (
                  <motion.div 
