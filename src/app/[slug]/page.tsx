@@ -93,7 +93,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const { slug } = use(params);
   const [shop, setShop] = useState<Shop | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [batchTokens, setBatchTokens] = useState<{ token: string; fileName: string; jobId: string }[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; percent: number; fileName: string } | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
@@ -131,7 +133,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const [detectedPages, setDetectedPages] = useState(1);
   const [isPricingLoading, setIsPricingLoading] = useState(false);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
-
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -276,58 +278,93 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const ALL_ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "doc", "xlsx", "xls", "jpg", "jpeg", "png", "webp"]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
 
-    // ── Size Check ────────────────────────────────────────────────────────
-    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
-      alert(`File too large!\n\nYour file is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.\n\nPlease compress your file and try again.`);
-      e.target.value = ""; // Reset the input
-      return;
+    const validFiles: File[] = [];
+    for (const selectedFile of selectedFiles) {
+      if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File "${selectedFile.name}" is too large (max ${MAX_FILE_SIZE_MB}MB). Skipped.`);
+        continue;
+      }
+      const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
+      if (!ext || !ALL_ALLOWED_EXTENSIONS.has(ext)) {
+        alert(`File "${selectedFile.name}" has an unsupported format. Skipped.`);
+        continue;
+      }
+      validFiles.push(selectedFile);
     }
 
-    // ── Extension Check ───────────────────────────────────────────────────
-    const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
-    if (!ext) {
-      alert("Please select a valid file.");
-      e.target.value = "";
-      return;
-    }
-
-    // ── Accept File ───────────────────────────────────────────────────────
-    if (["docx", "doc", "pptx", "ppt", "xlsx", "xls"].includes(ext)) {
-      setDocxFileToProcess(selectedFile);
-      setFile(selectedFile);
-    } else {
-      setFile(selectedFile);
-      setDocxFileToProcess(null);
-    }
-
-    // Trigger Page Detection for Pricing
-    const runDetection = async () => {
+    if (validFiles.length > 0) {
+      setFiles(prev => [...prev, ...validFiles]);
       setIsPricingLoading(true);
-      const pages = await detectPageCount(selectedFile);
-      setDetectedPages(pages);
-      setIsPricingLoading(false);
-    };
-    runDetection();
+      detectPageCount(validFiles[0]).then(pages => {
+        setDetectedPages(prev => prev + (pages * validFiles.length));
+        setIsPricingLoading(false);
+      });
+    }
+    e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files || []);
+    if (droppedFiles.length === 0) return;
+
+    const validFiles: File[] = [];
+    for (const file of droppedFiles) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File "${file.name}" is too large (max ${MAX_FILE_SIZE_MB}MB). Skipped.`);
+        continue;
+      }
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!ext || !ALL_ALLOWED_EXTENSIONS.has(ext)) {
+        alert(`File "${file.name}" has an unsupported format. Skipped.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      setFiles(prev => [...prev, ...validFiles]);
+      setIsPricingLoading(true);
+      detectPageCount(validFiles[0]).then(pages => {
+        setDetectedPages(prev => prev + (pages * validFiles.length));
+        setIsPricingLoading(false);
+      });
+    }
   };
 
 
 
   const handleCropComplete = async (croppedDataUrl: string) => {
-    if (!cropperImage || !file) return;
+    if (!cropperImage || files.length === 0) return;
     
     // Convert dataURL to blob
     const res = await fetch(croppedDataUrl);
     const blob = await res.blob();
     
-    const croppedFile = new File([blob], file.name, {
+    const croppedFile = new File([blob], files[0].name, {
       type: "image/jpeg",
       lastModified: Date.now(),
     });
     
-    setFile(croppedFile);
+    setFiles([croppedFile]);
     setShowCropper(false);
     setCropperImage(null);
   };
@@ -336,39 +373,32 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     const type = fileToDetect.type;
     const name = fileToDetect instanceof File ? fileToDetect.name.toLowerCase() : "";
     
-    // Images are always 1 page
+    // Images are always 1 page — no scanning needed
     if (type.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) return 1;
     
-    // PDF detection (Robust)
+    // PDF detection — read only first 8KB + last 4KB (fast)
     if (type === "application/pdf" || name.endsWith(".pdf")) {
       try {
         const buffer = await fileToDetect.arrayBuffer();
         const decoder = new TextDecoder();
-        // Scan first 100KB AND last 10KB
-        const head = decoder.decode(buffer.slice(0, 100000));
-        const tail = decoder.decode(buffer.slice(Math.max(0, buffer.byteLength - 10000)));
+        const head = decoder.decode(buffer.slice(0, 8000));
+        const tail = decoder.decode(buffer.slice(Math.max(0, buffer.byteLength - 4000)));
         const combined = head + tail;
-        
         const countMatch = combined.match(/\/Count\s+(\d+)/);
         if (countMatch) return parseInt(countMatch[1]);
-        
         const typePageMatch = combined.match(/\/Type\s*\/Page\b/g);
         if (typePageMatch) return typePageMatch.length;
-      } catch (e) {
-        console.error("PDF Page Detection Err:", e);
-      }
+      } catch (e) { /* silent */ }
     }
 
-    // DOCX detection (Lightweight XML scan)
+    // DOCX detection — only scan first 32KB (page breaks are near the start)
     if (name.endsWith(".docx")) {
       try {
-        const buffer = await fileToDetect.arrayBuffer();
-        const content = new TextDecoder().decode(buffer);
+        const slice = fileToDetect.slice(0, 32000);
+        const content = new TextDecoder().decode(await slice.arrayBuffer());
         const pageMatches = content.match(/<w:lastRenderedPageBreak\/>/g);
         if (pageMatches) return pageMatches.length + 1;
-      } catch (e) {
-        console.error("DOCX Page Detection Err:", e);
-      }
+      } catch (e) { /* silent */ }
     }
     
     return 1;
@@ -376,146 +406,131 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
 
   const handleUpload = async (forceFileType?: 'raw' | 'pdf') => {
-    if (!file && !docxFileToProcess) return;
-    const activeFile = forceFileType === 'raw' ? docxFileToProcess : (docxFileToProcess || file);
-    if (!activeFile || !shop) return;
-
-    const fileExt = activeFile.name.split(".").pop()?.toLowerCase();
-    const needsConversion = forceFileType === 'pdf' && ["docx", "doc"].includes(fileExt || "");
-    
+    if (files.length === 0 || !shop) return;
     setUploading(true);
-    if (needsConversion) setIsConverting(true);
+    setUploadProgress({ current: 0, total: files.length, percent: 0, fileName: "Starting..." });
 
-    try {
+    // Atomic counter using a closure ref — safe across parallel async tasks
+    let completedCount = 0;
+    const createdBatch: ({ token: string; fileName: string; jobId: string } | null)[] = new Array(files.length).fill(null);
+    const newHistory: HistoryItem[] = [];
+
+    const uploadSingleFile = async (activeFile: File, index: number): Promise<void> => {
+      const fileExt = activeFile.name.split(".").pop()?.toLowerCase() || "";
+      const needsConversion = forceFileType === 'pdf' && ["docx", "doc"].includes(fileExt);
+
       let finalFile: File | Blob = activeFile;
       let finalFileName = activeFile.name;
 
-      
-      // 1. Preparing the document
       if (needsConversion) {
-        setConversionStep(1); // Optimizing Signal
         const convFormData = new FormData();
         convFormData.append("file", activeFile as Blob);
-        
-        // Minor delay to show the first step
-
-        await new Promise(r => setTimeout(r, 800));
-        setConversionStep(2); // Connecting to Agent
-        const response = await fetch("/api/agent", {
-          method: "POST",
-          body: convFormData,
-        });
-
-        if (!response.ok) {
-          let errorMsg = "Agent conversion failed";
-          try {
-            const errData = await response.json();
-            errorMsg = errData.error || errorMsg;
-          } catch(e) {
-            errorMsg = `System Agent Protocol Failure (${response.status})`;
-          }
-          throw new Error(errorMsg);
-        }
-
-        setConversionStep(3); // Wrapping Payload
-        finalFile = await response.blob();
-        if (activeFile) {
+        const response = await fetch("/api/agent", { method: "POST", body: convFormData });
+        if (response.ok) {
+          finalFile = await response.blob();
           finalFileName = `${activeFile.name.replace(/\.[^/.]+$/, "")}.pdf`;
         }
-
       }
 
-      // 1.5 Detect Page Count
-      const pageCount = await detectPageCount(finalFile);
+      const finalExt = finalFileName.split(".").pop() || fileExt;
+      const storagePath = `${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)}.${finalExt}`;
 
-      const finalExt = finalFileName.split(".").pop();
-      const storagePath = `${Math.random().toString(36).substring(2)}.${finalExt}`;
-
-      // 2. Upload to Storage
-      if (!finalFile) throw new Error("File preparation failed - no payload generated");
-      
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(storagePath, finalFile as Blob, {
+      // Detect page count and upload to storage in parallel
+      const [pageCount, uploadResult] = await Promise.all([
+        detectPageCount(finalFile),
+        supabase.storage.from("documents").upload(storagePath, finalFile as Blob, {
           contentType: finalExt === 'pdf' ? 'application/pdf' : 'application/octet-stream',
-          upsert: true
-        });
+          upsert: true,
+        }),
+      ]);
 
-      if (uploadError) throw new Error(`Storage Error: ${uploadError.message || JSON.stringify(uploadError)}`);
+      if (uploadResult.error) {
+        throw new Error(`Storage Error (${activeFile.name}): ${uploadResult.error.message}`);
+      }
 
-      // 3. Insert into DB (with Retry Logic for collisions)
+      // Insert DB record with token collision retry
       let dbData: { id: string } | null = null;
-      let newToken = "";
       let dbError: { code?: string; message?: string } | null = null;
       let retries = 3;
 
       while (retries > 0) {
-        newToken = generateToken();
+        const newToken = generateToken();
         const { data, error } = await supabase.from("jobs").insert({
           token: newToken,
           customer_name: customerName || "Guest",
           file_path: storagePath,
           file_name: finalFileName,
-          preferences: preferences,
+          preferences,
           page_count: pageCount,
           is_preorder: location === 'home',
-          is_paid: location === 'home', // For now, assume payment is done if they complete the flow
+          is_paid: location === 'home',
           customer_phone: customerPhone,
           shop_id: shop.id,
           expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         }).select("id").single();
 
         if (!error) {
-          dbError = null;
           dbData = data;
-          // Increment persistent billing counter (survives job deletion)
-          await supabase.rpc('increment_shop_files', { shop_row_id: shop.id });
+          dbError = null;
+          createdBatch[index] = { token: newToken, fileName: finalFileName, jobId: data.id };
+          newHistory.push({ token: newToken, shopName: shop.name, date: new Date().toISOString(), fileName: finalFileName });
           break;
         }
-
         dbError = error;
-        // Only retry if it's a unique constraint violation on the token
         if (error.code === "23505" && error.message?.includes("jobs_shop_token_unique")) {
-          retries--;
-          console.warn(`[Portal] Token Collision (${newToken}). Retrying... (${retries} left)`);
-          continue;
+          retries--; continue;
         }
-        
-        // If it's a different error, break and throw
         break;
       }
 
       if (dbError) {
-        // ROLLBACK: Delete the uploaded file from storage if DB record generation failed
-        console.error("[Portal] DB Insertion Protocol Failure. Initiating Storage Rollback...", dbError);
-        await supabase.storage.from("documents").remove([storagePath]);
-        throw new Error(`Database Protocol Failure: ${dbError.message || "Unknown Error"}`);
+        // Cleanup orphaned storage file
+        Promise.resolve(supabase.storage.from("documents").remove([storagePath])).catch(() => {});
+        throw new Error(`Database Error (${activeFile.name}): ${dbError.message || "Unknown"}`);
       }
-      
-      // 4. Save to History (Local)
-      const historyItem: HistoryItem = {
-        token: newToken,
-        shopName: shop.name,
-        date: new Date().toISOString(),
-        fileName: finalFileName
-      };
-      const updatedHistory = [historyItem, ...historyItems.slice(0, 19)];
+
+      if (dbData) {
+        // Atomic increment + progress update
+        completedCount++;
+        setUploadProgress({
+          current: completedCount,
+          total: files.length,
+          percent: Math.round((completedCount / files.length) * 100),
+          fileName: finalFileName,
+        });
+      }
+    };
+
+    try {
+      // ALL files upload in parallel — maximum speed
+      await Promise.all(files.map((f, i) => uploadSingleFile(f, i)));
+
+      // Single RPC call for all files at once (instead of one per file)
+      if (newHistory.length > 0) {
+        Promise.resolve(supabase.rpc('increment_shop_files', { shop_row_id: shop.id })).catch(() => {});
+      }
+
+      const validBatch = createdBatch.filter(Boolean) as { token: string; fileName: string; jobId: string }[];
+      const updatedHistory = [...newHistory, ...historyItems].slice(0, 20);
       setHistoryItems(updatedHistory);
       localStorage.setItem("xeroxq_history", JSON.stringify(updatedHistory));
 
-      setToken(newToken);
-      if (dbData) setJobId(dbData.id);
-      setJobStatus("pending");
+      if (validBatch.length > 0) {
+        setBatchTokens(validBatch);
+        setToken(validBatch[0].token);
+        setJobId(validBatch[0].jobId);
+        setJobStatus("pending");
+      }
     } catch (error) {
-      console.error("Mercury Upload Terminal Error Snapshot:", error);
+      console.error("Upload Error:", error);
       const e = error as { message?: string };
-      const message = e?.message || (typeof error === 'string' ? error : "Upload protocol failed due to an unknown network or storage error.");
-      alert(`Mercury Terminal Alert: ${message}`);
+      alert(`Upload Failed: ${e?.message || "An error occurred during file upload."}`);
     } finally {
       setUploading(false);
       setIsConverting(false);
       setConversionStep(0);
       setDocxFileToProcess(null);
+      setUploadProgress(null);
     }
   };
 
@@ -527,67 +542,63 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   };
 
   const handleDeleteFile = async () => {
-    if (!token || !shop) return;
+    if ((!token && batchTokens.length === 0) || !shop) return;
     
     setIsDeleting(true);
     try {
-      // Call the database function to mark file as deleted
-      const { data, error } = await supabase.rpc('mark_file_deleted_by_user', {
-        p_job_id: null, // We'll find by token instead
-      });
-      
-      // Get job from state or query latest by token
-      let jobData = null;
-      let fetchError = null;
-      
-      if (jobId) {
-        const { data, error } = await supabase
-          .from('jobs')
-          .select('id, file_path, status, is_deleted_by_user')
-          .eq('id', jobId)
-          .single();
-        jobData = data;
-        fetchError = error;
+      // Gather target job IDs and tokens from batchTokens or single jobId/token
+      let targetJobIds: string[] = [];
+      let targetTokens: string[] = [];
+
+      if (batchTokens.length > 0) {
+        targetJobIds = batchTokens.map(b => b.jobId).filter(Boolean);
+        targetTokens = batchTokens.map(b => b.token).filter(Boolean);
       } else {
-        const { data, error } = await supabase
+        if (jobId) targetJobIds = [jobId];
+        if (token) targetTokens = [token];
+      }
+
+      // Fetch all target jobs to get their file_paths and current status
+      let jobsToDelete: { id: string; token: string; file_path: string | null; is_deleted_by_user: boolean }[] = [];
+
+      if (targetJobIds.length > 0) {
+        const { data } = await supabase
           .from('jobs')
-          .select('id, file_path, status, is_deleted_by_user')
-          .eq('token', token)
+          .select('id, token, file_path, is_deleted_by_user')
+          .in('id', targetJobIds);
+        if (data) jobsToDelete = data;
+      } else if (targetTokens.length > 0) {
+        const { data } = await supabase
+          .from('jobs')
+          .select('id, token, file_path, is_deleted_by_user')
           .eq('shop_id', shop.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        if (data && data.length > 0) {
-          jobData = data[0];
-        } else {
-          fetchError = error || new Error('No job found');
-        }
+          .in('token', targetTokens);
+        if (data) jobsToDelete = data;
       }
-      
-      if (fetchError || !jobData) {
-        alert('Could not find your file. It may have already been processed or deleted.');
+
+      if (jobsToDelete.length === 0) {
+        alert('Could not find uploaded file(s). They may have already been processed or deleted.');
         setIsDeleting(false);
         return;
       }
-      
-      if (jobData.is_deleted_by_user) {
-        setIsDeleted(true);
-        setIsDeleting(false);
-        return;
-      }
-      
-      // Delete file from storage first
-      if (jobData.file_path) {
+
+      // Collect storage file paths to remove
+      const storagePaths = jobsToDelete
+        .map(j => j.file_path)
+        .filter((path): path is string => Boolean(path));
+
+      if (storagePaths.length > 0) {
         const { error: storageError } = await supabase.storage
           .from('documents')
-          .remove([jobData.file_path]);
+          .remove(storagePaths);
         
-        // Ignore storage errors - file might already be gone
         if (storageError && !storageError.message.includes('Object not found')) {
           console.warn('Storage deletion warning:', storageError.message);
         }
       }
-      
-      // Mark as deleted in database
+
+      // Mark all jobs as deleted in DB
+      const jobIdsToUpdate = jobsToDelete.map(j => j.id);
       const { error: updateError } = await supabase
         .from('jobs')
         .update({
@@ -595,25 +606,26 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           deleted_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', jobData.id);
-      
+        .in('id', jobIdsToUpdate);
+
       if (updateError) {
         throw updateError;
       }
-      
+
       setDeletionReason('user');
       setIsDeleted(true);
-      
-      // Update local history to reflect deletion
+
+      // Update local history to reflect deletion for all batch tokens
+      const allBatchTokenSet = new Set(jobsToDelete.map(j => j.token));
       const updatedHistory = historyItems.map(item => 
-        item.token === token ? { ...item, isDeleted: true } : item
+        allBatchTokenSet.has(item.token) || item.token === token ? { ...item, isDeleted: true } : item
       );
       setHistoryItems(updatedHistory);
       localStorage.setItem('xeroxq_history', JSON.stringify(updatedHistory));
-      
+
     } catch (error) {
-      console.error('Error deleting file:', error);
-      alert('Failed to delete file. Please try again or contact the shop.');
+      console.error('Error deleting files:', error);
+      alert('Failed to delete file(s). Please try again or contact the shop.');
     } finally {
       setIsDeleting(false);
     }
@@ -1026,13 +1038,34 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
               )}
             </AnimatePresence>
 
-            <div className="py-12 bg-black rounded-2xl mb-6 shadow-2xl relative overflow-hidden group">
-               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-               <p className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase mb-4">{shop?.generate_token !== false ? "Your Print Code" : "Status Registered"}</p>
-               <span className="text-[88px] font-black tracking-tighter text-white leading-none inline-block">
-                  {shop?.generate_token !== false ? token : <CheckCircle2 className="w-20 h-20" />}
-               </span>
-            </div>
+            {batchTokens.length > 1 ? (
+              <div className="space-y-3 mb-6">
+                <p className="text-[11px] font-black tracking-[0.2em] text-auth-slate-50 uppercase text-center mb-2">
+                  {shop?.generate_token !== false ? "Your Print Codes" : "Status Registered"}
+                </p>
+                <div className="flex flex-col gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {batchTokens.map((item, idx) => (
+                    <div key={`${idx}-${item.token}-${item.jobId}`} className="p-4 bg-black text-white rounded-2xl flex items-center justify-between shadow-lg">
+                      <div className="flex flex-col text-left min-w-0 pr-2">
+                        <span className="text-[13px] font-extrabold text-white truncate max-w-[220px]">{item.fileName}</span>
+                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest mt-0.5">File #{idx + 1}</span>
+                      </div>
+                      <div className="bg-white/10 px-4 py-2 rounded-xl text-[26px] font-black tracking-widest text-white shrink-0">
+                        {shop?.generate_token !== false ? item.token : <CheckCircle2 className="w-6 h-6 text-white" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="py-12 bg-black rounded-2xl mb-6 shadow-2xl relative overflow-hidden group">
+                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                 <p className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase mb-4">{shop?.generate_token !== false ? "Your Print Code" : "Status Registered"}</p>
+                 <span className="text-[88px] font-black tracking-tighter text-white leading-none inline-block">
+                    {shop?.generate_token !== false ? token : <CheckCircle2 className="w-20 h-20" />}
+                 </span>
+              </div>
+            )}
 
             {/* Delete File Button - Always show until file is deleted */}
             {!isDeleted ? (
@@ -1045,17 +1078,17 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   {isDeleting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Deleting File...</span>
+                      <span>{batchTokens.length > 1 ? "Deleting All Files..." : "Deleting File..."}</span>
                     </>
                   ) : (
                     <>
                       <Trash2 className="w-4 h-4" />
-                      <span>Delete Uploaded File</span>
+                      <span>{batchTokens.length > 1 ? "Delete All Uploaded Files" : "Delete Uploaded File"}</span>
                     </>
                   )}
                 </button>
                 <p className="text-[10px] text-auth-slate-30 mt-2 text-center">
-                  Once deleted, your uploaded file is permanently purged from cloud storage.
+                  Once deleted, your uploaded {batchTokens.length > 1 ? "files are" : "file is"} permanently purged from cloud storage.
                 </p>
               </div>
             ) : deletionReason === 'user' ? (
@@ -1067,13 +1100,13 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
               >
                 <div className="flex items-center justify-center gap-2 text-red-600 font-black text-[13px] uppercase tracking-wider">
                   <Trash2 className="w-4 h-4" />
-                  <span>File Deleted By You</span>
+                  <span>{batchTokens.length > 1 ? "All Files Deleted By You" : "File Deleted By You"}</span>
                 </div>
                 <p className="text-[13px] font-extrabold text-red-700 leading-snug">
-                  You have manually deleted your uploaded file.
+                  You have manually deleted your uploaded {batchTokens.length > 1 ? "files" : "file"}.
                 </p>
                 <p className="text-[11px] font-medium text-red-600/80">
-                  Your document was manually deleted and permanently purged from cloud storage.
+                  Your document{batchTokens.length > 1 ? "s were" : " was"} manually deleted and permanently purged from cloud storage.
                 </p>
               </motion.div>
             ) : (
@@ -1109,7 +1142,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
             <div className="w-full">
                <button 
                   onClick={() => {
-                    setFile(null);
+                    setFiles([]);
+                    setBatchTokens([]);
                     setToken(null);
                     setJobId(null);
                     setJobStatus("pending");
@@ -1180,6 +1214,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                <input
                  type="file"
                  ref={fileInputRef}
+                 multiple
                  className="hidden"
                  onChange={handleFileChange}
                  accept="*/*"
@@ -1243,14 +1278,19 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       </button>
                     </div>
                   </div>
-               ) : !file ? (
+               ) : files.length === 0 ? (
                  <motion.div
                    whileHover={{ scale: 1.008 }}
                    whileTap={{ scale: 0.98 }}
                    onClick={() => fileInputRef.current?.click()}
-                   className="w-full max-w-[440px] mx-auto cursor-pointer group py-2"
+                   className="w-full max-w-[540px] mx-auto cursor-pointer group py-2"
                  >
-                   <div className="relative w-full aspect-square rounded-[32px] border-2 border-dashed border-black/15 group-hover:border-black/40 group-hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.12)] bg-gradient-to-b from-[#FAFDFB] via-[#F8FAFC] to-white transition-all duration-500 ease-out flex flex-col items-center justify-center gap-5 p-6 sm:p-8 overflow-hidden">
+                   <div className={cn(
+                      "relative w-full rounded-[28px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center gap-5 p-8 sm:p-10 overflow-hidden shadow-sm hover:shadow-xl",
+                      isDragging 
+                        ? "border-[#FF591E] bg-orange-50/50 scale-[1.02]" 
+                        : "border-slate-200 group-hover:border-slate-400 bg-gradient-to-b from-white via-slate-50/50 to-slate-100/30"
+                    )}>
                      {/* Ambient floating glow orb */}
                      <div className="absolute w-40 h-40 bg-black/5 rounded-full blur-2xl group-hover:bg-black/10 group-hover:scale-125 transition-all duration-700 pointer-events-none" />
 
@@ -1270,8 +1310,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
                      {/* Text content */}
                      <div className="text-center space-y-1 z-10">
-                       <p className="text-[20px] sm:text-[22px] font-black text-black tracking-tight group-hover:text-black transition-colors">Tap or drop file here</p>
-                       <p className="text-[12px] sm:text-[13px] font-medium text-slate-500">or <span className="text-black font-black underline underline-offset-4 decoration-black/30 group-hover:decoration-black transition-all">browse from device</span></p>
+                       <h3 className="text-[18px] sm:text-[20px] font-black text-slate-900 tracking-tight">{isDragging ? "Drop your files here!" : "Drag & drop files here"}</h3>
+                       <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 flex items-center justify-center gap-1.5"><span>or <span className="text-black font-extrabold underline decoration-2 decoration-black/20 underline-offset-4">browse from device</span></span><span className="text-slate-300">•</span><span className="text-slate-400 text-[11px]">Multiple files allowed</span></p>
                      </div>
 
                      {/* Supported format pills */}
@@ -1300,9 +1340,9 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                  <motion.div 
                    initial={{ opacity: 0, x: 20 }}
                    animate={{ opacity: 1, x: 0 }}
-                   className="flex flex-col gap-8 p-4 md:p-2"
+                   className="flex flex-col gap-6 p-4 md:p-2"
                  >
-                    {shop.require_customer_name !== false && (
+                    {shop.require_customer_name === true && (
                       <div className="flex flex-col gap-2 bg-[#F8FAFC] p-4 rounded-2xl border-2 border-slate-200 focus-within:border-black transition-all">
                          <div className="flex items-center justify-between">
                             <label className="text-[12px] font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
@@ -1326,25 +1366,50 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                          </div>
                       </div>
                     )}
-
-                    <div className="flex items-center gap-5 p-5 border border-black/5 rounded-2xl bg-[#F8F8F8] group">
-                       <div className="w-14 h-14 bg-white border border-black/5 rounded-2xl shrink-0 flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 relative">
-                          <FileText className="w-7 h-7 text-black" />
-                          <div className="absolute -top-1 -right-1 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
-                             {file.name.split('.').pop()}
-                          </div>
-                       </div>
-                       <div className="flex-1 min-w-0 flex flex-col">
-                          <span className="text-[15px] font-black text-black truncate">{file.name}</span>
-                          <span className="text-[11px] font-bold tracking-wider text-auth-slate-50 uppercase mt-1 opacity-60">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
-                       </div>
-                       <button 
-                         onClick={() => setFile(null)}
-                         className="w-11 h-11 flex items-center justify-center bg-white border border-black/5 rounded-[10px] text-auth-slate-30 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm active:scale-95"
-                       >
-                          <Trash2 className="w-5 h-5" />
-                       </button>
+                    {/* Selected files header */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-[13px] font-black text-slate-900 uppercase tracking-wider">
+                        {files.length} {files.length === 1 ? 'File' : 'Files'} Selected
+                      </span>
+                      <button
+                        onClick={() => setFiles([])}
+                        className="text-[11px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
                     </div>
+
+                    {/* Selected files list */}
+                    <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto pr-1 scrollbar-thin">
+                      {files.map((f, index) => (
+                        <div key={index} className="flex items-center gap-4 p-4 border border-black/5 rounded-2xl bg-[#F8F8F8] group">
+                          <div className="w-11 h-11 bg-white border border-black/5 rounded-xl shrink-0 flex items-center justify-center shadow-md relative">
+                            <FileText className="w-5 h-5 text-black" />
+                            <div className="absolute -top-1 -right-1 bg-black text-[7px] font-black text-white px-1 py-0.2 rounded-xs uppercase">
+                              {f.name.split('.').pop()?.substring(0, 4)}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 flex flex-col text-left">
+                            <span className="text-[14px] font-extrabold text-black truncate">{f.name}</span>
+                            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase opacity-80">{(f.size / (1024 * 1024)).toFixed(2)} MB</span>
+                          </div>
+                          <button 
+                            onClick={() => setFiles(prev => prev.filter((_, i) => i !== index))}
+                            className="w-8 h-8 flex items-center justify-center bg-white border border-black/5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            title="Remove file"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-2.5 bg-black/5 hover:bg-black/10 text-black text-[12px] font-extrabold uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 border border-black/5"
+                    >
+                      <Upload className="w-3.5 h-3.5" /> + Add More Files
+                    </button>
 
                     {/* Single Column Preferences Stack */}
                     <div className="flex flex-col gap-6">
@@ -1468,33 +1533,40 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     )}
 
                     <button 
-                       onClick={() => {
-                          const active = docxFileToProcess || file;
-                          if (active?.name.toLowerCase().endsWith('.docx')) {
-                            setShowDocxChoice(true);
-                          } else {
-                            handleUpload();
-                          }
-                       }}
-
-                       disabled={uploading || (shop.require_customer_name !== false && !customerName.trim()) || (location === 'home' && !customerPhone.trim())}
-                       className="w-full h-14 bg-black text-white hover:bg-black/90 disabled:bg-black/10 disabled:text-black/20 font-black text-[15px] tracking-tight rounded-2xl transition-all flex items-center justify-center gap-3 shadow-2xl shadow-black/20 transform hover:scale-[1.01] active:scale-[0.99]"
+                       onClick={() => handleUpload()}
+                       disabled={uploading || (shop?.require_customer_name === true && !customerName.trim()) || (location === 'home' && !customerPhone.trim())}
+                       className={cn(
+                         "w-full font-black text-[15px] tracking-tight rounded-2xl transition-all flex items-center justify-center shadow-2xl",
+                         uploading
+                           ? "h-16 bg-[#FF591E] text-white cursor-not-allowed shadow-orange-500/30"
+                           : "h-14 gap-3 bg-black text-white hover:bg-black/90 disabled:bg-black/10 disabled:text-black/20 shadow-black/20 transform hover:scale-[1.01] active:scale-[0.99]"
+                       )}
                     >
                        {uploading ? (
-                         <div className="flex items-center gap-3">
-                           <RefreshCw className="w-5 h-5 animate-spin" />
-                           <span className="text-[12px] uppercase tracking-wider">
-                             {isConverting ? (
-                                conversionStep === 1 ? "Preparing File..." :
-                                conversionStep === 2 ? "Converting Document..." :
-                                "Finishing PDF..."
-                             ) : "Sending to Shop..."}
-                           </span>
+                         <div className="flex flex-col justify-center w-full px-5 gap-2">
+                           <div className="flex items-center justify-between w-full gap-3">
+                             <div className="flex items-center gap-2 min-w-0 flex-1">
+                               <RefreshCw className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
+                               <span className="text-[11px] font-bold text-white truncate">
+                                 {uploadProgress && uploadProgress.current < uploadProgress.total
+                                   ? `File ${uploadProgress.current + 1} of ${uploadProgress.total} · ${uploadProgress.fileName}`
+                                   : `Finishing up...`
+                                 }
+                               </span>
+                             </div>
+                             <span className="text-white font-mono font-black text-[14px] shrink-0">{uploadProgress?.percent || 0}%</span>
+                           </div>
+                           <div className="w-full bg-white/30 h-[3px] rounded-full overflow-hidden">
+                             <div
+                               className="bg-white h-full rounded-full transition-all duration-500"
+                               style={{ width: `${uploadProgress?.percent || 0}%` }}
+                             />
+                           </div>
                          </div>
                        ) : (
                          <div className="flex items-center gap-2">
                             <Zap className={cn("w-4 h-4", location === 'home' ? "animate-pulse" : "")} />
-                            <span>{location === 'home' ? "Authorize & Upload" : "Upload"}</span>
+                            <span>Upload {files.length > 1 ? `All ${files.length} Files` : 'File'}</span>
                          </div>
                        )}
                     </button>

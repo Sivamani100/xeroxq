@@ -124,6 +124,11 @@ export async function POST(req: NextRequest) {
       price_mono: 3,
       price_color: 10,
       is_open: true,
+      require_customer_name: false,
+      generate_token: false,
+      show_copies: false,
+      show_color_mode: false,
+      accept_preorders: false,
       approval_status: "pending",
     })
     .select()
@@ -146,6 +151,11 @@ export async function POST(req: NextRequest) {
         price_mono: 3,
         price_color: 10,
         is_open: true,
+        require_customer_name: false,
+        generate_token: false,
+        show_copies: false,
+        show_color_mode: false,
+        accept_preorders: false,
         approval_status: "pending",
       })
       .select()

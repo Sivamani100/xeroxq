@@ -178,7 +178,7 @@ export default function AdminDashboard() {
   
   // Audio element for notification sound (more reliable than Web Audio API)
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const [audioInitialized, setAudioInitialized] = useState(false);
+  const audioInitializedRef = useRef(false);
   
   // Feedback management state
   const [showFeedbackManager, setShowFeedbackManager] = useState(false);
@@ -699,29 +699,15 @@ export default function AdminDashboard() {
 
   // Initialize audio element on first user interaction
   const initAudio = () => {
-    if (audioInitialized) return;
+    if (audioInitializedRef.current) return;
+    audioInitializedRef.current = true;
     
-    // Create a simple beep using data URI (reliable across all browsers)
-    // This is a simple 880Hz + 1046Hz dual-tone beep for 0.5 seconds
-    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const sampleRate = audioContext.sampleRate;
-    const duration = 0.5;
-    const frameCount = sampleRate * duration;
-    const buffer = audioContext.createBuffer(1, frameCount, sampleRate);
-    const data = buffer.getChannelData(0);
-    
-    // Generate dual-tone sine wave
-    for (let i = 0; i < frameCount; i++) {
-      const t = i / sampleRate;
-      // Mix two tones: 880Hz (A5) and 1046.50Hz (C6)
-      data[i] = (Math.sin(2 * Math.PI * 880 * t) * 0.5 + Math.sin(2 * Math.PI * 1046.50 * t) * 0.5) * 0.3;
-      // Fade in/out
-      if (t < 0.05) data[i] *= t / 0.05;
-      if (t > 0.4) data[i] *= (0.5 - t) / 0.1;
+    try {
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+    } catch (e) {
+      console.warn("AudioContext init error:", e);
     }
-    
-    audioContextRef.current = audioContext;
-    setAudioInitialized(true);
     
     // Remove listeners after first interaction
     window.removeEventListener('click', initAudio);
@@ -3133,7 +3119,14 @@ export default function AdminDashboard() {
       </Dialog>
 
       {/* SHOPKEEPER APPROVAL REQUIRED MODAL SCREEN */}
-      <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
+      <Dialog open={showApprovalModal} onOpenChange={(open) => {
+        if (!open && isTrialLimitReached) {
+          // If user dismisses while trial limit reached, enter read-only mode
+          // so the useEffect doesn't immediately reopen the modal
+          setViewReadOnlyQueue(true);
+        }
+        setShowApprovalModal(open);
+      }}>
         <DialogContent className="sm:max-w-[480px] bg-white border border-[#E2E8F0] shadow-2xl p-8 rounded-2xl overflow-hidden selection:bg-black selection:text-white">
           <DialogHeader className="text-left mb-6">
             <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-amber-500/20">
