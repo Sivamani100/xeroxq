@@ -40,8 +40,8 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline' 'unsafe-hashes' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://eisdlhbrigmwsfycvkdy.supabase.co https://api.qrserver.com https://i.pravatar.cc https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com",
-      "connect-src 'self' https://eisdlhbrigmwsfycvkdy.supabase.co wss://eisdlhbrigmwsfycvkdy.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
+      "img-src 'self' data: blob: https://vxittblwbyusehsrgffd.supabase.co https://api.qrserver.com https://i.pravatar.cc https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com",
+      "connect-src 'self' https://vxittblwbyusehsrgffd.supabase.co wss://vxittblwbyusehsrgffd.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "eisdlhbrigmwsfycvkdy.supabase.co",
+        hostname: "vxittblwbyusehsrgffd.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
     ],

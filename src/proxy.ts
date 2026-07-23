@@ -206,8 +206,8 @@ export async function proxy(request: NextRequest) {
     }
 
     // 2. Logged in but NOT the CEO -> Redirect to their own shop admin
-    const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL;
-    if (ceoEmail && user.email !== ceoEmail) {
+    const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
+    if (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail) {
       console.warn(`[Security] Unauthorized access attempt to /platform-admin by ${user.email}`);
       return NextResponse.redirect(new URL("/admin", request.url));
     }

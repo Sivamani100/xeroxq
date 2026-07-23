@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { supabase } from '@/lib/supabase';
 
 // Disable default CSS for react-pdf to prevent conflicts
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -28,10 +29,14 @@ if (typeof window !== 'undefined') {
 export default function XeroxQPrintDialog({ 
   documentPath, 
   base64Data, 
+  jobId,
+  shopId,
   onClose 
 }: { 
   documentPath?: string, 
   base64Data?: string, 
+  jobId?: string,
+  shopId?: string,
   onClose?: () => void 
 }) {
   const [isElectron, setIsElectron] = useState(false);
@@ -43,10 +48,9 @@ export default function XeroxQPrintDialog({
   const [copies, setCopies] = useState(1);
   const [colorMode, setColorMode] = useState<'color' | 'monochrome'>('color');
   const [sides, setSides] = useState<'simplex' | 'duplex'>('simplex');
-  const [securePrint, setSecurePrint] = useState(false);
   const [paperSupply, setPaperSupply] = useState('Automatically Select');
   const [finishing, setFinishing] = useState('None');
-  const [printQuality, setPrintQuality] = useState('Enhanced');
+  const [appliedSettingsMessage, setAppliedSettingsMessage] = useState<string | null>(null);
   
   // IMAGE LABORATORY (Advanced Studio State)
   const [brightness, setBrightness] = useState(100);
@@ -88,7 +92,6 @@ export default function XeroxQPrintDialog({
   const touchStartZoom = useRef<number>(zoom);
 
   const paperOptions = ['Automatically Select', 'Tray 1 (Bypass)', 'Tray 2', 'Tray 3'];
-  const qualityOptions = ['Enhanced', 'Standard', 'Draft'];
 
   useEffect(() => {
     // If it's an image, we pre-set page count to 1
@@ -386,9 +389,31 @@ export default function XeroxQPrintDialog({
 
     try {
       setStatus('printing');
-      const electronWindow = window as unknown as { electronAPI?: { printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> }, electron?: { printNative: (opts: unknown) => Promise<{ success: boolean; error?: string }> } };
+      const electronWindow = window as unknown as { 
+        electronAPI?: { 
+          printNative: (opts: unknown) => Promise<{ 
+            success: boolean; 
+            error?: string; 
+            rawError?: any; 
+            platform?: string; 
+            appliedOptions?: { 
+              printer?: string; 
+              copies?: number; 
+              monochrome?: boolean; 
+              side?: string; 
+              paperSize?: string; 
+              bin?: string; 
+            } 
+          }> 
+        } 
+      };
       
-      const res = await (electronWindow.electronAPI || electronWindow.electron)!.printNative({
+      const printApi = electronWindow.electronAPI;
+      if (!printApi) {
+        throw new Error("Electron API is not available on this interface.");
+      }
+
+      const res = await printApi.printNative({
         filePath: documentPath, 
         base64Data: base64Data, 
         options: {
@@ -396,10 +421,8 @@ export default function XeroxQPrintDialog({
           copies,
           side: sides,
           monochrome: colorMode === 'monochrome',
-          securePrint,
           paperSupply,
           finishing,
-          quality: printQuality,
           editParams: {
             brightness,
             contrast,
@@ -409,11 +432,53 @@ export default function XeroxQPrintDialog({
           }
         }
       });
+
       if (res.success) {
+        // Confirmation Loop: parse options returned from main process
+        const options = res.appliedOptions;
+        if (options) {
+          const sideLabel = options.side === 'duplex' ? 'Duplex ON' : 'Duplex OFF';
+          const colorLabel = options.monochrome ? 'Grayscale' : 'Full Color';
+          const paperLabel = options.paperSize || options.bin || 'Default Tray';
+          const confirmMsg = `Printed: ${options.copies} ${options.copies === 1 ? 'copy' : 'copies'}, ${colorLabel}, ${sideLabel}, ${paperLabel}`;
+          setAppliedSettingsMessage(confirmMsg);
+        }
         setStatus('success');
-        setTimeout(() => { if (onClose) onClose(); }, 1500);
+        setTimeout(() => { if (onClose) onClose(); }, 3000); // 3 seconds to let them see the applied options confirmation
       } else {
-        throw new Error(res.error || 'Spool failure');
+        // Real remote error logging to Supabase
+        const errorMessage = res.error || 'Spool failure';
+        const rawErrorData = res.rawError || {};
+        
+        try {
+          if (shopId && jobId) {
+            await supabase.from('automation_logs').insert({
+              event_type: 'PRINT_FAILURE',
+              shop_id: shopId,
+              job_id: jobId,
+              severity: 'error',
+              details: {
+                error_message: errorMessage,
+                raw_error: rawErrorData,
+                platform: res.platform || (typeof window !== 'undefined' ? window.navigator.platform : 'unknown'),
+                printer_name: selectedPrinter,
+                timestamp: new Date().toISOString(),
+                options: {
+                  printer: selectedPrinter,
+                  copies,
+                  side: sides,
+                  monochrome: colorMode === 'monochrome',
+                  paperSupply
+                }
+              }
+            });
+            console.log('[XeroxQ] Logged printing exception to remote audit database.');
+          }
+        } catch (dbErr) {
+          console.error('[XeroxQ] Failed to write failure trace to automation_logs:', dbErr);
+        }
+
+        throw new Error(errorMessage);
       }
     } catch (err) {
       console.error(err);
@@ -1071,6 +1136,11 @@ export default function XeroxQPrintDialog({
            </div>
            <h2 className="text-[24px] font-bold text-black tracking-tight leading-none mb-2">Spool Successful</h2>
            <p className="text-[#7E8B9E] text-[10px] font-bold tracking-[0.1em] uppercase">Transmission Protocol Finalized</p>
+           {appliedSettingsMessage && (
+             <p className="text-[12px] font-bold text-emerald-600 uppercase tracking-[0.05em] mt-4 bg-emerald-50 border border-green-200 px-4 py-2 rounded-lg animate-in fade-in slide-in-from-bottom duration-300">
+               {appliedSettingsMessage}
+             </p>
+           )}
         </div>
       )}
 

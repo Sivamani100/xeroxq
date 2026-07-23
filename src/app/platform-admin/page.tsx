@@ -25,6 +25,8 @@ import {
   ShieldAlert,
   CheckCircle2,
   XCircle,
+  Clock,
+  Check,
   Eye,
   Ban,
   ChevronUp,
@@ -42,7 +44,8 @@ import {
   Printer,
   Star,
   Plus,
-  Trash2
+  Trash2,
+  HardDrive
 } from "lucide-react";
 
 import {
@@ -74,6 +77,7 @@ interface ShopStats {
   revenueGenerated: number; // in ₹
   platformFee: number;      // what CEO charges the shop
   feeStatus: "paid" | "due";
+  approval_status?: "pending" | "approved" | "rejected";
 }
 
 interface PlatformStats {
@@ -87,9 +91,18 @@ interface PlatformStats {
 
 type SortKey = "name" | "totalJobs" | "platformFee" | "created_at";
 type SortDir = "asc" | "desc";
-type TabType = "overview" | "shops" | "billing" | "leads" | "content" | "hr" | "security" | "partners" | "settings" | "feedback";
+type TabType = "overview" | "shops" | "billing" | "storage_logs" | "leads" | "content" | "hr" | "security" | "partners" | "settings" | "feedback";
 
 const PLATFORM_FEE_PER_FILE = CONFIG.BILLING.PLATFORM_FEE_PER_FILE;
+
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (!bytes || bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
 
 // ─── CEO Dashboard ────────────────────────────────────────────────────────────
 
@@ -113,6 +126,21 @@ export default function PlatformAdminDashboard() {
   const [news, setNews]               = useState<any[]>([]);
   const [security, setSecurity]       = useState<any[]>([]);
   const [settings, setSettings]       = useState<any[]>([]);
+
+  // Storage Analytics & Logs State
+  const [storageAnalytics, setStorageAnalytics] = useState<{
+    current_files: number;
+    current_bytes: number;
+    peak_bytes: number;
+    peak_time: string;
+    peak_files: number;
+    total_jobs: number;
+    active_jobs_with_files: number;
+    user_deleted_jobs: number;
+    auto_deleted_jobs: number;
+  } | null>(null);
+  const [storageLogs, setStorageLogs] = useState<any[]>([]);
+  const [isPurgingStorage, setIsPurgingStorage] = useState(false);
   
   // Feedback management state
   const [defaultQuestions, setDefaultQuestions] = useState<any[]>([]);
@@ -123,6 +151,7 @@ export default function PlatformAdminDashboard() {
   const [selectedFeedbackShop, setSelectedFeedbackShop] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState<"all" | "pending" | "approved">("all");
   const [sortKey, setSortKey]         = useState<SortKey>("totalJobs");
   const [sortDir, setSortDir]         = useState<SortDir>("desc");
   const [activeTab, setActiveTab]     = useState<TabType>("overview");
@@ -150,14 +179,14 @@ export default function PlatformAdminDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const ceoEmailEnv = process.env.NEXT_PUBLIC_CEO_EMAIL;
+      const ceoEmailEnv = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
 
       if (!user) {
         router.replace("/login?redirect=/platform-admin");
         return;
       }
 
-      if (ceoEmailEnv && user.email !== ceoEmailEnv) {
+      if (ceoEmailEnv && user.email?.trim().toLowerCase() !== ceoEmailEnv) {
         setAuthChecked(true);
         setIsAuthorized(false);
         setCeoEmail(user.email ?? "");
@@ -217,6 +246,12 @@ export default function PlatformAdminDashboard() {
         shops: shopStats
       });
 
+      setSelectedShop(prev => {
+        if (!prev) return null;
+        const fresh = shopStats.find(s => s.id === prev.id);
+        return fresh || prev;
+      });
+
       setSubmissions(data.submissions || []);
       setNewsletter(data.newsletter || []);
       setBlogs(data.blogs || []);
@@ -225,6 +260,8 @@ export default function PlatformAdminDashboard() {
       setNews(data.news || []);
       setSecurity(data.security || []);
       setSettings(data.settings || []);
+      if (data.storageAnalytics) setStorageAnalytics(data.storageAnalytics);
+      if (data.storageLogs) setStorageLogs(data.storageLogs);
 
       console.log("[CEO Dashboard] Data Sync:", {
         shops: shopStats.length,
@@ -242,7 +279,30 @@ export default function PlatformAdminDashboard() {
   }, [supabase]);
 
   useEffect(() => {
-    if (isAuthorized) fetchData();
+    if (!isAuthorized) return;
+    fetchData();
+
+    // 1. Auto-refresh polling every 4 seconds for CEO dashboard
+    const interval = setInterval(() => {
+      fetchData();
+    }, 4000);
+
+    // 2. Realtime listener for shops table changes
+    const channel = supabase
+      .channel("platform-admin-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shops" },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [isAuthorized, fetchData]);
 
   const handleAction = async (table: string, id: string, action: 'delete' | 'approve' | 'toggle') => {
@@ -308,6 +368,101 @@ export default function PlatformAdminDashboard() {
       await fetchData();
     } catch (err) {
       console.error("[Platform Admin] Toggle shop failed:", err);
+    } finally {
+      setActionShopId(null);
+    }
+  };
+
+  const handleApproveShop = async (shopId: string) => {
+    setActionShopId(shopId);
+
+    // 1. Immediate optimistic UI update on platform state
+    setPlatform(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        shops: prev.shops.map(s => s.id === shopId ? { ...s, approval_status: "approved" } : s)
+      };
+    });
+
+    // 2. Immediate optimistic update on selectedShop modal
+    setSelectedShop(prev => prev && prev.id === shopId ? { ...prev, approval_status: "approved" } : prev);
+
+    // 3. Auto-switch filter to "all" if currently on "pending" so the shop remains visible in table
+    if (approvalFilter === "pending") {
+      setApprovalFilter("all");
+    }
+
+    try {
+      // Parallel client-side direct update attempts (via browser Supabase client)
+      await Promise.allSettled([
+        supabase.rpc("update_shop_approval_status", { target_shop_id: shopId, new_status: "approved" }),
+        supabase.from("shops").update({ approval_status: "approved" }).eq("id", shopId)
+      ]);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/platform-admin/stats", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ action: 'approve_shop', table: 'shops', id: shopId })
+      });
+      
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.warn("[Platform Admin] Approve POST response note:", body);
+      }
+      await fetchData();
+    } catch (err: any) {
+      console.error("[Platform Admin] Approve shop notice:", err);
+      await fetchData();
+    } finally {
+      setActionShopId(null);
+    }
+  };
+
+  const handleRejectShop = async (shopId: string) => {
+    setActionShopId(shopId);
+
+    // 1. Immediate optimistic UI update on platform state
+    setPlatform(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        shops: prev.shops.map(s => s.id === shopId ? { ...s, approval_status: "rejected" } : s)
+      };
+    });
+
+    // 2. Immediate optimistic update on selectedShop modal
+    setSelectedShop(prev => prev && prev.id === shopId ? { ...prev, approval_status: "rejected" } : prev);
+
+    try {
+      // Parallel client-side direct update attempts
+      await Promise.allSettled([
+        supabase.rpc("update_shop_approval_status", { target_shop_id: shopId, new_status: "rejected" }),
+        supabase.from("shops").update({ approval_status: "rejected" }).eq("id", shopId)
+      ]);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/platform-admin/stats", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ action: 'reject_shop', table: 'shops', id: shopId })
+      });
+      
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.warn("[Platform Admin] Reject POST response note:", body);
+      }
+      await fetchData();
+    } catch (err: any) {
+      console.error("[Platform Admin] Reject shop notice:", err);
+      await fetchData();
     } finally {
       setActionShopId(null);
     }
@@ -435,11 +590,14 @@ export default function PlatformAdminDashboard() {
     }
   };
 
+  const pendingShopsCount = (platform?.shops || []).filter((s: any) => s.approval_status === "pending").length;
+
   const filteredShops = (platform?.shops || [])
-    .filter((s: any) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.slug.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    .filter((s: any) => {
+      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.slug.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesApproval = approvalFilter === "all" ? true : approvalFilter === "pending" ? (s.approval_status === "pending" || !s.approval_status) : s.approval_status === "approved";
+      return matchesSearch && matchesApproval;
+    })
     .sort((a: any, b: any) => {
       const mul = sortDir === "asc" ? 1 : -1;
       if (sortKey === "name") return a.name.localeCompare(b.name) * mul;
@@ -677,6 +835,7 @@ export default function PlatformAdminDashboard() {
             { id: "content", label: "Content", icon: FileEdit },
             { id: "security", label: "Security", icon: ShieldAlert },
             { id: "billing", label: "Billing", icon: IndianRupee },
+            { id: "storage_logs", label: "Storage & Logs", icon: HardDrive },
             { id: "feedback", label: "Feedback", icon: Star },
             { id: "settings", label: "Settings", icon: Settings },
           ] as const).map((tab) => (
@@ -1338,33 +1497,61 @@ export default function PlatformAdminDashboard() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative w-full lg:w-[320px]">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-4 border border-[#E2E8F0] rounded-[12px] shadow-sm">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {[
+                    { id: "all", label: "All Shops", count: platform?.shops?.length || 0 },
+                    { id: "pending", label: "Pending Approval", count: pendingShopsCount, isAlert: pendingShopsCount > 0 },
+                    { id: "approved", label: "Approved Shops", count: (platform?.shops?.length || 0) - pendingShopsCount },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setApprovalFilter(filter.id as any)}
+                      className={cn(
+                        "px-3.5 py-2 rounded-[8px] text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap",
+                        approvalFilter === filter.id
+                          ? "bg-black text-white shadow-md"
+                          : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                      )}
+                    >
+                      <span>{filter.label}</span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-extrabold",
+                        approvalFilter === filter.id
+                          ? "bg-white/20 text-white"
+                          : filter.isAlert
+                          ? "bg-amber-500 text-white animate-pulse"
+                          : "bg-gray-200 text-gray-700"
+                      )}>
+                        {filter.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-auth-slate-50" />
                   <input
                     type="text"
-                    placeholder="Search shops by name or slug..."
+                    placeholder="Search shops..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="auth-input w-full h-[36px] bg-white pl-9 text-[12px]"
+                    className="auth-input w-full h-[38px] bg-gray-50 border-gray-200 pl-9 text-[12px]"
                   />
                 </div>
-                <p className="text-[11px] font-bold text-auth-slate-50 uppercase tracking-widest">
-                  {filteredShops.length} of {platform?.shops?.length || 0} shops
-                </p>
               </div>
 
               {/* Table — horizontally scrollable on small screens */}
-              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] overflow-hidden">
+              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[12px] overflow-hidden">
                 <div className="overflow-x-auto">
                   {/* Header */}
-                  <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_110px] gap-4 px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC] min-w-[700px] w-full">
+                  <div className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC] min-w-[850px] w-full">
                     {[
                       { key: "name" as SortKey, label: "Shop" },
                       { key: "totalJobs" as SortKey, label: "Total Files" },
                       { key: "created_at" as SortKey, label: "Joined" },
-                      { key: null, label: "Pending" },
-                      { key: null, label: "Status" },
+                      { key: null, label: "Approval Status" },
+                      { key: null, label: "Live Queue" },
                       { key: null, label: "Actions" },
                     ].map((col) => (
                       <button
@@ -1381,14 +1568,14 @@ export default function PlatformAdminDashboard() {
                   </div>
 
                   {/* Rows — vertical scroll when many shops */}
-                  <div className="divide-y divide-[#E2E8F0] max-h-[520px] overflow-y-auto min-w-[700px] w-full">
+                  <div className="divide-y divide-[#E2E8F0] max-h-[520px] overflow-y-auto min-w-[850px] w-full">
                     {filteredShops.map((shop, i) => (
                       <motion.div
                         key={shop.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                        className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_110px] gap-4 px-6 py-[14px] hover:bg-[#F8FAFC] transition-colors items-center"
+                        className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-[14px] hover:bg-[#F8FAFC] transition-colors items-center"
                       >
                         <div className="min-w-0">
                           <p className="font-bold text-[14px] text-black tracking-tight truncate">{shop.name}</p>
@@ -1414,51 +1601,74 @@ export default function PlatformAdminDashboard() {
                         </div>
 
                         <div>
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-[4px] uppercase tracking-wider ${shop.pendingJobs > 0 ? "bg-orange-50 text-orange-600 border border-orange-100" : "bg-slate-50 text-slate-500 border border-slate-200"}`}>
+                          {shop.approval_status === "approved" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              Unlimited
+                            </span>
+                          ) : shop.approval_status === "rejected" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold uppercase tracking-wider">
+                              <XCircle className="w-3.5 h-3.5 text-red-600" />
+                              Rejected
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider">
+                              <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                              Trial ({shop.total_files_processed || 0}/3 scans)
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-[6px] uppercase tracking-wider ${shop.pendingJobs > 0 ? "bg-orange-50 text-orange-600 border border-orange-100" : "bg-slate-50 text-slate-500 border border-slate-200"}`}>
                             {shop.pendingJobs} live
                           </span>
                         </div>
 
-                        <div>
-                           <div className={cn(
-                              "inline-flex items-center gap-1.5 px-2 py-1 rounded-[4px] border",
-                              shop.is_open
-                                ? "bg-green-50 border-green-100"
-                                : "bg-slate-50 border-slate-200"
-                           )}>
-                              <div className={cn("w-1.5 h-1.5 rounded-full", shop.is_open ? "bg-green-500 animate-pulse" : "bg-slate-400")} />
-                              <span className={cn("text-[10px] font-bold uppercase tracking-wider", shop.is_open ? "text-green-700" : "text-slate-600")}>
-                                {shop.is_open ? "Open" : "Closed"}
-                              </span>
-                           </div>
-                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {/* Approve Button */}
+                          {shop.approval_status !== "approved" && (
+                            <button
+                              onClick={() => handleApproveShop(shop.id)}
+                              disabled={actionShopId === shop.id}
+                              className="h-[34px] px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[8px] flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50"
+                              title="Approve Shop for Unlimited Scans"
+                            >
+                              {actionShopId === shop.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="w-3.5 h-3.5" /> Approve
+                                </>
+                              )}
+                            </button>
+                          )}
 
-                        <div className="flex items-center gap-2">
-                          {/* View Details — indigo accent on hover */}
-                          <motion.button
+                          {/* Reject / Revoke Button */}
+                          {shop.approval_status === "approved" && (
+                            <button
+                              onClick={() => handleRejectShop(shop.id)}
+                              disabled={actionShopId === shop.id}
+                              className="h-[34px] px-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-[8px] flex items-center justify-center text-[10px] font-bold uppercase transition-all border border-gray-200 disabled:opacity-50"
+                              title="Revoke Approval / Reject"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* View Details */}
+                          <button
                             onClick={() => setSelectedShop(shop)}
-                            whileHover={{ scale: 1.12, y: -2, boxShadow: "0 4px 12px rgba(99,102,241,0.18)" }}
-                            whileTap={{ scale: 0.90 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                            className="h-[34px] w-[34px] rounded-[9px] bg-white hover:bg-indigo-50 border border-[#E2E8F0] hover:border-indigo-200 flex items-center justify-center shadow-sm group transition-colors"
+                            className="h-[34px] w-[34px] rounded-[8px] bg-white hover:bg-indigo-50 border border-[#E2E8F0] hover:border-indigo-200 flex items-center justify-center shadow-sm group transition-colors"
                             title="View Shop Details"
                           >
-                            <Eye className="w-[15px] h-[15px] text-[#94A3B8] group-hover:text-indigo-500 transition-colors duration-150" />
-                          </motion.button>
+                            <Eye className="w-[14px] h-[14px] text-[#94A3B8] group-hover:text-indigo-500 transition-colors" />
+                          </button>
 
-                          {/* Open / Close Toggle — green when open (hover shows red), gray when closed (hover shows green) */}
-                          <motion.button
+                          {/* Open / Close Toggle */}
+                          <button
                             onClick={() => handleToggleShop(shop)}
                             disabled={actionShopId === shop.id}
-                            whileHover={actionShopId !== shop.id ? {
-                              scale: 1.12,
-                              y: -2,
-                              boxShadow: shop.is_open
-                                ? "0 4px 12px rgba(239,68,68,0.2)"
-                                : "0 4px 12px rgba(34,197,94,0.2)",
-                            } : {}}
-                            whileTap={actionShopId !== shop.id ? { scale: 0.90 } : {}}
-                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
                             className={`h-[34px] w-[34px] rounded-[9px] flex items-center justify-center shadow-sm transition-colors border disabled:opacity-40 disabled:cursor-not-allowed group ${
                               shop.is_open
                                 ? "bg-emerald-50 border-emerald-200 hover:bg-red-50 hover:border-red-200"
@@ -1473,7 +1683,7 @@ export default function PlatformAdminDashboard() {
                             ) : (
                               <ToggleLeft className="w-[20px] h-[20px] text-slate-400 group-hover:text-emerald-500 transition-colors duration-150" />
                             )}
-                          </motion.button>
+                          </button>
                         </div>
                       </motion.div>
                     ))}
@@ -1572,6 +1782,247 @@ export default function PlatformAdminDashboard() {
               </div>
             </motion.div>
           )}
+
+          {/* ── STORAGE & LOGS TAB ────────────────────────────────────────────────── */}
+          {activeTab === "storage_logs" && (
+            <motion.div
+              key="storage_logs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              {/* HEADER BAR & MANUAL PURGE TRIGGER */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E2E8F0] shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-6 h-6 text-black" />
+                    <h2 className="text-xl font-black uppercase tracking-tight text-black">Live Storage & Bucket Logs</h2>
+                  </div>
+                  <p className="text-[12px] font-medium text-auth-slate-50 mt-1">
+                    Monitor Supabase cloud storage bucket usage, database capacity, peak usage records, and automated 5-minute privacy purge logs.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={async () => {
+                      setIsPurgingStorage(true);
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const res = await fetch("/api/platform-admin/stats", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${session?.access_token}`
+                          },
+                          body: JSON.stringify({ action: "purge_storage_now" })
+                        });
+                        if (res.ok) {
+                          await fetchData();
+                          alert("Storage purge completed successfully!");
+                        }
+                      } catch (err) {
+                        alert("Purge failed.");
+                      } finally {
+                        setIsPurgingStorage(false);
+                      }
+                    }}
+                    disabled={isPurgingStorage}
+                    className="h-11 px-5 bg-red-600 hover:bg-red-700 text-white font-black text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    <Trash2 className={`w-4 h-4 ${isPurgingStorage ? "animate-spin" : ""}`} />
+                    <span>{isPurgingStorage ? "Purging..." : "Force Purge Storage Now"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* METRICS CARDS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* 1. Current Storage Bucket Usage */}
+                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Bucket Storage Used</span>
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+                        <HardDrive className="w-4 h-4 text-blue-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-black text-black tracking-tight leading-none mb-2">
+                      {formatBytes(storageAnalytics?.current_bytes || 0)}
+                    </p>
+                    <p className="text-[12px] font-bold text-blue-700 flex items-center gap-1">
+                      <span>{storageAnalytics?.current_files || 0} active files in 'documents' bucket</span>
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#F1F5F9]">
+                    <div className="flex justify-between text-[10px] font-bold text-[#7E8B9E] mb-1">
+                      <span>Capacity (Default 1GB Free Tier)</span>
+                      <span>{(((storageAnalytics?.current_bytes || 0) / (1024 * 1024 * 1024)) * 100).toFixed(2)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-600 rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(1, (((storageAnalytics?.current_bytes || 0) / (1024 * 1024 * 1024)) * 100)))}%` }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Peak Storage Usage Record */}
+                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Highest Recorded Usage</span>
+                      <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-orange-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-black text-black tracking-tight leading-none mb-2">
+                      {formatBytes(storageAnalytics?.peak_bytes || 0)}
+                    </p>
+                    <p className="text-[11px] font-medium text-auth-slate-50 leading-snug">
+                      {storageAnalytics?.peak_time ? (
+                        <>Peak on <span className="font-bold text-black">{new Date(storageAnalytics.peak_time).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span> at <span className="font-bold text-black">{new Date(storageAnalytics.peak_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></>
+                      ) : "No peak recorded yet"}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-[#7E8B9E]">Files at Peak:</span>
+                    <span className="font-black text-black">{storageAnalytics?.peak_files || 0} Files</span>
+                  </div>
+                </div>
+
+                {/* 3. Auto-Purged Files Count */}
+                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">5-Min Privacy Purged</span>
+                      <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center">
+                        <ShieldAlert className="w-4 h-4 text-purple-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-black text-purple-600 tracking-tight leading-none mb-2">
+                      {storageAnalytics?.auto_deleted_jobs || 0}
+                    </p>
+                    <p className="text-[11px] font-medium text-purple-800/80">
+                      Files auto-deleted after 5 minutes per software privacy policy
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-[#7E8B9E]">System Janitor:</span>
+                    <span className="font-black text-emerald-600 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active (pg_cron)
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. User Deleted Files Count */}
+                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Manually Deleted by Users</span>
+                      <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-black text-red-600 tracking-tight leading-none mb-2">
+                      {storageAnalytics?.user_deleted_jobs || 0}
+                    </p>
+                    <p className="text-[11px] font-medium text-red-800/80">
+                      Files manually deleted by customers from status screen
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-[#7E8B9E]">Total Job Records:</span>
+                    <span className="font-black text-black">{storageAnalytics?.total_jobs || 0} Records</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* RECENT STORAGE PURGE LOGS TABLE */}
+              <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F5F9]">
+                  <div>
+                    <h3 className="text-base font-black text-black uppercase tracking-tight">Recent Storage Activity & Purge Logs</h3>
+                    <p className="text-[12px] font-medium text-auth-slate-50">Real-time database records and file storage status across all print queues</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-auth-slate-50">Total Log Entries: {storageLogs.length}</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#F1F5F9] text-[10px] font-black text-[#7E8B9E] uppercase tracking-wider">
+                        <th className="py-3 px-4">Token / ID</th>
+                        <th className="py-3 px-4">Customer Name</th>
+                        <th className="py-3 px-4">File Name</th>
+                        <th className="py-3 px-4">Upload Timestamp</th>
+                        <th className="py-3 px-4">Storage State</th>
+                        <th className="py-3 px-4 text-right">Deletion Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F1F5F9] text-[13px]">
+                      {storageLogs.map((log) => {
+                        const isUserDeleted = log.is_deleted_by_user;
+                        const isAutoDeleted = log.is_auto_deleted || (log.file_path === null && !log.is_deleted_by_user);
+                        const isActiveFile = log.file_path !== null && !isUserDeleted && !isAutoDeleted;
+
+                        return (
+                          <tr key={log.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="py-3.5 px-4 font-mono font-bold text-black">
+                              #{log.token || log.id.slice(0, 6)}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-black">
+                              {log.customer_name || 'Guest'}
+                            </td>
+                            <td className="py-3.5 px-4 font-medium text-auth-slate-70 max-w-[220px] truncate" title={log.file_name}>
+                              {log.file_name}
+                            </td>
+                            <td className="py-3.5 px-4 text-[12px] font-medium text-auth-slate-50">
+                              {new Date(log.created_at).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit"
+                              })}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {isActiveFile ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active in Storage
+                                </span>
+                              ) : isUserDeleted ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">
+                                  <Trash2 className="w-3 h-3" /> Deleted
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                                  <ShieldAlert className="w-3 h-3" /> Purged (5-Min)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-right text-[12px] font-bold">
+                              {isActiveFile ? (
+                                <span className="text-emerald-600">Available in Bucket</span>
+                              ) : isUserDeleted ? (
+                                <span className="text-red-600 font-bold">Customer Manual Delete</span>
+                              ) : (
+                                <span className="text-purple-600 font-bold">5-Min Software Privacy Policy</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -1621,24 +2072,46 @@ export default function PlatformAdminDashboard() {
                 ))}
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => { handleToggleShop(selectedShop); setSelectedShop(null); }}
-                  className={`flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold border transition-all flex items-center justify-center gap-2 shadow-sm ${
-                    selectedShop.is_open
-                      ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                      : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                  }`}
-                >
-                  {selectedShop.is_open ? <><Ban className="w-4 h-4" /> Close Shop Down</> : <><CheckCircle2 className="w-4 h-4" /> Reopen Shop</>}
-                </button>
-                <a
-                  href={`/${selectedShop.slug}`}
-                  target="_blank"
-                  className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <ExternalLink className="w-4 h-4" /> Go to Shop
-                </a>
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="flex gap-3">
+                  {selectedShop.approval_status !== "approved" ? (
+                    <button
+                      onClick={() => handleApproveShop(selectedShop.id)}
+                      disabled={actionShopId === selectedShop.id}
+                      className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center justify-center gap-2 shadow-md uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                    >
+                      {actionShopId === selectedShop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Approve Shop for Unlimited Scans</>}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleRejectShop(selectedShop.id)}
+                      disabled={actionShopId === selectedShop.id}
+                      className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {actionShopId === selectedShop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4" /> Revoke Unlimited Approval</>}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { handleToggleShop(selectedShop); setSelectedShop(null); }}
+                    className={`flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold border transition-all flex items-center justify-center gap-2 shadow-sm ${
+                      selectedShop.is_open
+                        ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+                        : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                    }`}
+                  >
+                    {selectedShop.is_open ? <><Ban className="w-4 h-4" /> Close Shop Down</> : <><CheckCircle2 className="w-4 h-4" /> Reopen Shop</>}
+                  </button>
+                  <a
+                    href={`/${selectedShop.slug}`}
+                    target="_blank"
+                    className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Go to Shop
+                  </a>
+                </div>
               </div>
             </motion.div>
           </motion.div>

@@ -71,7 +71,7 @@ class JobRepository {
 
     while (retries > 0) {
       finalToken = generateToken();
-      final expiresAt = DateTime.now().add(const Duration(hours: 3));
+      final expiresAt = DateTime.now().add(const Duration(minutes: 5));
 
       try {
         final response = await _client.from('jobs').insert({
@@ -180,7 +180,7 @@ class JobRepository {
 
       while (retries > 0) {
         finalToken = generateToken();
-        final expiresAt = DateTime.now().add(const Duration(hours: 3));
+        final expiresAt = DateTime.now().add(const Duration(minutes: 5));
 
         try {
           final preferences = PrintPreferences(

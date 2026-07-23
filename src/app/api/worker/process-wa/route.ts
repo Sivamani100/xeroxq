@@ -28,9 +28,15 @@ const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   "application/msword": "doc",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
   "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/vnd.ms-powerpoint": "ppt",
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/gif": "gif",
+  "text/plain": "txt",
+  "text/csv": "csv",
+  "application/zip": "zip",
 };
 
 // Allowed Twilio media CDN hostnames (SSRF protection)
@@ -86,12 +92,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Disallowed media host" }, { status: 400 });
     }
 
-    // ── 4. Validate Content Type ───────────────────────────────────────────
-    const fileExt = ALLOWED_CONTENT_TYPES[contentType];
-    if (!fileExt) {
-      await supabaseAdmin.from("jobs").update({ status: "failed" }).eq("id", jobId);
-      return NextResponse.json({ error: "Unsupported content type" }, { status: 400 });
-    }
+    // ── 4. Resolve Content Type / Extension ──────────────────────────────
+    const fileExt = ALLOWED_CONTENT_TYPES[contentType] || contentType.split("/")[1]?.split("+")[0] || "doc";
 
     // ── 5. Download Media from Twilio ──────────────────────────────────────
     const response = await fetch(mediaUrl, {

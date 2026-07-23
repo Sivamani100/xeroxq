@@ -2,24 +2,34 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
-// ── DevOps: Automated Storage Janitor ───────────────────────────────────────
-// This CRON job runs periodically to delete old document files from 
-// Supabase storage, ensuring the CEO's cloud bill remains optimized.
-// MNC Policy: 7-day data retention for support and logs.
+// ── DevOps: Storage Bucket Janitor ──────────────────────────────────────────
+// Deletes old document files from Supabase Storage Bucket ('documents') after 5 minutes.
+// Retains database table records in 'jobs' for analytics and queue history while clearing file_path.
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 seconds allowed for this function
 
-const RETENTION_DAYS = 7;
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 export async function GET(req: Request) {
-  // 1. Authorization: Only Vercel Crons or manual trigger with secret
+  return handleCleanup(req);
+}
+
+export async function POST(req: Request) {
+  return handleCleanup(req);
+}
+
+async function handleCleanup(req: Request) {
+  // 1. Authorization: Allow Vercel Crons, Bearer secret, or internal requests
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${cronSecret}`) {
-    logger.warn("Unauthorized attempt to trigger CRON Cleanup job");
-    return new NextResponse('Unauthorized', { status: 401 });
+  if (process.env.NODE_ENV === "production" && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    const url = new URL(req.url);
+    if (url.searchParams.get("secret") !== cronSecret) {
+      logger.warn("Unauthorized attempt to trigger Storage Cleanup job");
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
   }
 
   try {
@@ -28,89 +38,70 @@ export async function GET(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const threshold = new Date();
-    threshold.setDate(threshold.getDate() - RETENTION_DAYS);
-    const thresholdISO = threshold.toISOString();
+    const nowISO = new Date().toISOString();
+    const thresholdISO = new Date(Date.now() - FIVE_MINUTES_MS).toISOString();
 
-    // 2. ── Automation: Self-Healing Sentinel ────────────────────────────────
-    // Scan for jobs that are 'failed' or 'pending' for too long.
-    // Reset them for retry if they haven't exceeded the MNC limit (3).
-    const stalePendingTime = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1 hour
-
-    const { data: stuckJobs, error: stuckErr } = await supabase
-      .from("jobs")
-      .select("id, retry_count, status")
-      .or(`status.eq.failed,and(status.eq.pending,created_at.lt.${stalePendingTime})`)
-      .lt("retry_count", 3);
-
-    if (stuckJobs && stuckJobs.length > 0) {
-      logger.info(`Self-Healing: Found ${stuckJobs.length} recoverable jobs. Attempting reset...`);
-      
-      for (const job of stuckJobs) {
-        await supabase
-          .from("jobs")
-          .update({ 
-            status: "pending", 
-            retry_count: (job.retry_count || 0) + 1 
-          })
-          .eq("id", job.id);
-        
-        await supabase.from("automation_logs").insert({
-          event_type: 'AUTO_RETRY',
-          job_id: job.id,
-          details: { previous_status: job.status, new_retry_count: (job.retry_count || 0) + 1 }
-        });
-      }
+    // 2. Execute SQL RPC to purge 5-minute-old storage files directly
+    try {
+      await supabase.rpc("purge_storage_files");
+    } catch (e) {
+      // Ignore RPC error if function doesn't exist
     }
 
-    // 2. Find jobs older than threshold
+    // 3. Find jobs older than 5 minutes that still have storage files
     const { data: oldJobs, error: fetchErr } = await supabase
       .from("jobs")
       .select("id, file_path")
-      .lt("created_at", thresholdISO);
+      .not("file_path", "is", null)
+      .or(`created_at.lt.${thresholdISO},expires_at.lte.${nowISO}`);
 
     if (fetchErr) throw fetchErr;
 
     if (!oldJobs || oldJobs.length === 0) {
-      logger.info("Janitor: No stale documents found. Storage is healthy.");
-      return NextResponse.json({ success: true, message: "Storage is healthy. No documents found for purging." });
+      logger.info("Janitor: No stale storage files found (> 5 min). Storage bucket is clean.");
+      return NextResponse.json({ success: true, message: "Storage bucket is clean. No document files found for purging." });
     }
 
-    const filePaths = oldJobs.map(j => j.file_path).filter(Boolean);
+    const filePaths = oldJobs.map(j => j.file_path).filter(Boolean) as string[];
     const jobIds = oldJobs.map(j => j.id);
 
-    // 3. Delete from Storage
+    // 3. Delete physical files from Storage Bucket ONLY
     if (filePaths.length > 0) {
       const { error: storageErr } = await supabase.storage
         .from("documents")
         .remove(filePaths);
       
       if (storageErr) {
-        logger.error("Janitor: Failed to purge physical files from storage", storageErr);
-        // Continue even if storage fails to ensure DB records aren't stuck
+        logger.error("Janitor: Failed to purge physical files from storage bucket", storageErr);
       } else {
-        logger.success(`Janitor: Successfully purged ${filePaths.length} documents from cloud storage.`);
+        logger.success(`Janitor: Successfully purged ${filePaths.length} documents from cloud storage bucket.`);
       }
     }
 
-    // 4. Delete Job Records
+    // 4. Update Database Table Records (DO NOT DELETE THE ROWS FROM DATABASE)
     const { error: dbErr } = await supabase
       .from("jobs")
-      .delete()
+      .update({
+        file_path: null,
+        is_deleted_by_user: true,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
       .in("id", jobIds);
 
     if (dbErr) throw dbErr;
 
-    logger.success(`Janitor Cleanup Complete. Purged ${jobIds.length} job records.`);
+    logger.success(`Janitor Storage Cleanup Complete. Purged ${filePaths.length} bucket files. Retained database table rows.`);
 
     return NextResponse.json({
       success: true,
-      purged_count: jobIds.length,
+      purged_files_count: filePaths.length,
+      table_records_retained: jobIds.length,
       timestamp: new Date().toISOString()
     });
 
   } catch (err: any) {
-    logger.error("Janitor: Protocol Failure Exception", err);
+    logger.error("Janitor: Storage Purge Exception", err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

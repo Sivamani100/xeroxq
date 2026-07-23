@@ -35,7 +35,8 @@ import {
   Bell,
   BellOff,
   Smartphone,
-  MapPin
+  MapPin,
+  ShieldAlert
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { TableVirtuoso } from "react-virtuoso";
@@ -93,6 +94,8 @@ interface Shop {
   feedback_enabled?: boolean;
   custom_feedback_enabled?: boolean;
   custom_feedback_title?: string;
+  total_files_processed?: number;
+  approval_status?: string;
 }
 
 interface Job {
@@ -114,6 +117,7 @@ interface Job {
   created_at: string;
   expires_at: string;
   is_deleted_by_user?: boolean;
+  is_auto_deleted?: boolean;
   deleted_at?: string;
 }
 
@@ -136,8 +140,14 @@ export default function AdminDashboard() {
   const [newShopData, setNewShopData] = useState({ name: "", phone: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
   const [printingJobId, setPrintingJobId] = useState<string | null>(null);
   const [showingSettings, setShowingSettings] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [viewReadOnlyQueue, setViewReadOnlyQueue] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [activePrintJob, setActivePrintJob] = useState<Job | null>(null);
+
+  const isShopApproved = shop?.approval_status === "approved";
+  const filesProcessedCount = Number(shop?.total_files_processed || 0);
+  const isTrialLimitReached = !isShopApproved && filesProcessedCount >= 3;
   const [printPreviewUrl, setPrintPreviewUrl] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [canvasItems, setCanvasItems] = useState<{ id: string, x: number, y: number, width: number, height: number, pageIndex: number, zIndex?: number, isGrayscale?: boolean, payloadUrl?: string, rawHtml?: string }[]>([]);
@@ -147,6 +157,7 @@ export default function AdminDashboard() {
   const [isGridSnapped, setIsGridSnapped] = useState(false);
 
   const [selectedCanvasIds, setSelectedCanvasIds] = useState<string[]>([]);
+  const knownJobIdsRef = useRef<Set<string>>(new Set());
   const [pageCount, setPageCount] = useState(1);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -497,6 +508,55 @@ export default function AdminDashboard() {
     }
   };
 
+  const triggerNewJobNotification = (job: Job) => {
+    if (knownJobIdsRef.current.has(job.id)) return;
+
+    knownJobIdsRef.current.add(job.id);
+    playNotificationPing();
+    if (localStorage.getItem("xeroxq_admin_sound") === "true") {
+      sendDesktopNotification(job);
+    }
+    setNotifications(prev => {
+      if (prev.some(n => n.id === `job-${job.id}`)) return prev;
+      return [
+        {
+          id: `job-${job.id}`,
+          type: 'new_job',
+          message: `Incoming Document: ${job.customer_name || 'Anonymous'}`,
+          subMessage: `File: ${job.file_name}`,
+          timestamp: new Date()
+        },
+        ...prev.slice(0, 4)
+      ];
+    });
+  };
+
+  const checkApprovalStatus = async (silent: boolean = false) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("shops")
+        .select("approval_status, total_files_processed, is_open")
+        .eq("owner_id", user.id)
+        .single();
+
+      if (data) {
+        setShop(prev => prev ? { ...prev, ...data } : null);
+        if (data.approval_status === "approved") {
+          setShowApprovalModal(false);
+          setViewReadOnlyQueue(false);
+          if (!silent) {
+            alert("🎉 Congratulations! Your shop has been APPROVED by Platform Admin. Unlimited printing unlocked!");
+          }
+        } else {
+          if (!silent) {
+            alert("⏳ Your shop is still pending Platform Admin approval. Please check back shortly!");
+          }
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     async function checkUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -508,7 +568,7 @@ export default function AdminDashboard() {
       // Try explicit column select first (preferred for type safety)
       let { data: shopData, error: shopError } = await supabase
         .from("shops")
-        .select("id, name, slug, upi_id, shop_location, shop_lat, shop_lng, price_mono, price_color, is_open, require_customer_name, show_copies, show_color_mode, generate_token, accept_preorders, contact_number, feedback_enabled, custom_feedback_enabled, custom_feedback_title")
+        .select("id, name, slug, upi_id, shop_location, shop_lat, shop_lng, price_mono, price_color, is_open, require_customer_name, show_copies, show_color_mode, generate_token, accept_preorders, contact_number, feedback_enabled, custom_feedback_enabled, custom_feedback_title, total_files_processed, approval_status")
         .eq("owner_id", user.id)
         .single();
 
@@ -554,37 +614,67 @@ export default function AdminDashboard() {
             (payload) => {
               if (payload.eventType === 'INSERT') {
                 const newJob = payload.new as Job;
-                // Always play notification sound for new jobs, regardless of tab focus
-                playNotificationPing();
-                // Desktop notification still requires permission
-                if (localStorage.getItem("xeroxq_admin_sound") === "true") {
-                  sendDesktopNotification(newJob);
-                }
-
-                // Push visual In-App Alert
-                setNotifications(prev => [
-                  {
-                    id: `job-${newJob.id}`,
-                    type: 'new_job',
-                    message: `Incoming Document: ${newJob.customer_name || 'Anonymous'}`,
-                    subMessage: `File: ${newJob.file_name}`,
-                    timestamp: new Date()
-                  },
-                  ...prev.slice(0, 4) // Keep max 5 notifications
-                ]);
+                triggerNewJobNotification(newJob);
               }
               fetchJobs(shopData.id);
             }
           )
           .subscribe();
 
-        // Auto-refresh: Polling every 3 seconds as backup to real-time subscription
-        const autoRefreshInterval = setInterval(() => {
+        // Real-time listener for shop approval status updates
+        const shopSubscription = supabase
+          .channel(`shop-status-${shopData.id}-${Date.now()}`)
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "shops", filter: `id=eq.${shopData.id}` },
+            (payload) => {
+              const updatedShop = payload.new;
+              if (updatedShop) {
+                setShop(prev => {
+                  if (!prev) return updatedShop as any;
+                  if (updatedShop.approval_status === "approved" && prev.approval_status !== "approved") {
+                    setShowApprovalModal(false);
+                    setViewReadOnlyQueue(false);
+                  }
+                  return { ...prev, ...updatedShop };
+                });
+              }
+            }
+          )
+          .subscribe();
+
+        // Auto-refresh: Polling every 3 seconds for jobs AND shop approval status
+        const autoRefreshInterval = setInterval(async () => {
           fetchJobs(shopData.id);
+
+          const { data: latestShop } = await supabase
+            .from("shops")
+            .select("approval_status, total_files_processed, is_open")
+            .eq("id", shopData.id)
+            .single();
+
+          if (latestShop) {
+            setShop(prev => {
+              if (!prev) return prev;
+              if (
+                prev.approval_status !== latestShop.approval_status ||
+                prev.total_files_processed !== latestShop.total_files_processed ||
+                prev.is_open !== latestShop.is_open
+              ) {
+                if (latestShop.approval_status === "approved" && prev.approval_status !== "approved") {
+                  setShowApprovalModal(false);
+                  setViewReadOnlyQueue(false);
+                }
+                return { ...prev, ...latestShop };
+              }
+              return prev;
+            });
+          }
         }, 3000);
 
         return () => { 
           supabase.removeChannel(subscription); 
+          supabase.removeChannel(shopSubscription);
           clearInterval(autoRefreshInterval);
         };
       } else {
@@ -594,6 +684,12 @@ export default function AdminDashboard() {
 
     checkUser();
   }, [router]);
+
+  useEffect(() => {
+    if (shop && isTrialLimitReached && !viewReadOnlyQueue) {
+      setShowApprovalModal(true);
+    }
+  }, [shop, isTrialLimitReached, viewReadOnlyQueue]);
 
   // Initialize audio element on first user interaction
   const initAudio = () => {
@@ -724,7 +820,7 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, token, customer_name, customer_phone, is_preorder, is_paid, file_name, file_path, status, preferences, page_count, created_at, expires_at, is_deleted_by_user, deleted_at")
+        .select("id, token, customer_name, customer_phone, is_preorder, is_paid, file_name, file_path, status, preferences, page_count, created_at, expires_at, is_deleted_by_user, is_auto_deleted, deleted_at")
         .eq("shop_id", shopId)
         .order("created_at", { ascending: false });
 
@@ -732,7 +828,37 @@ export default function AdminDashboard() {
         console.error("[fetchJobs] Supabase error:", error.message, error.code, error.details);
         throw error;
       }
-      setJobs(data || []);
+      
+      const newJobs = data || [];
+      const nowMs = Date.now();
+
+      // Trigger storage bucket cleanup for files older than 5 minutes that still have storage paths
+      const hasStaleStorageFiles = newJobs.some(j => {
+        if (!j.file_path) return false;
+        const createdMs = new Date(j.created_at).getTime();
+        const expiresMs = j.expires_at ? new Date(j.expires_at).getTime() : createdMs + 5 * 60 * 1000;
+        return expiresMs <= nowMs || (nowMs - createdMs >= 5 * 60 * 1000);
+      });
+
+      if (hasStaleStorageFiles) {
+        fetch("/api/cron/cleanup", { method: "POST" }).catch(() => {});
+      }
+
+      // Auto-detect new files added by customers (Real-time polling sync)
+      if (knownJobIdsRef.current.size > 0) {
+        for (const job of newJobs) {
+          if (!knownJobIdsRef.current.has(job.id)) {
+            triggerNewJobNotification(job);
+          }
+        }
+      } else {
+        knownJobIdsRef.current = new Set(newJobs.map(j => j.id));
+      }
+
+      for (const job of newJobs) {
+        knownJobIdsRef.current.add(job.id);
+      }
+      setJobs(newJobs);
     } catch (error: any) {
       console.error("[fetchJobs] Error fetching jobs:", error?.message || error, error?.code || "");
     } finally {
@@ -793,14 +919,31 @@ export default function AdminDashboard() {
   };
 
   const initiateVerification = async (job: Job, mode: 'complete' | 'reprint') => {
+    // Check if shop is awaiting approval and trial scan limit is reached
+    if (isTrialLimitReached) {
+      setShowApprovalModal(true);
+      return;
+    }
+
     // ── SECURITY CHECK ───────────────────────────────────────────────────────
-    // Check if user deleted the file - CRITICAL CHECK
+    // Check if file was deleted by user or software privacy policy
     if (job.is_deleted_by_user) {
       setNotifications(prev => [{
         id: `action-blocked-${Date.now()}`,
         type: 'error',
         message: "⛔ USER DELETED THIS FILE",
-        subMessage: `Customer has permanently deleted this file. Cannot complete or reprint. Database enforced.`,
+        subMessage: `Customer manually deleted this file. Cannot complete or reprint. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
+    if (job.is_auto_deleted || (job.file_path === null && !job.is_deleted_by_user)) {
+      setNotifications(prev => [{
+        id: `action-blocked-${Date.now()}`,
+        type: 'error',
+        message: "🛡️ DELETED BY PRIVACY POLICY",
+        subMessage: `File deleted automatically after 5 minutes due to software privacy policy.`,
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -851,14 +994,30 @@ export default function AdminDashboard() {
   };
 
   const handlePrint = async (job: Job) => {
+    // Check if shop is awaiting approval and trial scan limit is reached
+    if (isTrialLimitReached) {
+      setShowApprovalModal(true);
+      return;
+    }
+
     // ── SECURITY CHECKS ─────────────────────────────────────────────────────
-    // Check if user deleted the file - CRITICAL CHECK
     if (job.is_deleted_by_user) {
       setNotifications(prev => [{
         id: `print-blocked-${Date.now()}`,
         type: 'error',
         message: "⛔ USER DELETED THIS FILE",
-        subMessage: `Customer has permanently deleted this file. No actions allowed. Database enforced.`,
+        subMessage: `Customer manually deleted this file. No actions allowed. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
+    if (job.is_auto_deleted || (job.file_path === null && !job.is_deleted_by_user)) {
+      setNotifications(prev => [{
+        id: `print-blocked-${Date.now()}`,
+        type: 'error',
+        message: "🛡️ DELETED BY PRIVACY POLICY",
+        subMessage: `File deleted automatically after 5 minutes due to software privacy policy.`,
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1041,13 +1200,23 @@ export default function AdminDashboard() {
 
   const handleDownload = async (job: Job) => {
     // ── SECURITY CHECKS ─────────────────────────────────────────────────────
-    // Check if user deleted the file - CRITICAL CHECK
     if (job.is_deleted_by_user) {
       setNotifications(prev => [{
         id: `download-blocked-${Date.now()}`,
         type: 'error',
         message: "⛔ USER DELETED THIS FILE",
-        subMessage: `Customer has permanently deleted this file. No actions allowed. Database enforced.`,
+        subMessage: `Customer manually deleted this file. No actions allowed. Database enforced.`,
+        timestamp: new Date()
+      }, ...prev]);
+      return;
+    }
+
+    if (job.is_auto_deleted || (job.file_path === null && !job.is_deleted_by_user)) {
+      setNotifications(prev => [{
+        id: `download-blocked-${Date.now()}`,
+        type: 'error',
+        message: "🛡️ DELETED BY PRIVACY POLICY",
+        subMessage: `File deleted automatically after 5 minutes due to software privacy policy.`,
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1628,7 +1797,7 @@ export default function AdminDashboard() {
     );
   }
 
-  // --- STATE 2: ACTIVE DASHBOARD (Top-Header Paradigm) ---
+
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-[#F8FAFC] relative text-black">
       {/* XEROX CONNECTKEY PRINT EDITOR */}
@@ -1636,6 +1805,8 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8 backdrop-blur-sm">
           <XeroxQPrintDialog
             documentPath={printPreviewUrl} // Passing the actual URL for download in main.js
+            jobId={activePrintJob.id}
+            shopId={shop.id}
             onClose={() => { setActivePrintJob(null); setPrintPreviewUrl(null); }}
           />
         </div>
@@ -2424,6 +2595,39 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* SHOPKEEPER TRIAL & APPROVAL ALERT BANNER */}
+        {shop && !isShopApproved && (
+          <div className={cn(
+            "w-full py-2.5 px-4 lg:px-[82px] border-t flex items-center justify-between text-[12px] font-bold transition-all",
+            isTrialLimitReached
+              ? "bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse"
+              : "bg-amber-50 text-amber-900 border-amber-200"
+          )}>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>
+                {isTrialLimitReached
+                  ? `🛑 Trial Limit Reached (${filesProcessedCount}/3 Free Scans Used). Document printing is locked until Platform Admin approval.`
+                  : `✨ New Shop Free Trial Active (${filesProcessedCount}/3 free scans used). Request Platform Admin approval for unlimited file sharing.`}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setViewReadOnlyQueue(false);
+                setShowApprovalModal(true);
+              }}
+              className={cn(
+                "px-3.5 py-1 rounded-[6px] text-[10px] font-extrabold uppercase tracking-wider transition-all shadow-sm shrink-0 cursor-pointer",
+                isTrialLimitReached
+                  ? "bg-white text-amber-900 hover:bg-amber-50"
+                  : "bg-amber-600 text-white hover:bg-amber-700"
+              )}
+            >
+              {isTrialLimitReached ? "View Approval Screen" : "Trial Details"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* SUB HEADER - ACTIVE QUEUE TITLE & SEARCH (STATIC) */}
@@ -2505,8 +2709,12 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {job.is_deleted_by_user ? (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-[10px] font-bold text-red-700 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-[10px] font-black text-red-700 uppercase tracking-wider">
                           <Trash2 className="w-3 h-3" /> Deleted by User
+                        </span>
+                      ) : (job.is_auto_deleted || job.file_path === null) ? (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-full text-[10px] font-black text-purple-700 uppercase tracking-wider">
+                          <ShieldAlert className="w-3 h-3 text-purple-600" /> Purged (5-Min Policy)
                         </span>
                       ) : job.status === "printed" ? (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
@@ -2595,14 +2803,14 @@ export default function AdminDashboard() {
                     )}
                     <button
                       onClick={() => handleDownload(job)}
-                      disabled={activeDownloadId === job.id || job.is_deleted_by_user}
+                      disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null}
                       className={cn(
                         "h-10 flex-1 border rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer",
-                        job.is_deleted_by_user
+                        (job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null)
                           ? "border-gray-200 text-gray-300 cursor-not-allowed"
                           : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
                       )}
-                      title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
+                      title={(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) ? "File deleted/purged" : "Download"}
                     >
                       {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                       {job.status !== "printed" && "Download"}
@@ -2642,20 +2850,20 @@ export default function AdminDashboard() {
                 }}
                 fixedHeaderContent={() => (
                   <tr className="bg-[#F8FAFC]">
-                    <th className="py-4 pl-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[28%] border-b border-[#E2E8F0]">File Info</th>
+                    <th className="py-4 pl-10 text-left text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
+                    <th className="py-4 px-4 text-center text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[20%] border-b border-[#E2E8F0]">File Information by Customer</th>
                     <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[16%] border-b border-[#E2E8F0]">Print Details</th>
                     <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[10%] border-b border-[#E2E8F0]">Format</th>
                     <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%] border-b border-[#E2E8F0]">Print</th>
-                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-right w-[18%] border-b border-[#E2E8F0]">Actions</th>
+                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[18%] border-b border-[#E2E8F0]">Useful Actions , Delete</th>
                   </tr>
                 )}
                 itemContent={(_index, job) => (
                   <>
-                    <td className="py-5 pl-6 border-b border-[#E2E8F0]">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <p className="font-black text-[12px] text-black tracking-widest uppercase leading-none">{job.customer_name || "ANONYMOUS"}</p>
+                    <td className="py-5 pl-10 border-b border-[#E2E8F0] text-left">
+                      <div className="flex flex-col items-start">
+                        <div className="flex items-center justify-start gap-2 flex-wrap">
+                          <p title={job.customer_name || "ANONYMOUS"} className="font-black text-[12px] text-black tracking-widest uppercase leading-none">{job.customer_name || "ANONYMOUS"}</p>
                           {(() => {
                             const jobAge = new Date().getTime() - new Date(job.created_at).getTime();
                             const isNew = jobAge < 2 * 60 * 1000; // 2 minutes
@@ -2665,10 +2873,31 @@ export default function AdminDashboard() {
                               </span>
                             ) : null;
                           })()}
-                          {job.is_deleted_by_user && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-bold text-red-700 uppercase">
-                              <Trash2 className="w-3 h-3" /> Deleted
-                            </span>
+                          {(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) && (
+                            <div className="relative group/tooltip inline-flex items-center">
+                              <div className={cn(
+                                "w-5 h-5 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-help shadow-xs shrink-0",
+                                job.is_deleted_by_user
+                                  ? "bg-red-100 text-red-600 border border-red-200"
+                                  : "bg-purple-100 text-purple-600 border border-purple-200"
+                              )}>
+                                {job.is_deleted_by_user ? (
+                                  <Trash2 className="w-3 h-3" />
+                                ) : (
+                                  <ShieldAlert className="w-3 h-3" />
+                                )}
+                              </div>
+
+                              {/* Hover Tooltip */}
+                              <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:flex flex-col items-start z-50 pointer-events-none whitespace-nowrap">
+                                <div className="bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/10 tracking-tight">
+                                  {job.is_deleted_by_user 
+                                    ? "🗑️ Manually deleted by customer" 
+                                    : "🛡️ Auto-deleted after 5 mins (Software Privacy Policy)"}
+                                </div>
+                                <div className="w-2 h-2 bg-black rotate-45 -mt-1 ml-1.5" />
+                              </div>
+                            </div>
                           )}
                         </div>
                         {job.customer_phone && (
@@ -2683,9 +2912,16 @@ export default function AdminDashboard() {
                         <div className="w-9 h-9 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4 text-[#323A46]" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 relative group/filename">
                           <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
                           <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                          {/* Full filename tooltip on hover */}
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/filename:flex z-50 pointer-events-none">
+                            <div className="bg-black text-white text-[11px] font-semibold px-3 py-2 rounded-lg shadow-2xl border border-white/10 whitespace-nowrap max-w-[320px] break-all">
+                              📄 {job.file_name}
+                            </div>
+                            <div className="absolute left-3 top-full w-2 h-2 bg-black rotate-45 -mt-1" />
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -2695,8 +2931,8 @@ export default function AdminDashboard() {
                           <div className="flex items-center justify-center gap-1.5">
                             <span className={cn(
                               "h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-black uppercase tracking-tight",
-                              job.preferences.color 
-                                ? "bg-gradient-to-r from-[#FF512F] to-[#DD2476] text-white border-none shadow-sm" 
+                              job.preferences.color
+                                ? "bg-gradient-to-r from-[#FF512F] to-[#DD2476] text-white border-none shadow-sm"
                                 : "bg-white border border-[#E2E8F0] text-black"
                             )}>
                               {job.preferences.color ? '🎨 COLOR' : '⬛ MONO'}
@@ -2733,7 +2969,7 @@ export default function AdminDashboard() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => initiateVerification(job, 'reprint')}
+                          onClick={() => initiateVerification(job, `reprint`)}
                           className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto cursor-pointer"
                         >
                           <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
@@ -2744,7 +2980,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center justify-end gap-2">
                         {job.status !== "printed" ? (
                           <button
-                            onClick={() => initiateVerification(job, 'complete')}
+                            onClick={() => initiateVerification(job, `complete`)}
                             className="h-[34px] w-[34px] bg-white border border-black/10 text-black rounded-[5.57px] hover:bg-black/5 transition-all shadow-sm flex items-center justify-center cursor-pointer"
                             title="Complete"
                           >
@@ -2794,7 +3030,7 @@ export default function AdminDashboard() {
             <div className="w-10 h-10 bg-black rounded-[5.57px] flex items-center justify-center mb-3 shadow-lg rotate-3 transition-transform hover:rotate-0 duration-500">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Identify & Authenticate</DialogTitle>
+            <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Identify &amp; Authenticate</DialogTitle>
             <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
               Verify the 2-digit code with the customer to complete this print job.
             </DialogDescription>
@@ -2809,15 +3045,15 @@ export default function AdminDashboard() {
                 placeholder="--"
                 autoFocus
                 value={tokenChallengeInput}
-                onChange={(e) => setTokenChallengeInput(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={(e) => e.key === 'Enter' && handleVerifyComplete()}
+                onChange={(e) => setTokenChallengeInput(e.target.value.replace(/\D/g, ``))}
+                onKeyDown={(e) => e.key === `Enter` && handleVerifyComplete()}
                 className="relative w-full h-[100px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] text-center text-[56px] font-black tracking-[0.2em] text-black focus:bg-white focus:ring-4 focus:ring-black/5 transition-all outline-none shadow-inner cursor-pointer"
               />
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setVerifyingJobId(null); setTokenChallengeInput(""); }}
+                onClick={() => { setVerifyingJobId(null); setTokenChallengeInput(``); }}
                 className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
               >
                 Abort
@@ -2842,7 +3078,7 @@ export default function AdminDashboard() {
             </div>
             <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Delete Confirmation</DialogTitle>
             <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-              This action will permanently delete the <span className="text-black font-bold">"{deleteConfirmJob?.customer_name}"</span> print job. This cannot be undone.
+              This action will permanently delete the <span className="text-black font-bold">&quot;{deleteConfirmJob?.customer_name}&quot;</span> print job. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -2877,7 +3113,7 @@ export default function AdminDashboard() {
             </div>
             <DialogTitle className="text-[20px] font-bold tracking-tight text-black">File Deleted</DialogTitle>
             <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-              Files shared over 3 hours ago are automatically deleted for privacy.
+              Files shared over 5 minutes ago are automatically deleted for privacy.
             </DialogDescription>
           </DialogHeader>
 
@@ -2890,8 +3126,8 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* ── IN-APP NOTIFICATION TOASTS (Bottom Right) ── */}
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none w-[400px]">
+      {/* IN-APP NOTIFICATION TOASTS */}
+      <div className="fixed bottom-6 right-4 sm:right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none items-end w-[calc(100vw-32px)] sm:w-auto max-w-[440px]">
         <AnimatePresence mode="popLayout">
           {notifications.map((notif) => (
             <XeroxQNotification
@@ -2906,101 +3142,81 @@ export default function AdminDashboard() {
   );
 }
 
-// --- SUB-COMPONENT: WINDOWS STYLE NOTIFICATION TOAST ---
+// --- SUB-COMPONENT: TOAST NOTIFICATION ---
 function XeroxQNotification({ notification, onClose }: { notification: Notification, onClose: (id: string) => void }) {
-  useEffect(() => {
-    const timer = setTimeout(() => onClose(notification.id), 6000);
-    return () => clearTimeout(timer);
-  }, [notification.id, onClose]);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
 
-  const isNewJob = notification.type === 'new_job';
+  useEffect(() => {
+    const timer = setTimeout(() => { onCloseRef.current(notification.id); }, 5000);
+    return () => clearTimeout(timer);
+  }, [notification.id]);
+
+  const isNewJob = notification.type === `new_job`;
+  const isError = notification.type === `error`;
+  const isSuccess = notification.type === `success`;
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      initial={{ opacity: 0, x: 50, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 50, scale: 0.9, transition: { duration: 0.2 } }}
-      className={cn(
-        "pointer-events-auto w-full relative overflow-hidden",
-        "bg-white",
-        "border border-gray-200",
-        "shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
-        "rounded-xl",
-        isNewJob && "ring-2 ring-blue-500 ring-offset-2"
-      )}
+      className="pointer-events-auto w-full sm:w-[380px] bg-white/95 backdrop-blur-xl border border-[#E2E8F0] shadow-2xl rounded-2xl p-4 relative overflow-hidden font-sans group transition-all"
     >
-      {/* Top accent bar for new jobs */}
-      {isNewJob && (
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-blue-400" />
-      )}
-
-      <div className={cn("p-5 flex items-start gap-4", isNewJob && "pt-6")}>
-        {/* App Icon - Larger for visibility */}
+      <div className="flex items-start gap-3.5">
         <div className={cn(
-          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md",
-          isNewJob ? "bg-gradient-to-br from-blue-500 to-blue-600" : "bg-gray-100"
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 transition-transform group-hover:scale-105",
+          isNewJob ? "bg-black text-white" : isError ? "bg-red-100 text-red-600" : isSuccess ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-700"
         )}>
           {isNewJob ? (
-            <Printer className="w-6 h-6 text-white" />
-          ) : notification.type === 'success' ? (
-            <CheckCircle2 className="w-6 h-6 text-green-500" />
-          ) : notification.type === 'error' ? (
-            <ShieldCheck className="w-6 h-6 text-red-500" />
+            <Printer className="w-4 h-4 text-white" />
+          ) : isSuccess ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          ) : isError ? (
+            <ShieldCheck className="w-4 h-4 text-red-600" />
           ) : (
-            <Activity className="w-6 h-6 text-blue-500" />
+            <Activity className="w-4 h-4 text-slate-700" />
           )}
         </div>
 
-        {/* Content - Larger text */}
-        <div className="flex-1 min-w-0 pr-10">
-          {/* Title */}
-          <p className={cn(
-            "text-[15px] font-bold leading-tight",
-            isNewJob ? "text-blue-600" : "text-gray-900"
-          )}>
-            {isNewJob ? "📄 New Print Job Received" : notification.message}
+        <div className="flex-1 min-w-0 flex flex-col text-left">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <span className="text-[13px] font-black text-slate-900 leading-snug break-words">
+              {isNewJob ? "New Print Job Received" : notification.message}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full">
+              {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+          <p className="text-[12px] font-bold text-slate-800 leading-normal break-words">
+            {isNewJob ? notification.message.replace('Incoming Document: ', '') : notification.subMessage}
           </p>
-
-          {/* Message */}
-          <p className="text-[14px] text-gray-700 mt-2 leading-relaxed">
-            {isNewJob ? (
-              <>
-                <span className="font-semibold text-gray-900">{notification.message.replace('Incoming Document: ', '')}</span>
-                {notification.subMessage && (
-                  <span className="block text-gray-500 mt-1 text-[13px]">{notification.subMessage}</span>
-                )}
-              </>
-            ) : (
-              notification.subMessage
-            )}
-          </p>
-
-          {/* Timestamp */}
-          <p className="text-[11px] text-gray-400 mt-3 font-medium">
-            {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
+          {isNewJob && notification.subMessage && (
+            <p className="text-[11px] font-semibold text-slate-600 leading-normal break-words mt-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
+              {notification.subMessage}
+            </p>
+          )}
         </div>
 
-        {/* Close button */}
         <button
           onClick={() => onClose(notification.id)}
-          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-black hover:bg-slate-100 rounded-full transition-all shrink-0 -mt-1 -mr-1 cursor-pointer"
+          title="Dismiss"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      {/* Progress bar at bottom */}
       <motion.div
         initial={{ width: "100%" }}
         animate={{ width: "0%" }}
-        transition={{ duration: 6, ease: "linear" }}
+        transition={{ duration: 5, ease: "linear" }}
         className={cn(
-          "h-1.5",
-          isNewJob ? "bg-blue-500" : "bg-gray-300"
+          "absolute bottom-0 left-0 right-0 h-[3px]",
+          isNewJob ? "bg-gradient-to-r from-orange-500 to-amber-500" : isError ? "bg-red-500" : isSuccess ? "bg-emerald-500" : "bg-black"
         )}
       />
     </motion.div>

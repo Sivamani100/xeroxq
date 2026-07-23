@@ -95,18 +95,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Check if slug is already taken
-  const { data: existingSlug } = await supabaseAdmin
-    .from("shops")
-    .select("id")
-    .eq("slug", cleanSlug)
-    .single();
+  // ── Auto-generate unique slug (e.g. shopname, shopname1, shopname2...) ─────
+  let finalSlug = cleanSlug;
+  let counter = 1;
+  while (true) {
+    const { data: existingSlug } = await supabaseAdmin
+      .from("shops")
+      .select("id")
+      .eq("slug", finalSlug)
+      .single();
 
-  if (existingSlug) {
-    return NextResponse.json(
-      { error: "This shop link is already taken. Please choose another." },
-      { status: 409 }
-    );
+    if (!existingSlug) break;
+    finalSlug = `${cleanSlug}${counter}`;
+    counter++;
   }
 
   // ── 5. Create Shop ────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
     .insert({
       owner_id: user.id, // Always from JWT — never from request body
       name: cleanName,
-      slug: cleanSlug,
+      slug: finalSlug,
       upi_id: cleanUpiId,
       shop_location: cleanLocation,
       shop_lat: shop_lat,
@@ -123,14 +124,39 @@ export async function POST(req: NextRequest) {
       price_mono: 3,
       price_color: 10,
       is_open: true,
+      approval_status: "pending",
     })
     .select()
     .single();
 
   if (error) {
-    // Only log full error server-side
-    console.error("[create-shop] DB insert error:", error.message);
-    return NextResponse.json({ error: "Failed to create shop. Please try again." }, { status: 500 });
+    console.error("[create-shop] DB admin insert error:", error.message);
+    
+    // Fallback to authenticated user client (RLS policy allows auth user to insert shop)
+    const { data: userData, error: userError } = await supabaseUser
+      .from("shops")
+      .insert({
+        owner_id: user.id,
+        name: cleanName,
+        slug: finalSlug,
+        upi_id: cleanUpiId,
+        shop_location: cleanLocation,
+        shop_lat: shop_lat,
+        shop_lng: shop_lng,
+        price_mono: 3,
+        price_color: 10,
+        is_open: true,
+        approval_status: "pending",
+      })
+      .select()
+      .single();
+
+    if (userError) {
+      console.error("[create-shop] DB fallback insert error:", userError.message);
+      return NextResponse.json({ error: userError.message || "Failed to create shop. Please try again." }, { status: 500 });
+    }
+
+    return NextResponse.json({ shop: userData }, { status: 201 });
   }
 
   return NextResponse.json({ shop: data }, { status: 201 });

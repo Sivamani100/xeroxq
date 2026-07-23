@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     // ── 6. Fetch Shop ────────────────────────────────────────────────────────
     const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
-      .select("id, name, is_open, is_active")
+      .select("id, name, is_open, is_active, approval_status, total_files_processed")
       .ilike("slug", shopSlug)
       .single();
 
@@ -135,22 +135,6 @@ export async function POST(req: NextRequest) {
 
     // ── 7. Handle Media Ingestion (Async) ────────────────────────────────────
     if (numMedia > 0 && mediaUrl) {
-      // Validate MIME type
-      const ALLOWED_CONTENT_TYPES = new Set([
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ]);
-
-      if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-        return twimlResponse(`❌ Unsupported file type (${contentType}). Please send a PDF, Word document, Excel file, or image (JPG/PNG).`);
-      }
-
       const newToken = generateToken();
 
       const { data: jobData, error: jobError } = await supabaseAdmin
@@ -169,7 +153,7 @@ export async function POST(req: NextRequest) {
             _wa_content_type: contentType
           },
           shop_id: shop.id,
-          expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         })
         .select()
         .single();

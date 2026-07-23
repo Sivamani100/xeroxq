@@ -7,6 +7,7 @@ import {
   FileText, 
   Printer, 
   ShieldCheck, 
+  ShieldAlert,
   Clock, 
   ArrowRight, 
   Store, 
@@ -16,7 +17,9 @@ import {
   RefreshCw,
   History,
   Crop,
-  Palette
+  Palette,
+  User,
+  Phone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -65,6 +68,8 @@ interface Shop {
   feedback_enabled?: boolean;
   custom_feedback_enabled?: boolean;
   custom_feedback_title?: string;
+  total_files_processed?: number;
+  approval_status?: string;
 }
 
 interface FeedbackQuestion {
@@ -107,6 +112,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [jobStatus, setJobStatus] = useState<string>("pending");
   const [isDeleted, setIsDeleted] = useState(false);
+  const [deletionReason, setDeletionReason] = useState<'user' | 'policy' | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackQuestions, setFeedbackQuestions] = useState<FeedbackQuestion[]>([]);
@@ -169,20 +175,37 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     const fetchInitialStatus = async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('status, is_deleted_by_user')
+        .select('status, is_deleted_by_user, is_auto_deleted, file_path, expires_at, created_at')
         .eq('token', token)
         .eq('shop_id', shop.id)
-        .single();
+        .maybeSingle();
       
-      if (data && !error) {
-        setJobStatus(data.status);
-        if (data.is_deleted_by_user) {
+      if (!data || error) {
+        setDeletionReason('policy');
+        setIsDeleted(true);
+      } else if (data.is_deleted_by_user) {
+        setDeletionReason('user');
+        setIsDeleted(true);
+      } else {
+        const nowMs = Date.now();
+        const createdMs = new Date(data.created_at).getTime();
+        const expiresMs = data.expires_at ? new Date(data.expires_at).getTime() : createdMs + 5 * 60 * 1000;
+        
+        if (data.is_auto_deleted || data.file_path === null || expiresMs <= nowMs || (nowMs - createdMs >= 5 * 60 * 1000)) {
+          setDeletionReason('policy');
           setIsDeleted(true);
+        } else {
+          setJobStatus(data.status);
         }
       }
     };
     
     fetchInitialStatus();
+
+    // 3-second background polling to auto-detect 5-minute expiration
+    const interval = setInterval(() => {
+      fetchInitialStatus();
+    }, 3000);
 
     const channel = supabase
       .channel(`job-status-${token}`)
@@ -191,6 +214,18 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         { event: "UPDATE", schema: "public", table: "jobs", filter: `token=eq.${token}` },
         (payload) => {
           const newStatus = payload.new.status;
+          const isDeletedByUser = payload.new.is_deleted_by_user;
+          const isAutoDeleted = payload.new.is_auto_deleted;
+          const isFilePathNull = payload.new.file_path === null;
+          
+          if (isDeletedByUser) {
+            setDeletionReason('user');
+            setIsDeleted(true);
+          } else if (isAutoDeleted || isFilePathNull) {
+            setDeletionReason('policy');
+            setIsDeleted(true);
+          }
+
           setJobStatus(newStatus);
           
           // High-fidelity intimation when print is ready
@@ -206,9 +241,19 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "jobs", filter: `token=eq.${token}` },
+        () => {
+          setIsDeleted(true);
+        }
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [token, shop]);
 
   // ── File Validation Constants ─────────────────────────────────────────────
@@ -243,28 +288,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
 
     // ── Extension Check ───────────────────────────────────────────────────
     const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
-    if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
-      alert(`Unsupported file type ".${ext}".\n\nAllowed types: PDF, Word (DOCX/DOC), Excel (XLSX/XLS), Images (JPG, PNG, WebP).`);
+    if (!ext) {
+      alert("Please select a valid file.");
       e.target.value = "";
       return;
     }
 
-    // ── MIME Type Check ───────────────────────────────────────────────────
-    const mimeType = selectedFile.type;
-    const allowedExtensionsForMime = ALLOWED_FILE_TYPES[mimeType];
-    
-    // If MIME is not in our allowlist (and not octet-stream which we handle separately), reject
-    if (!allowedExtensionsForMime && mimeType !== "") {
-      // Double check extension since MIME can be unreliable
-      if (!ALL_ALLOWED_EXTENSIONS.has(ext)) {
-        alert(`This file type is not supported for printing.\n\nAllowed types: PDF, Word, Excel, JPG, PNG.`);
-        e.target.value = "";
-        return;
-      }
-    }
-
     // ── Accept File ───────────────────────────────────────────────────────
-    if (ext === "docx" || ext === "doc") {
+    if (["docx", "doc", "pptx", "ppt", "xlsx", "xls"].includes(ext)) {
       setDocxFileToProcess(selectedFile);
       setFile(selectedFile);
     } else {
@@ -348,7 +379,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     if (!file && !docxFileToProcess) return;
     const activeFile = forceFileType === 'raw' ? docxFileToProcess : (docxFileToProcess || file);
     if (!activeFile || !shop) return;
-    
+
     const fileExt = activeFile.name.split(".").pop()?.toLowerCase();
     const needsConversion = forceFileType === 'pdf' && ["docx", "doc"].includes(fileExt || "");
     
@@ -431,7 +462,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           is_paid: location === 'home', // For now, assume payment is done if they complete the flow
           customer_phone: customerPhone,
           shop_id: shop.id,
-          expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         }).select("id").single();
 
         if (!error) {
@@ -539,13 +570,8 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       }
       
       if (jobData.is_deleted_by_user) {
-        alert('File has already been deleted.');
         setIsDeleted(true);
-        return;
-      }
-      
-      if (jobData.status === 'printed') {
-        alert('Cannot delete - the shopkeeper has already completed this job.');
+        setIsDeleting(false);
         return;
       }
       
@@ -575,6 +601,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         throw updateError;
       }
       
+      setDeletionReason('user');
       setIsDeleted(true);
       
       // Update local history to reflect deletion
@@ -843,7 +870,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-50 w-full flex justify-center mb-0 py-2 bg-[#FDFDFD]/80 backdrop-blur-md"
+        className="sticky top-0 z-50 w-full flex flex-col items-center mb-0 py-2 bg-[#FDFDFD]/80 backdrop-blur-md"
       >
         <div className="w-full max-w-[800px] bg-white/80 backdrop-blur-xl border border-black/5 rounded-[16px] px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
@@ -860,8 +887,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
+            {shop.approval_status !== "approved" && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Trial ({shop.total_files_processed || 0}/3)
+              </span>
+            )}
             <Sheet>
               <SheetTrigger asChild>
                 <button className="h-10 w-10 flex items-center justify-center rounded-[5.57px] border border-black/5 bg-white text-auth-slate-50 hover:text-black hover:bg-black/5 transition-all active:scale-95 shadow-sm cursor-pointer">
@@ -966,14 +999,14 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
           >
 <h2 className="text-[28px] font-black tracking-tight text-black leading-none mb-3 uppercase">File Sent!</h2>
             <div className="flex items-center justify-center gap-2 mb-8">
-               <div className={cn("w-2 h-2 rounded-full", jobStatus === 'printed' ? "bg-green-500" : "bg-orange-500 animate-pulse")} />
+               <div className={cn("w-2 h-2 rounded-full", isDeleted ? "bg-red-500" : jobStatus === 'printed' ? "bg-green-500" : "bg-orange-500 animate-pulse")} />
                <span className="text-[11px] font-black tracking-[0.15em] uppercase text-auth-slate-50">
-                  Status: {jobStatus === 'printed' ? "Printed" : "Waiting for Shop"}
+                  Status: {isDeleted ? "Deleted" : jobStatus === 'printed' ? "Printed" : "Waiting for Shop"}
                </span>
             </div>
 
             <AnimatePresence>
-              {jobStatus === 'printed' && (
+              {jobStatus === 'printed' && !isDeleted && (
                 <motion.div 
                   initial={{ opacity: 0, y: -20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1001,43 +1034,64 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                </span>
             </div>
 
-            {/* Delete File Button - Only show if not deleted and not printed */}
-            {!isDeleted && jobStatus !== 'printed' && (
+            {/* Delete File Button - Always show until file is deleted */}
+            {!isDeleted ? (
               <div className="mb-6">
                 <button
                   onClick={handleDeleteFile}
                   disabled={isDeleting}
-                  className="flex items-center justify-center gap-2 w-full h-12 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 font-bold text-[13px] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center justify-center gap-2 w-full h-12 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 font-bold text-[13px] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-[0.98]"
                 >
                   {isDeleting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Deleting...</span>
+                      <span>Deleting File...</span>
                     </>
                   ) : (
                     <>
                       <Trash2 className="w-4 h-4" />
-                      <span>Delete My File</span>
+                      <span>Delete Uploaded File</span>
                     </>
                   )}
                 </button>
                 <p className="text-[10px] text-auth-slate-30 mt-2 text-center">
-                  Once deleted, the shopkeeper cannot download this file.
+                  Once deleted, your uploaded file is permanently purged from cloud storage.
                 </p>
               </div>
-            )}
-
-            {/* Deleted Status Message */}
-            {isDeleted && (
+            ) : deletionReason === 'user' ? (
+              /* User Manually Deleted Message */
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-4 bg-red-100 border border-red-200 rounded-2xl text-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 p-5 bg-red-50 border border-red-200 rounded-2xl text-center flex flex-col items-center gap-2 shadow-sm"
               >
-                <Trash2 className="w-5 h-5 text-red-600 mx-auto mb-2" />
-                <p className="text-[13px] font-bold text-red-700">File Deleted</p>
-                <p className="text-[11px] text-red-600 mt-1">
-                  Your file has been permanently removed from our system.
+                <div className="flex items-center justify-center gap-2 text-red-600 font-black text-[13px] uppercase tracking-wider">
+                  <Trash2 className="w-4 h-4" />
+                  <span>File Deleted By You</span>
+                </div>
+                <p className="text-[13px] font-extrabold text-red-700 leading-snug">
+                  You have manually deleted your uploaded file.
+                </p>
+                <p className="text-[11px] font-medium text-red-600/80">
+                  Your document was manually deleted and permanently purged from cloud storage.
+                </p>
+              </motion.div>
+            ) : (
+              /* Auto Deleted By 5-Minute Privacy Policy Message */
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 p-5 bg-red-50 border border-red-200 rounded-2xl text-center flex flex-col items-center gap-2 shadow-sm"
+              >
+                <div className="flex items-center justify-center gap-2 text-red-600 font-black text-[13px] uppercase tracking-wider">
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>File Deleted</span>
+                </div>
+                <p className="text-[13px] font-extrabold text-red-700 leading-snug">
+                  Due to software policies, we deleted your file.
+                </p>
+                <p className="text-[11px] font-medium text-red-600/80">
+                  Your uploaded document has been automatically purged from cloud storage after 5 minutes for privacy protection.
                 </p>
               </motion.div>
             )}
@@ -1203,7 +1257,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     </motion.div>
                     <div className="text-center relative z-10">
                        <p className="text-[20px] font-black text-black tracking-tight">Upload Document</p>
-                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: Any Format</p>
+                       <p className="text-[11px] font-black tracking-[0.1em] text-auth-slate-30 uppercase mt-2">Supported Files: All Formats (PDF, PPTX, Word, Excel, Images, CAD & More)</p>
                        {shop.accept_preorders && (
                          <div className="mt-4 flex items-center justify-center gap-2">
                            <Badge variant="outline" className="bg-black/5 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">
@@ -1225,18 +1279,27 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                    className="flex flex-col gap-8 p-4 md:p-2"
                  >
                     {shop.require_customer_name !== false && (
-                      <div className="flex flex-col gap-5">
-                         <div className="flex items-center justify-between ml-1">
-                            <label className="text-[11px] font-black tracking-[0.2em] text-auth-slate-50 uppercase">Your Name</label>
-                            {customerName && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase tracking-widest animate-fade-in">Valid</span>}
+                      <div className="flex flex-col gap-2 bg-[#F8FAFC] p-4 rounded-2xl border-2 border-slate-200 focus-within:border-black transition-all">
+                         <div className="flex items-center justify-between">
+                            <label className="text-[12px] font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
+                               <User className="w-3.5 h-3.5 text-black" />
+                               Your Name <span className="text-red-500">*</span>
+                            </label>
+                            {customerName ? (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Filled ✓</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Required for Queue</span>
+                            )}
                          </div>
-                         <input 
-                            type="text" 
-                            placeholder="Enter your name..."
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-2xl focus:bg-white focus:shadow-xl focus:border-black/10 transition-all outline-none"
-                         />
+                         <div className="relative flex items-center">
+                            <input 
+                               type="text" 
+                               placeholder="e.g. Rahul Sharma"
+                               value={customerName}
+                               onChange={(e) => setCustomerName(e.target.value)}
+                               className="w-full h-12 px-4 text-[15px] font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-black focus:ring-4 focus:ring-black/10 transition-all outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm"
+                            />
+                         </div>
                       </div>
                     )}
 
@@ -1339,14 +1402,24 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                     </div>
 
                     {location === 'home' && (
-                      <div className="flex flex-col gap-4 mt-2">
-                        <label className="text-[11px] font-black tracking-[0.2em] text-auth-slate-50 uppercase ml-1">Your Mobile Number</label>
+                      <div className="flex flex-col gap-2 bg-[#F8FAFC] p-4 rounded-2xl border-2 border-slate-200 focus-within:border-black transition-all mt-2">
+                        <div className="flex items-center justify-between">
+                           <label className="text-[12px] font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
+                              <Phone className="w-3.5 h-3.5 text-black" />
+                              Your Mobile Number <span className="text-red-500">*</span>
+                           </label>
+                           {customerPhone ? (
+                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Filled ✓</span>
+                           ) : (
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">For Order Updates</span>
+                           )}
+                        </div>
                         <input 
                           type="tel" 
-                          placeholder="+91 XXXXX XXXXX"
+                          placeholder="e.g. +91 98765 43210"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full h-14 px-6 text-[16px] font-bold text-black bg-[#F8F8F8] border border-black/5 rounded-2xl outline-none focus:bg-white transition-all"
+                          className="w-full h-12 px-4 text-[15px] font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-black focus:ring-4 focus:ring-black/10 transition-all outline-none placeholder:text-slate-400 placeholder:font-medium shadow-sm"
                         />
                       </div>
                     )}

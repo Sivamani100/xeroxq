@@ -11,7 +11,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(req: NextRequest) {
   // ── 1. Auth gate ────────────────────────────────────────────────────────────
-  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL;
+  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
   const authHeader = req.headers.get("Authorization");
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const token = authHeader.slice(7);
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
 
-  if (!user || (ceoEmail && user.email !== ceoEmail)) {
+  if (!user || (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -37,10 +37,12 @@ export async function GET(req: NextRequest) {
     careersResult,
     newsResult,
     securityResult,
-    settingsResult
+    settingsResult,
+    storageAnalyticsResult,
+    storageLogsResult
   ] = await Promise.all([
     supabaseAdmin.from("jobs").select("id, shop_id, status"),
-    supabaseAdmin.from("shops").select("id, name, slug, upi_id, is_open, price_mono, price_color, created_at, total_files_processed").order("created_at", { ascending: false }),
+    supabaseAdmin.from("shops").select("id, name, slug, upi_id, is_open, price_mono, price_color, created_at, total_files_processed, approval_status").order("created_at", { ascending: false }),
     supabaseAdmin.from("contact_submissions").select("*").order("created_at", { ascending: false }),
     supabaseAdmin.from("newsletter_subs").select("*").order("created_at", { ascending: false }),
     supabaseAdmin.from("blogs").select("*").order("created_at", { ascending: false }),
@@ -48,7 +50,9 @@ export async function GET(req: NextRequest) {
     supabaseAdmin.from("job_applications").select("*").order("created_at", { ascending: false }),
     supabaseAdmin.from("platform_news").select("*").order("created_at", { ascending: false }),
     supabaseAdmin.from("security_reports").select("*").order("created_at", { ascending: false }),
-    supabaseAdmin.from("platform_settings").select("*")
+    supabaseAdmin.from("platform_settings").select("*"),
+    supabaseAdmin.rpc("get_storage_analytics"),
+    supabaseAdmin.from("jobs").select("id, token, customer_name, file_name, file_path, is_deleted_by_user, is_auto_deleted, created_at, deleted_at, status, shop_id").order("created_at", { ascending: false }).limit(100)
   ]);
 
   if (jobsResult.error) console.error("[Stats API] jobs error:", jobsResult.error);
@@ -61,6 +65,8 @@ export async function GET(req: NextRequest) {
   if (newsResult.error) console.error("[Stats API] news error:", newsResult.error);
   if (securityResult.error) console.error("[Stats API] security error:", securityResult.error);
   if (settingsResult.error) console.error("[Stats API] settings error:", settingsResult.error);
+  if (storageAnalyticsResult.error) console.error("[Stats API] storageAnalytics error:", storageAnalyticsResult.error);
+  if (storageLogsResult.error) console.error("[Stats API] storageLogs error:", storageLogsResult.error);
 
   const jobs = jobsResult.data ?? [];
   console.log("[Stats API] DB Check - Partners Count:", (partnersResult.data || []).length);
@@ -100,6 +106,7 @@ export async function GET(req: NextRequest) {
       created_at: shop.created_at,
       total_files_processed: billableFiles,
       pending_jobs: metrics.pending,
+      approval_status: shop.approval_status || "pending",
     };
   });
 
@@ -114,6 +121,8 @@ export async function GET(req: NextRequest) {
     news: newsResult.data || [],
     security: securityResult.data || [],
     settings: settingsResult.data || [],
+    storageAnalytics: (storageAnalyticsResult.data as any)?.[0] ?? null,
+    storageLogs: storageLogsResult.data || [],
     config: { 
       platformFee: CONFIG.BILLING.PLATFORM_FEE_PER_FILE 
     } 
@@ -122,7 +131,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth gate (CEO Only) ──────────────────────────────────────────────────
-  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL;
+  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
   const authHeader = req.headers.get("Authorization");
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -132,7 +141,7 @@ export async function POST(req: NextRequest) {
   const token = authHeader.slice(7);
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
 
-  if (!user || (ceoEmail && user.email !== ceoEmail)) {
+  if (!user || (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -140,7 +149,12 @@ export async function POST(req: NextRequest) {
   try {
     const { action, table, id, payload } = await req.json();
 
-    if (!action || !table || !id) {
+    if (action === 'purge_storage_now') {
+      const purgeRes = await supabaseAdmin.rpc("purge_storage_files");
+      return NextResponse.json({ success: true, purged: purgeRes.data });
+    }
+
+    if (!action || (!table && action !== 'purge_storage_now') || (!id && action !== 'purge_storage_now')) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
@@ -149,6 +163,24 @@ export async function POST(req: NextRequest) {
     if (action === 'delete') {
       result = await supabaseAdmin.from(table).delete().eq('id', id);
     } 
+    else if (action === 'approve_shop' || (action === 'approve' && table === 'shops')) {
+        const updateRes = await supabaseAdmin.from("shops").update({ approval_status: 'approved' }).eq('id', id).select();
+        if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
+          const rpcRes = await supabaseAdmin.rpc("update_shop_approval_status", { target_shop_id: id, new_status: 'approved' });
+          if (rpcRes.error) {
+            const userSupabase = createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+              { global: { headers: { Authorization: `Bearer ${token}` } } }
+            );
+            result = await userSupabase.from("shops").update({ approval_status: 'approved' }).eq('id', id).select();
+          } else {
+            result = rpcRes;
+          }
+        } else {
+          result = updateRes;
+        }
+    }
     else if (action === 'approve') {
       result = await supabaseAdmin.from(table).update({ status: 'approved' }).eq('id', id);
     } 
@@ -170,13 +202,24 @@ export async function POST(req: NextRequest) {
         const { data: shop } = await supabaseAdmin.from("shops").select("is_open").eq("id", id).single();
         result = await supabaseAdmin.from("shops").update({ is_open: !shop?.is_open }).eq("id", id);
     }
+    else if (action === 'reject_shop') {
+        const updateRes = await supabaseAdmin.from("shops").update({ approval_status: 'rejected' }).eq('id', id).select();
+        if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
+          const rpcRes = await supabaseAdmin.rpc("update_shop_approval_status", { target_shop_id: id, new_status: 'rejected' });
+          result = rpcRes.error ? updateRes : rpcRes;
+        } else {
+          result = updateRes;
+        }
+    }
 
     if (result?.error) {
+      console.error("[Stats API POST error]", result.error);
       return NextResponse.json({ error: result.error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err: any) {
+    console.error("[Stats API POST exception]", err);
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
   }
 }
