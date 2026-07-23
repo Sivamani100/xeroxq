@@ -87,7 +87,7 @@ export default function PartnersPage() {
       });
 
       if (error) throw error;
-      alert("Mercury Protocol: Partnership application dispatched. Our command center will review your credentials within 48H.");
+      alert("XeroxQ: Partnership application dispatched. Our command center will review your credentials within 48H.");
       (e.target as HTMLFormElement).reset();
     } catch (err) {
       console.error("Partnership Error:", err);

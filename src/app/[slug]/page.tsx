@@ -62,6 +62,7 @@ interface Shop {
   require_customer_name?: boolean;
   show_copies?: boolean;
   show_color_mode?: boolean;
+  show_duplex?: boolean;
   generate_token?: boolean;
   accept_preorders?: boolean;
   contact_number?: string;
@@ -376,18 +377,20 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     // Images are always 1 page — no scanning needed
     if (type.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) return 1;
     
-    // PDF detection — read only first 8KB + last 4KB (fast)
+    // PDF detection — read full file and find the largest /Count (root page tree)
     if (type === "application/pdf" || name.endsWith(".pdf")) {
       try {
         const buffer = await fileToDetect.arrayBuffer();
-        const decoder = new TextDecoder();
-        const head = decoder.decode(buffer.slice(0, 8000));
-        const tail = decoder.decode(buffer.slice(Math.max(0, buffer.byteLength - 4000)));
-        const combined = head + tail;
-        const countMatch = combined.match(/\/Count\s+(\d+)/);
-        if (countMatch) return parseInt(countMatch[1]);
-        const typePageMatch = combined.match(/\/Type\s*\/Page\b/g);
-        if (typePageMatch) return typePageMatch.length;
+        const text = new TextDecoder("latin1").decode(buffer);
+        // Find ALL /Count occurrences — the root Pages node has the largest value
+        const matches = [...text.matchAll(/\/Count\s+(\d+)/g)];
+        if (matches.length > 0) {
+          const counts = matches.map(m => parseInt(m[1]));
+          return Math.max(...counts);
+        }
+        // Fallback: count /Type /Page entries
+        const pageMatches = text.match(/\/Type\s*\/Page\b/g);
+        if (pageMatches) return pageMatches.length;
       } catch (e) { /* silent */ }
     }
 
@@ -1088,7 +1091,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   )}
                 </button>
                 <p className="text-[10px] text-auth-slate-30 mt-2 text-center">
-                  Once deleted, your uploaded {batchTokens.length > 1 ? "files are" : "file is"} permanently purged from cloud storage.
+                  Once deleted, your uploaded {batchTokens.length > 1 ? "files are" : "file is"} permanently deleted from cloud storage.
                 </p>
               </div>
             ) : deletionReason === 'user' ? (
@@ -1106,7 +1109,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   You have manually deleted your uploaded {batchTokens.length > 1 ? "files" : "file"}.
                 </p>
                 <p className="text-[11px] font-medium text-red-600/80">
-                  Your document{batchTokens.length > 1 ? "s were" : " was"} manually deleted and permanently purged from cloud storage.
+                  Your document{batchTokens.length > 1 ? "s were" : " was"} manually deleted and permanently deleted from cloud storage.
                 </p>
               </motion.div>
             ) : (
@@ -1124,7 +1127,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                   Due to software policies, we deleted your file.
                 </p>
                 <p className="text-[11px] font-medium text-red-600/80">
-                  Your uploaded document has been automatically purged from cloud storage after 5 minutes for privacy protection.
+                  Your uploaded document has been automatically deleted from cloud storage after 5 minutes for privacy protection.
                 </p>
               </motion.div>
             )}
@@ -1200,7 +1203,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                  className="flex items-center justify-center gap-3 mb-4"
                >
                  <Zap className="w-5 h-5 text-black" />
-                 <span className="text-[11px] font-black tracking-[0.25em] text-auth-slate-50 uppercase">Mercury Print Protocol</span>
+                 <span className="text-[11px] font-black tracking-[0.25em] text-auth-slate-50 uppercase">XeroxQ Instant Print</span>
                </motion.div>
                <h2 className="text-[40px] font-black tracking-tight text-auth-slate-90 leading-[0.9] mb-4">
                   Send Document
@@ -1469,25 +1472,27 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
                       )}
 
                       {/* 3. Side Preference Row */}
-                      <div className="hidden flex flex-col gap-3">
-                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-auth-slate-50 ml-1">Side Preference</span>
-                         <button 
-                           type="button"
-                           onClick={() => setPreferences({ ...preferences, doubleSided: !preferences.doubleSided })}
-                           className={cn(
-                             "flex items-center justify-between px-6 h-14 rounded-[14px] border transition-all",
-                             preferences.doubleSided ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-[#F8F8F8] border-black/5 text-black"
-                           )}
-                         >
-                           <div className="flex items-center gap-3">
-                             <FileText className={cn("w-4 h-4", preferences.doubleSided ? "text-white" : "text-black/40")} />
-                             <span className="text-[14px] font-black uppercase">{preferences.doubleSided ? "Double Sided Print" : "Single Sided Print"}</span>
-                           </div>
-                           <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", preferences.doubleSided ? "border-white bg-white" : "border-black/10")}>
-                             {preferences.doubleSided && <CheckCircle2 className="w-3.5 h-3.5 text-black" />}
-                           </div>
-                         </button>
-                      </div>
+                      {shop.show_duplex !== false && (
+                        <div className="flex flex-col gap-3">
+                           <span className="text-[11px] font-black uppercase tracking-[0.2em] text-auth-slate-50 ml-1">Print Side</span>
+                           <button 
+                             type="button"
+                             onClick={() => setPreferences({ ...preferences, doubleSided: !preferences.doubleSided })}
+                             className={cn(
+                               "flex items-center justify-between px-6 h-14 rounded-[14px] border transition-all",
+                               preferences.doubleSided ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-[#F8F8F8] border-black/5 text-black"
+                             )}
+                           >
+                             <div className="flex items-center gap-3">
+                               <FileText className={cn("w-4 h-4", preferences.doubleSided ? "text-white" : "text-black/40")} />
+                               <span className="text-[14px] font-black uppercase">{preferences.doubleSided ? "Double Sided Print" : "Single Sided Print"}</span>
+                             </div>
+                             <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", preferences.doubleSided ? "border-white bg-white" : "border-black/10")}>
+                               {preferences.doubleSided && <CheckCircle2 className="w-3.5 h-3.5 text-black" />}
+                             </div>
+                           </button>
+                        </div>
+                      )}
                     </div>
 
                     {location === 'home' && (

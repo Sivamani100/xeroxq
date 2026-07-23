@@ -232,7 +232,7 @@ export default function HomePageClient() {
                     });
 
                     if (error) throw error;
-                    alert("Mercury Protocol: Shop registration request dispatched successfully! Our team will reach out soon.");
+                    alert("XeroxQ: Shop registration request dispatched successfully! Our team will reach out soon.");
                     (e.target as HTMLFormElement).reset();
                   } catch (err) {
                     console.error("Submission Failure:", err);

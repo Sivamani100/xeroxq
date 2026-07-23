@@ -128,7 +128,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
                 </motion.button>
 
                 <p className="mt-12 text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em]">
-                   Powered by Mercury Protocol v2.4
+                   Powered by XeroxQ Direct Print
                 </p>
              </div>
           </motion.div>

@@ -118,7 +118,7 @@ export function SiteFooter() {
                   try {
                     const { error } = await supabase.from("newsletter_subs").insert({ email });
                     if (error) throw error;
-                    alert("Mercury Protocol: Registration successful! Welcome to the network.");
+                    alert("XeroxQ: Registration successful! Welcome to the network.");
                     (e.target as HTMLFormElement).reset();
                   } catch (err) {
                     console.error("Newsletter Failure:", err);

@@ -1820,10 +1820,10 @@ export default function PlatformAdminDashboard() {
                         });
                         if (res.ok) {
                           await fetchData();
-                          alert("Storage purge completed successfully!");
+                          alert("Storage deletion completed successfully!");
                         }
                       } catch (err) {
-                        alert("Purge failed.");
+                        alert("Deletion failed.");
                       } finally {
                         setIsPurgingStorage(false);
                       }
@@ -1832,7 +1832,7 @@ export default function PlatformAdminDashboard() {
                     className="h-11 px-5 bg-red-600 hover:bg-red-700 text-white font-black text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     <Trash2 className={`w-4 h-4 ${isPurgingStorage ? "animate-spin" : ""}`} />
-                    <span>{isPurgingStorage ? "Purging..." : "Force Purge Storage Now"}</span>
+                    <span>{isPurgingStorage ? "Purging..." : "Force Delete Storage Now"}</span>
                   </button>
                 </div>
               </div>
@@ -1897,7 +1897,7 @@ export default function PlatformAdminDashboard() {
                 <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">5-Min Privacy Purged</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">5-Min Privacy Deleted</span>
                       <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center">
                         <ShieldAlert className="w-4 h-4 text-purple-600" />
                       </div>
@@ -1944,7 +1944,7 @@ export default function PlatformAdminDashboard() {
               <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F5F9]">
                   <div>
-                    <h3 className="text-base font-black text-black uppercase tracking-tight">Recent Storage Activity & Purge Logs</h3>
+                    <h3 className="text-base font-black text-black uppercase tracking-tight">Recent Storage Activity & Deletion Logs</h3>
                     <p className="text-[12px] font-medium text-auth-slate-50">Real-time database records and file storage status across all print queues</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2001,7 +2001,7 @@ export default function PlatformAdminDashboard() {
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                                  <ShieldAlert className="w-3 h-3" /> Purged (5-Min)
+                                  <ShieldAlert className="w-3 h-3" /> Deleted (5-Min)
                                 </span>
                               )}
                             </td>

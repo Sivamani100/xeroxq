@@ -88,6 +88,7 @@ interface Shop {
   require_customer_name?: boolean;
   show_copies?: boolean;
   show_color_mode?: boolean;
+  show_duplex?: boolean;
   generate_token?: boolean;
   accept_preorders?: boolean;
   contact_number?: string;
@@ -574,7 +575,7 @@ export default function AdminDashboard() {
       // Try explicit column select first (preferred for type safety)
       let { data: shopData, error: shopError } = await supabase
         .from("shops")
-        .select("id, name, slug, upi_id, shop_location, shop_lat, shop_lng, price_mono, price_color, is_open, require_customer_name, show_copies, show_color_mode, generate_token, accept_preorders, contact_number, feedback_enabled, custom_feedback_enabled, custom_feedback_title, total_files_processed, approval_status")
+        .select("id, name, slug, upi_id, shop_location, shop_lat, shop_lng, price_mono, price_color, is_open, require_customer_name, show_copies, show_color_mode, show_duplex, generate_token, accept_preorders, contact_number, feedback_enabled, custom_feedback_enabled, custom_feedback_title, total_files_processed, approval_status")
         .eq("owner_id", user.id)
         .single();
 
@@ -1029,7 +1030,7 @@ export default function AdminDashboard() {
 
       if (error) {
         if (error.message?.includes("Object not found") || (error as { status?: number }).status === 404) {
-          if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Purge stale database record too?")) {
+          if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Delete stale database record too?")) {
             handleDeleteJob(job);
           }
           return;
@@ -1092,7 +1093,7 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `purge-${job.id}`,
         type: 'success',
-        message: "Cache Purged Successful",
+        message: "Data Deleted Successfully",
         subMessage: `Job ${job.token} data securely wiped.`,
         timestamp: new Date()
       }, ...prev]);
@@ -1102,7 +1103,7 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `purge-err-${Date.now()}`,
         type: 'error',
-        message: "Purge Failed",
+        message: "Delete Failed",
         subMessage: e.message,
         timestamp: new Date()
       }, ...prev]);
@@ -1982,7 +1983,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1.5 mb-0">
                             <Zap className="w-2.5 h-2.5 text-black animate-pulse" />
-                            <span className="text-[9px] font-black tracking-[0.2em] text-black/40 uppercase">Terminal Calibration Protocol</span>
+                            
                           </div>
                           <DialogTitle className="text-[20px] font-black tracking-tighter text-black uppercase leading-none">Shop Settings</DialogTitle>
                         </div>
@@ -1996,12 +1997,12 @@ export default function AdminDashboard() {
                           <div className="w-5 h-5 bg-black rounded-[4px] flex items-center justify-center">
                             <Activity className="w-2.5 h-2.5 text-white" />
                           </div>
-                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Terminal Parameters</h3>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Shop & Printing Settings</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] relative transition-all hover:border-black/5">
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Merchant Identity (UPI)</label>
+                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shopowner UPI ID</label>
                             <input
                               type="text"
                               value={shop?.upi_id || ""}
@@ -2058,7 +2059,7 @@ export default function AdminDashboard() {
                             />
                           </div>
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Network Status</label>
+                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Status</label>
                             <button
                               type="button"
                               onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
@@ -2091,7 +2092,7 @@ export default function AdminDashboard() {
                           <div className="w-5 h-5 bg-black rounded-[4px] flex items-center justify-center">
                             <Palette className="w-2.5 h-2.5 text-white" />
                           </div>
-                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Interaction Logic</h3>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Customer Interaction Settings</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 bg-white p-6 rounded-[5.57px] border border-[#E2E8F0] relative">
                           <div className="absolute inset-3 border border-dashed border-black/[0.03] rounded-[5.57px] pointer-events-none" />
@@ -2099,8 +2100,9 @@ export default function AdminDashboard() {
                           {[
                             { label: "Require Name", sub: "Identity validation", key: "require_customer_name" },
                             { label: "2-Digit Token", sub: "Access codes", key: "generate_token" },
-                            { label: "Copy Selector", sub: "Qty parameters", key: "show_copies" },
-                            { label: "Color Options", sub: "Profile toggles", key: "show_color_mode" },
+                            { label: "Copy Selector", sub: "Number of copies", key: "show_copies" },
+                            { label: "Color Options", sub: "B&W or Full Color", key: "show_color_mode" },
+                            { label: "Double-Sided Print", sub: "Both sides of paper", key: "show_duplex" },
                             { label: "Accept Pre-orders", sub: "Home/Work Service", key: "accept_preorders" }
                           ].map((toggle) => (
                             <div key={toggle.key} className="flex items-center justify-between relative z-10 group/item">
@@ -2128,11 +2130,11 @@ export default function AdminDashboard() {
 
                       {/* Section 3: Billing & System Reset (Combined Row) */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Billing Protocol */}
+                        {/* Amount & Billing */}
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Zap className="w-2.5 h-2.5 text-black" />
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.1em] text-black">Billing Protocol</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.1em] text-black">Amount & Billing</h3>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex flex-col gap-1 p-2.5 border border-[#E2E8F0] rounded-[5.57px] bg-white shadow-sm">
@@ -2178,7 +2180,7 @@ export default function AdminDashboard() {
                               <Trash2 className="w-3.5 h-3.5" /> Delete All Data
                             </button>
                           </div>
-                          <p className="text-[8px] text-red-900/30 font-bold uppercase tracking-tight text-center mt-1">Permanently purge all queue documents</p>
+                          <p className="text-[8px] text-red-900/30 font-bold uppercase tracking-tight text-center mt-1">Permanently delete all queue documents</p>
                         </div>
                       </div>
 
@@ -2706,7 +2708,7 @@ export default function AdminDashboard() {
                         </span>
                       ) : (job.is_auto_deleted || job.file_path === null) ? (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-full text-[10px] font-black text-purple-700 uppercase tracking-wider">
-                          <ShieldAlert className="w-3 h-3 text-purple-600" /> Purged (5-Min Policy)
+                          <ShieldAlert className="w-3 h-3 text-purple-600" /> Deleted (5-Min Policy)
                         </span>
                       ) : job.status === "printed" ? (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
@@ -2734,37 +2736,26 @@ export default function AdminDashboard() {
                     </span>
                   </div>
 
-                  {/* Row 3: Print detail tags (Conditional) */}
-                  {job.is_preorder ? (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-black uppercase tracking-tight",
-                          job.preferences.color 
-                            ? "bg-gradient-to-r from-[#FF512F] to-[#DD2476] text-white border-none shadow-sm" 
-                            : "bg-white border border-[#E2E8F0] text-black"
-                        )}>
-                          {job.preferences.color ? '🎨 COLOR' : '⬛ MONO'}
-                        </span>
-                        <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-black bg-white border border-[#E2E8F0] text-black uppercase tracking-tight">
-                          {job.preferences.doubleSided ? '📄 2-Sided' : '📄 1-Sided'}
-                        </span>
-                        <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-black bg-orange-50 border border-orange-100 text-orange-700 uppercase tracking-tight">
-                          📄 {job.page_count || 1} {(job.page_count || 1) === 1 ? 'PAGE' : 'PAGES'}
-                        </span>
+                  {/* Row 3: Print detail tags — always shown */}
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[11px] font-black uppercase tracking-[0.12em] leading-relaxed">
+                      <span className={job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}>
+                        {job.preferences?.color ? 'Color' : 'B&W'}
+                      </span>
+                      <span className="text-[#D1D9E0] mx-1.5">·</span>
+                      <span className="text-[#2563EB]">{job.preferences?.doubleSided ? '2-Sided' : '1-Sided'}</span>
+                      <span className="text-[#D1D9E0] mx-1.5">·</span>
+                      <span className="text-[#16A34A]">{job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? 'Copy' : 'Copies'}</span>
+                      <span className="text-[#D1D9E0] mx-1.5">·</span>
+                      <span className="text-[#7C3AED]">{job.page_count || 1} {(job.page_count || 1) === 1 ? 'Page' : 'Pages'}</span>
+                    </p>
+                    {job.is_preorder && job.customer_phone && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl mt-1">
+                        <Smartphone className="w-4 h-4 text-amber-600" />
+                        <span className="text-[14px] font-black text-black tracking-tight">{job.customer_phone}</span>
                       </div>
-                      {job.customer_phone && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl">
-                          <Smartphone className="w-4 h-4 text-amber-600" />
-                          <span className="text-[14px] font-black text-black tracking-tight">{job.customer_phone}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center h-6 px-2.5 rounded-md text-[10px] font-black bg-white border border-[#E2E8F0] text-black uppercase tracking-tight">Standard Print</span>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Row 4: Action buttons */}
                   <div className="flex items-center gap-2 pt-1 border-t border-[#F1F5F9]">
@@ -2802,7 +2793,7 @@ export default function AdminDashboard() {
                           ? "border-gray-200 text-gray-300 cursor-not-allowed"
                           : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
                       )}
-                      title={(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) ? "File deleted/purged" : "Download"}
+                      title={(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) ? "File deleted" : "Download"}
                     >
                       {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                       {job.status !== "printed" && "Download"}
@@ -2918,33 +2909,20 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
-                      {job.is_preorder ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span className={cn(
-                              "h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-black uppercase tracking-tight",
-                              job.preferences.color
-                                ? "bg-gradient-to-r from-[#FF512F] to-[#DD2476] text-white border-none shadow-sm"
-                                : "bg-white border border-[#E2E8F0] text-black"
-                            )}>
-                              {job.preferences.color ? '🎨 COLOR' : '⬛ MONO'}
-                            </span>
-                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-black bg-white border border-[#E2E8F0] text-black uppercase tracking-tight">
-                              {job.preferences.doubleSided ? '📄 2-SIDED' : '📄 1-SIDED'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-black bg-white border border-[#E2E8F0] text-black uppercase tracking-tight">
-                              {job.preferences.copies}X COPIES
-                            </span>
-                            <span className="h-6 px-2 rounded-[5.57px] flex items-center text-[10px] font-black bg-orange-50 border border-orange-100 text-orange-700 uppercase tracking-tight">
-                              {job.page_count || 1}P TOTAL
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-black text-black opacity-30 uppercase tracking-widest">Default Settings</span>
-                      )}
+                      <div className="flex flex-col items-center gap-0.5">
+                        <p className="text-[11px] font-black uppercase tracking-[0.12em]">
+                          <span className={job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}>
+                            {job.preferences?.color ? 'Color' : 'B&W'}
+                          </span>
+                          <span className="text-[#D1D9E0] mx-1">·</span>
+                          <span className="text-[#2563EB]">{job.preferences?.doubleSided ? '2-Sided' : '1-Sided'}</span>
+                        </p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.12em]">
+                          <span className="text-[#16A34A]">{job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? 'Copy' : 'Copies'}</span>
+                          <span className="text-[#D1D9E0] mx-1">·</span>
+                          <span className="text-[#7C3AED]">{job.page_count || 1}P</span>
+                        </p>
+                      </div>
                     </td>
                     <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
                       <span className="text-[11px] font-black text-red-600 uppercase tracking-[0.15em]">
@@ -3089,14 +3067,14 @@ export default function AdminDashboard() {
               {isDeleting ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                "Authorize Purge"
+                "Authorize Delete"
               )}
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* PURGED SIGNAL MODAL */}
+      {/* DELETED SIGNAL MODAL */}
       <Dialog open={!!purgedJob} onOpenChange={(open) => !open && setPurgedJob(null)}>
         <DialogContent className="max-w-[420px] p-8 border border-[#E2E8F0] bg-white rounded-[32px] shadow-2xl">
           <DialogHeader className="text-left mb-6">
