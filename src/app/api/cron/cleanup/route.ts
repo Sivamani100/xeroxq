@@ -53,7 +53,7 @@ async function handleCleanup(req: Request) {
       .from("jobs")
       .select("id, file_path")
       .not("file_path", "is", null)
-      .or(`created_at.lt.${thresholdISO},expires_at.lte.${nowISO}`);
+      .or(`created_at.lt.${thresholdISO}`);
 
     if (fetchErr) throw fetchErr;
 

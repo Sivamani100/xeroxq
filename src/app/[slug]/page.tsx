@@ -194,7 +194,7 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         const createdMs = new Date(data.created_at).getTime();
         const expiresMs = data.expires_at ? new Date(data.expires_at).getTime() : createdMs + 5 * 60 * 1000;
         
-        if (data.is_auto_deleted || data.file_path === null || expiresMs <= nowMs || (nowMs - createdMs >= 5 * 60 * 1000)) {
+        if (data.is_auto_deleted || (data.file_path === null && data.is_deleted_by_user) || (nowMs - createdMs >= 5 * 60 * 1000)) {
           setDeletionReason('policy');
           setIsDeleted(true);
         } else {

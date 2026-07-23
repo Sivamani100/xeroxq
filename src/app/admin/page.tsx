@@ -829,8 +829,7 @@ export default function AdminDashboard() {
       const hasStaleStorageFiles = newJobs.some(j => {
         if (!j.file_path) return false;
         const createdMs = new Date(j.created_at).getTime();
-        const expiresMs = j.expires_at ? new Date(j.expires_at).getTime() : createdMs + 5 * 60 * 1000;
-        return expiresMs <= nowMs || (nowMs - createdMs >= 5 * 60 * 1000);
+        return nowMs - createdMs >= 5 * 60 * 1000;
       });
 
       if (hasStaleStorageFiles) {
@@ -2707,7 +2706,7 @@ export default function AdminDashboard() {
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-[10px] font-black text-red-700 uppercase tracking-wider">
                           <Trash2 className="w-3 h-3" /> Deleted by User
                         </span>
-                      ) : (job.is_auto_deleted || job.file_path === null) ? (
+                      ) : (job.is_auto_deleted || (job.file_path === null && !job.is_deleted_by_user)) ? (
                         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-full text-[10px] font-black text-purple-700 uppercase tracking-wider">
                           <ShieldAlert className="w-3 h-3 text-purple-600" /> Deleted (5-Min Policy)
                         </span>
