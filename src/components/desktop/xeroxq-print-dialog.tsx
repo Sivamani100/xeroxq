@@ -73,7 +73,7 @@ export default function XeroxQPrintDialog({
 
   // STUDIO NEW FEATURES STATE
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
-  const [showMarginGuide, setShowMarginGuide] = useState(true);
+  const [showMarginGuide, setShowMarginGuide] = useState(false);
   const [showCenterGrid, setShowCenterGrid] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
@@ -821,14 +821,14 @@ export default function XeroxQPrintDialog({
           </div>
           
           <div className="flex items-center gap-2 pr-12 lg:pr-[50px]">
-             {/* Estimated Bill Header Badge */}
+             {/* Estimated Bill Header Badge & Shortcuts Button (HIDDEN PER USER REQUEST) */}
+             {/* 
              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[5.57px]">
                 <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="text-[11px] font-black text-black tabular-nums">₹{estimatedCost}</span>
                 <span className="text-[8px] font-bold text-[#7E8B9E] uppercase tracking-wider">Est. Bill</span>
              </div>
 
-             {/* Keyboard Shortcuts Trigger */}
              <button
                onClick={() => setShowShortcutsModal(true)}
                className="h-[36px] px-2.5 flex items-center gap-1 border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors rounded-[5.57px] shadow-sm cursor-pointer text-[10px] font-bold uppercase tracking-wider"
@@ -837,6 +837,7 @@ export default function XeroxQPrintDialog({
                 <HelpCircle className="w-[14px] h-[14px]" />
                 <span className="hidden sm:inline">Shortcuts</span>
              </button>
+             */}
           </div>
         </div>
       </div>
@@ -1016,7 +1017,8 @@ export default function XeroxQPrintDialog({
                 /* IMAGE LABORATORY SECTION */
                   <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300 pb-6">
                     
-                    {/* SMART ENHANCEMENT PRESETS */}
+                    {/* SMART ENHANCEMENT PRESETS (HIDDEN PER USER REQUEST) */}
+                    {/* 
                     <div className="space-y-3 bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-[5.57px] shadow-sm">
                        <div className="flex items-center justify-between">
                           <label className="text-[10px] font-bold text-black uppercase tracking-[0.1em] flex items-center gap-1.5">
@@ -1092,6 +1094,7 @@ export default function XeroxQPrintDialog({
                     </div>
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
+                    */}
 
                     {/* LAYOUT, PAPER SIZE & ORIENTATION CONTROLS */}
                     <div className="space-y-3">
@@ -1166,7 +1169,8 @@ export default function XeroxQPrintDialog({
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
 
-                    {/* DOCUMENT WATERMARK & STAMP ENGINE */}
+                    {/* DOCUMENT WATERMARK & STAMP ENGINE (HIDDEN PER USER REQUEST) */}
+                    {/* 
                     <div className="space-y-2.5">
                        <label className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] flex items-center justify-between">
                           <span className="flex items-center gap-1.5"><Stamp className="w-3.5 h-3.5 text-purple-600" /> Document Stamp Watermark</span>
@@ -1188,6 +1192,7 @@ export default function XeroxQPrintDialog({
                     </div>
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
+                    */}
 
                     {/* Brightness & Exposure */}
                     <div className="grid grid-cols-2 gap-4">
@@ -1258,9 +1263,10 @@ export default function XeroxQPrintDialog({
                        </div>
                     </div>
 
+                    {/* IMAGE SCALE-UP CONTROL (HIDDEN PER USER REQUEST) */}
+                    {/* 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
 
-                    {/* IMAGE SCALE-UP CONTROL */}
                     <div className="space-y-3 bg-gradient-to-br from-[#0F0F23] to-[#1a1a3e] border border-[#3568FF]/30 p-4 rounded-[5.57px] shadow-lg">
                        <div className="flex items-center justify-between">
                           <label className="text-[10px] font-bold text-white uppercase tracking-[0.1em] flex items-center gap-1.5">
@@ -1280,7 +1286,6 @@ export default function XeroxQPrintDialog({
                           </div>
                        </div>
 
-                       {/* Main Scale Slider */}
                        <div className="space-y-1">
                          <div className="relative">
                            <input
@@ -1311,7 +1316,6 @@ export default function XeroxQPrintDialog({
                          </div>
                        </div>
 
-                       {/* Quick Scale Preset Buttons */}
                        <div className="grid grid-cols-4 gap-1.5">
                          {[50, 75, 100, 125, 150, 200, 250, 300].map(pct => (
                            <button
@@ -1338,7 +1342,6 @@ export default function XeroxQPrintDialog({
                          ))}
                        </div>
 
-                       {/* Fill Page Button */}
                        <button
                          onClick={() => {
                            const sheetW = orientation === 'portrait' ? 595.27 : 841.88;
@@ -1360,6 +1363,7 @@ export default function XeroxQPrintDialog({
                     </div>
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
+                    */}
 
                     {/* Content Scaling (PDF) */}
                     <div className="space-y-3">
@@ -1373,9 +1377,10 @@ export default function XeroxQPrintDialog({
                        </div>
                     </div>
 
+                    {/* POSTER PRINTING & TILING ENGINE (HIDDEN PER USER REQUEST) */}
+                    {/* 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
 
-                    {/* POSTER PRINTING & TILING ENGINE */}
                     <div className="space-y-3 bg-gradient-to-br from-indigo-950 to-slate-900 border border-indigo-500/30 p-4 rounded-[5.57px] shadow-lg">
                        <div className="flex items-center justify-between">
                           <label className="text-[10px] font-bold text-white uppercase tracking-[0.1em] flex items-center gap-1.5">
@@ -1404,7 +1409,6 @@ export default function XeroxQPrintDialog({
                           ))}
                        </div>
 
-                       {/* Poster Fill Quick Presets */}
                        <div className="grid grid-cols-2 gap-1.5 pt-1">
                           <button
                             onClick={() => {
@@ -1438,6 +1442,7 @@ export default function XeroxQPrintDialog({
                     </div>
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
+                    */}
 
                     {/* Quick Transform Grid */}
                     <div className="grid grid-cols-2 gap-2">
@@ -1502,6 +1507,8 @@ export default function XeroxQPrintDialog({
            
            {/* Studio Top Control Overlay Bar */}
            <div className="absolute top-4 left-6 right-6 flex items-center justify-between z-[100] pointer-events-none">
+              {/* HIDDEN PER USER REQUEST: Portrait / Safety Margin / Center Grid Top Overlay Bar */}
+              {/* 
               <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-[#E2E8F0] p-1.5 rounded-[5.57px] shadow-sm pointer-events-auto">
                  <button
                    onClick={() => setOrientation(o => o === 'portrait' ? 'landscape' : 'portrait')}
@@ -1532,6 +1539,7 @@ export default function XeroxQPrintDialog({
                     <Grid className="w-3.5 h-3.5" /> Center Grid
                  </button>
               </div>
+              */}
 
               {appliedSettingsMessage && (
                 <div className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase tracking-wider rounded-[5.57px] shadow-lg animate-in fade-in slide-in-from-top duration-300 pointer-events-auto">
@@ -1579,7 +1587,8 @@ export default function XeroxQPrintDialog({
                                  height: `${getPaperDims(paperSize, orientation).h}px` 
                                }}
                              >
-                                {/* Watermark Stamp Overlay */}
+                                {/* Watermark Stamp Overlay (HIDDEN PER USER REQUEST) */}
+                                {/* 
                                 {watermarkText !== 'NONE' && (
                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 overflow-hidden">
                                       <span className="text-[36px] font-black text-red-500/20 uppercase tracking-[0.3em] rotate-[-35deg] border-4 border-dashed border-red-500/20 px-8 py-3 rounded-2xl select-none whitespace-nowrap">
@@ -1587,12 +1596,16 @@ export default function XeroxQPrintDialog({
                                       </span>
                                    </div>
                                 )}
-                                {/* Safety Margin Overlay Guide (5mm) */}
+                                */}
+
+                                {/* Safety Margin Overlay Guide (5mm) - HIDDEN PER USER REQUEST */}
+                                {/* 
                                 {showMarginGuide && (
                                   <div className="absolute inset-[14px] border border-dashed border-red-400/40 pointer-events-none z-30 flex items-start justify-end p-1">
                                      <span className="text-[7px] font-bold text-red-400/70 uppercase tracking-widest bg-white/80 px-1 rounded">5mm Printable Zone</span>
                                   </div>
                                 )}
+                                */}
 
                                 {/* Center Crosshair Grid Overlay */}
                                 {showCenterGrid && (
