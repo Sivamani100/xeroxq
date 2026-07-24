@@ -2654,7 +2654,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-6 flex flex-col overflow-y-auto scrollbar-thin">
+      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-3 flex flex-col overflow-y-auto scrollbar-thin">
 
         {/* ── EMPTY STATE ── */}
         {filteredJobs.length === 0 && (
@@ -2820,8 +2820,9 @@ export default function AdminDashboard() {
 
         {/* ── DESKTOP TABLE (shown at lg+) ── */}
         {filteredJobs.length > 0 && (
-          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden">
-            <div className="flex-1 min-w-full relative h-[600px]">
+          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden mb-2">
+            <div className="flex-1 min-w-full relative h-full min-h-[300px]">
+
               <TableVirtuoso
                 style={{ height: '100%' }}
                 data={filteredJobs}

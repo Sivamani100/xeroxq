@@ -36,6 +36,31 @@ if (!app.isPackaged) {
   app.setAsDefaultProtocolClient('xeroxq');
 }
 
+// ── Patch Windows registry to show "XeroxQ" instead of "Electron" ────────────
+// Chrome reads the (Default) value of HKCU\Software\Classes\xeroxq to build
+// the "Open X?" dialog title. Electron sets this to "Electron" (from its exe
+// ProductName). We override it immediately after registration.
+if (process.platform === 'win32') {
+  try {
+    const { execSync } = require('child_process');
+    // Set the root key default value — this is what Chrome uses as the app name
+    execSync('reg add "HKCU\\Software\\Classes\\xeroxq" /ve /d "XeroxQ" /f', {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    // Also set the friendly name sub-key used by some Windows dialogs
+    execSync('reg add "HKCU\\Software\\Classes\\xeroxq" /v "ApplicationName" /d "XeroxQ" /f', {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    console.log('[XeroxQ] Registry display name set to "XeroxQ"');
+  } catch (e) {
+    // Non-critical — protocol still works, just shows wrong name
+    console.warn('[XeroxQ] Could not patch registry display name:', e.message);
+  }
+}
+
+
 // Handle deep link on Windows/Linux (second-instance event)
 app.on('second-instance', (_event, argv) => {
   console.log('[XeroxQ OAuth] second-instance argv:', argv);

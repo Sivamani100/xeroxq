@@ -188,15 +188,25 @@ export default function Login() {
     setForgotError(null);
 
     try {
-      const isElectron = !!(window.electron?.openResetPasswordUrl);
-      // The reset link will redirect to /auth/reset-password page
+      const isElectron = !!(window.electron);
+      // In Electron: don't pass redirectTo — let Supabase use the configured Site URL
+      // (https://xeroxq.arkio.in/auth/reset-password). Passing 127.0.0.1 would be
+      // rejected as an unauthorized redirect URL by Supabase.
+      // In web: use the current origin so it works both in dev and production.
       const redirectTo = isElectron
-        ? `http://127.0.0.1:3000/auth/reset-password`
+        ? `https://xeroxq.arkio.in/auth/reset-password`
         : `${window.location.origin}/auth/reset-password`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      // Wrap in a timeout so it never hangs forever if Supabase is unreachable
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), 15000)
+      );
+
+      const resetPromise = supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
         redirectTo,
       });
+
+      const { error } = await Promise.race([resetPromise, timeoutPromise]);
 
       if (error) throw error;
       setForgotSuccess(true);

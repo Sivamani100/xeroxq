@@ -808,14 +808,13 @@ export default function PlatformAdminDashboard() {
                   {/* Separator */}
                   <div className="h-6 w-[1px] bg-[#E2E8F0] mx-0.5" />
 
-                  {/* Logout */}
+                  {/* Logout — icon only */}
                   <button
                     onClick={handleLogout}
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-2 flex items-center justify-center lg:gap-2 rounded-lg lg:rounded-[5.57px] text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors font-bold text-[12px]"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                     title="Logout"
                   >
-                    <LogOut className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
-                    <span className="hidden lg:inline">Logout</span>
+                    <LogOut className="w-4 h-4" />
                   </button>
                </div>
             </div>
