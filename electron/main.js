@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, nativeImage } = require('electron');
 const path = require('path');
 const pdfToPrinter = require('pdf-to-printer');
 const fs = require('fs');
@@ -8,6 +8,11 @@ const { execFile } = require('child_process');
 // Suppress dev-only security warnings in Electron console
 if (!app.isPackaged) {
   process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+}
+
+// Set Windows App User Model ID so Windows taskbar uses XeroxQ name & custom icon
+if (process.platform === 'win32') {
+  app.setAppUserModelId('XeroxQ');
 }
 
 // ── Single Instance Lock (required for deep-link on Windows) ─────────────────
@@ -167,9 +172,11 @@ let mainWindow;
 
 // Returns the correct icon based on current system theme
 function getIcon() {
-  return nativeTheme.shouldUseDarkColors
+  const iconPath = nativeTheme.shouldUseDarkColors
     ? path.join(__dirname, '../public/ion_print (2).png')  // white icon for dark mode
     : path.join(__dirname, '../public/ion_print (1).png'); // black icon for light mode
+  const img = nativeImage.createFromPath(iconPath);
+  return img.isEmpty() ? iconPath : img;
 }
 
 function createWindow() {
@@ -182,7 +189,7 @@ function createWindow() {
     titleBarOverlay: {
       color: 'rgba(0, 0, 0, 0)',
       symbolColor: '#18181b',
-      height: 35,
+      height: 38,
     },
     autoHideMenuBar: true, // Hide the default menu bar completely for a clean look
     webPreferences: {

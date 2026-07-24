@@ -640,7 +640,7 @@ export default function PlatformAdminDashboard() {
        <div className="min-h-screen bg-[#F8FAFC]">
           {/* Skeleton Header */}
           <div className="w-full bg-white border-b border-[#E2E8F0] h-[81px]">
-             <div className="max-w-[1440px] mx-auto px-6 py-4 lg:px-[82px] flex items-center justify-between h-full">
+             <div className="w-full px-6 lg:px-[100px] py-4 flex items-center justify-between h-full">
                 <div className="flex items-center gap-3">
                    <div className="w-[40px] h-[40px] rounded-[5.57px] bg-[#E2E8F0] animate-pulse" />
                    <div className="flex flex-col gap-2">
@@ -779,7 +779,7 @@ export default function PlatformAdminDashboard() {
     <div className="min-h-screen bg-[#F8FAFC] text-black">
       {/* TOP HEADER - IDENTITY, ACTIONS */}
       <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
-         <div className="max-w-[1440px] mx-auto px-4 py-[22px] lg:py-6 lg:px-[82px]">
+         <div className="w-full px-6 lg:px-[100px] py-[18px] lg:py-5">
             <div className="flex items-center justify-between gap-3">
                {/* Left: logo + shop name */}
                <div className="flex items-center gap-2 lg:gap-4 shrink-0">
@@ -792,8 +792,8 @@ export default function PlatformAdminDashboard() {
                  </div>
                </div>
 
-               {/* Right: action buttons */}
-               <div className="flex items-center gap-2 shrink-0">
+               {/* Right: action buttons — shifted left to prevent overlap with Windows window controls */}
+               <div className="flex items-center gap-2 shrink-0 pr-32 lg:pr-[140px]">
                   <span className="hidden sm:block text-[11px] font-bold text-auth-slate-50 mr-2">{ceoEmail}</span>
                   
                   <button
@@ -821,7 +821,7 @@ export default function PlatformAdminDashboard() {
          </div>
       </div>
 
-      <main className="max-w-[1440px] mx-auto px-6 py-6 lg:px-[82px] space-y-6">
+      <main className="w-full px-6 lg:px-[100px] py-6 space-y-6">
 
         {/* TABS */}
         <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-0 overflow-x-auto no-scrollbar">

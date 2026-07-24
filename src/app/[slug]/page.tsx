@@ -374,15 +374,27 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
     const type = fileToDetect.type;
     const name = fileToDetect instanceof File ? fileToDetect.name.toLowerCase() : "";
     
-    // Images are always 1 page — no scanning needed
-    if (type.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) return 1;
+    // Images are always 1 page — return instantly with zero processing
+    if (type.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")) return 1;
     
-    // PDF detection — read full file and find the largest /Count (root page tree)
+    // PDF detection — slice header (128KB) and trailer (128KB) for instant metadata scan
     if (type === "application/pdf" || name.endsWith(".pdf")) {
       try {
-        const buffer = await fileToDetect.arrayBuffer();
-        const text = new TextDecoder("latin1").decode(buffer);
-        // Find ALL /Count occurrences — the root Pages node has the largest value
+        const size = fileToDetect.size;
+        let text = "";
+        if (size <= 256 * 1024) {
+          const buffer = await fileToDetect.arrayBuffer();
+          text = new TextDecoder("latin1").decode(buffer);
+        } else {
+          // Slice start and end of PDF where page catalog trees reside
+          const [headSlice, tailSlice] = await Promise.all([
+            fileToDetect.slice(0, 128 * 1024).arrayBuffer(),
+            fileToDetect.slice(Math.max(0, size - 128 * 1024)).arrayBuffer(),
+          ]);
+          text = new TextDecoder("latin1").decode(headSlice) + " " + new TextDecoder("latin1").decode(tailSlice);
+        }
+
+        // Find /Count in catalog object
         const matches = [...text.matchAll(/\/Count\s+(\d+)/g)];
         if (matches.length > 0) {
           const counts = matches.map(m => parseInt(m[1]));
@@ -391,17 +403,17 @@ export default function ShopCustomerPortal({ params }: { params: Promise<{ slug:
         // Fallback: count /Type /Page entries
         const pageMatches = text.match(/\/Type\s*\/Page\b/g);
         if (pageMatches) return pageMatches.length;
-      } catch (e) { /* silent */ }
+      } catch (e) { /* silent fallback */ }
     }
 
-    // DOCX detection — only scan first 32KB (page breaks are near the start)
+    // DOCX detection — only scan first 32KB
     if (name.endsWith(".docx")) {
       try {
         const slice = fileToDetect.slice(0, 32000);
         const content = new TextDecoder().decode(await slice.arrayBuffer());
         const pageMatches = content.match(/<w:lastRenderedPageBreak\/>/g);
         if (pageMatches) return pageMatches.length + 1;
-      } catch (e) { /* silent */ }
+      } catch (e) { /* silent fallback */ }
     }
     
     return 1;

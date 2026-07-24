@@ -10,7 +10,7 @@ import {
   RotateCcw, Sun, ZoomIn, ZoomOut, Crop, SlidersHorizontal,
   Contrast, Sparkles, Move, Maximize, BookOpen, Layout,
   ScanLine, Zap, Grid, AlignCenter, ArrowUpRight, Wand2, Focus, Eye,
-  HelpCircle, Stamp, IndianRupee, FileSpreadsheet
+  HelpCircle, Stamp, IndianRupee, FileSpreadsheet, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -784,7 +784,18 @@ export default function XeroxQPrintDialog({
       {/* ===== STUDIO HEADER ===== */}
       <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-40">
         <div className="px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+             {onClose && (
+               <button 
+                 onClick={onClose}
+                 className="h-[36px] px-3.5 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] rounded-[5.57px] flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer group"
+                 title="Return to Queue (Esc)"
+               >
+                 <ArrowLeft className="w-4 h-4 text-black group-hover:-translate-x-0.5 transition-transform" />
+                 <span>Back</span>
+               </button>
+             )}
+             <div className="w-[1px] h-6 bg-[#E2E8F0]" />
              <div className="w-9 h-9 bg-black rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md shadow-black/20">
                <Printer className="w-4 h-4 text-white" />
              </div>
@@ -809,7 +820,7 @@ export default function XeroxQPrintDialog({
              </button>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pr-12 lg:pr-[50px]">
              {/* Estimated Bill Header Badge */}
              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[5.57px]">
                 <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
@@ -826,12 +837,6 @@ export default function XeroxQPrintDialog({
                 <HelpCircle className="w-[14px] h-[14px]" />
                 <span className="hidden sm:inline">Shortcuts</span>
              </button>
-
-             {onClose && (
-               <button onClick={onClose} className="h-[36px] w-[36px] flex items-center justify-center border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors rounded-[5.57px] shadow-sm cursor-pointer">
-                 <X className="w-[14px] h-[14px]" />
-               </button>
-             )}
           </div>
         </div>
       </div>
@@ -1476,7 +1481,7 @@ export default function XeroxQPrintDialog({
            </div>
 
            {/* FINAL ACTION SECTION */}
-           <div className="p-6 border-t border-[#E2E8F0] bg-[#F8FAFC] flex flex-col gap-3">
+           <div className="p-6 pb-8 border-t border-[#E2E8F0] bg-[#F8FAFC] flex flex-col gap-3 relative z-40">
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] mb-1">
                  <span>Total Spool Size</span>
                  <span className="text-black font-black">{(copies * (numPages || 1))} PAGES</span>
@@ -1565,12 +1570,8 @@ export default function XeroxQPrintDialog({
               >
                   {documentPath ? (
                     isImage ? (
-                       <div className="flex flex-col items-center gap-[50px] py-10">
+                       <div className="flex flex-col items-center gap-[40px] py-6">
                           <div className="relative group transition-all duration-300 ease-out">
-                             <div className="absolute -top-8 left-0 transition-opacity opacity-40 group-hover:opacity-100 flex items-center gap-2">
-                                <FileText className="w-3.5 h-3.5 text-[#323A46]" />
-                                <span className="text-[10px] font-bold text-[#323A46] uppercase tracking-[0.1em]">{paperSize} SHEET VISUALIZATION ({orientation.toUpperCase()})</span>
-                             </div>
                              <div 
                                className={cn("bg-white border border-[#E2E8F0] relative overflow-hidden transition-all duration-300", isCropMode ? "shadow-2xl ring-4 ring-black/5" : "shadow-[0px_4px_24px_rgba(0,0,0,0.06)]")}
                                style={{ 
@@ -1864,7 +1865,7 @@ export default function XeroxQPrintDialog({
                         onLoadError={() => setPdfError(true)}
                         loading={<div className="flex items-center justify-center h-full"><RefreshCw className="w-8 h-8 animate-spin text-[#7E8B9E]" /></div>}
                       >
-                        <div className="flex flex-col items-center gap-[50px] py-10">
+                        <div className="flex flex-col items-center gap-[40px] py-6">
                            {Array.from(new Array(numPages || 0), (el, index) => (
                             <div 
                               key={`page_${index + 1}`} 
@@ -1875,11 +1876,6 @@ export default function XeroxQPrintDialog({
                                  transform: `scaleX(${mirrorH ? -1 : 1}) scaleY(${mirrorV ? -1 : 1})`
                               }}
                             >
-                                {/* Page Metadata Tag */}
-                                <div className="absolute -top-8 left-0 transition-opacity opacity-40 group-hover:opacity-100 flex items-center gap-2">
-                                   <FileText className="w-3.5 h-3.5 text-[#323A46]" />
-                                   <span className="text-[10px] font-bold text-[#323A46] uppercase tracking-[0.1em]">PAGE {index + 1}</span>
-                                </div>
                                
                                <div 
                                  className={cn("bg-white shadow-[0px_4px_24px_rgba(0,0,0,0.06)] border border-[#E2E8F0] relative overflow-hidden flex items-center justify-center transition-all duration-300")}

@@ -1019,27 +1019,29 @@ export default function AdminDashboard() {
     setIsDecrypting(true);
     setPrintPreviewUrl(null);
     
-    // Mark job as printed immediately when opening print dialog
-    await updateStatus(job.id, "printed");
+    // Optimistically update local state immediately for instant feedback
     setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
-    try {
-      const { data, error } = await supabase.storage
-        .from("documents")
-        .createSignedUrl(job.file_path, 60 * 5); // 5 minutes signed url
 
-      if (error) {
-        if (error.message?.includes("Object not found") || (error as { status?: number }).status === 404) {
+    try {
+      // Fire status update and Storage signed URL concurrently for instant dialog opening
+      const [_, storageRes] = await Promise.all([
+        updateStatus(job.id, "printed").catch(e => console.error("Status update error:", e)),
+        supabase.storage.from("documents").createSignedUrl(job.file_path, 60 * 5)
+      ]);
+
+      if (storageRes.error) {
+        if (storageRes.error.message?.includes("Object not found") || (storageRes.error as { status?: number }).status === 404) {
           if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Delete stale database record too?")) {
             handleDeleteJob(job);
           }
           return;
         }
-        throw error;
+        throw storageRes.error;
       }
 
-      if (data?.signedUrl) {
+      if (storageRes.data?.signedUrl) {
         // Pass the pre-signed URL directly to the Xerox Dialog -> Native IPC
-        setPrintPreviewUrl(data.signedUrl);
+        setPrintPreviewUrl(storageRes.data.signedUrl);
       }
     } catch (error) {
       const e = error as Error;
@@ -1647,7 +1649,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-[#F8FAFC]">
         {/* Skeleton Header */}
         <div className="w-full bg-white border-b border-[#E2E8F0]">
-          <div className="max-w-[1440px] mx-auto px-6 py-4 lg:px-[82px] flex items-center justify-between">
+          <div className="w-full px-6 lg:px-[100px] py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Skeleton className="w-[40px] h-[40px] rounded-[5.57px]" />
               <div className="flex flex-col gap-2">
@@ -1666,7 +1668,7 @@ export default function AdminDashboard() {
 
         {/* Skeleton Subheader */}
         <div className="w-full bg-[#F8FAFC]">
-          <div className="max-w-[1440px] mx-auto px-6 pt-6 pb-4 lg:px-[82px] flex items-center justify-between">
+          <div className="w-full px-6 lg:px-[100px] pt-6 pb-4 flex items-center justify-between">
             <Skeleton className="w-[150px] h-[28px]" />
             <div className="flex gap-2">
               <Skeleton className="w-[200px] h-[36px] rounded-[5.57px]" />
@@ -1676,7 +1678,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Skeleton Main Grid */}
-        <main className="max-w-[1440px] mx-auto px-6 lg:px-[82px] mt-2 flex flex-col h-[calc(100vh-180px)]">
+        <main className="w-full px-6 lg:px-[100px] mt-2 flex flex-col h-[calc(100vh-180px)]">
           <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] overflow-hidden shadow-sm flex flex-col">
             <div className="p-0 flex-1 overflow-hidden">
               <div className="divide-y divide-[#E2E8F0]">
@@ -1892,7 +1894,7 @@ export default function AdminDashboard() {
       {/* LOCATION NOTICE BAR - 30px compact bar at the very top */}
       {!shop?.shop_location && (
         <div className="shrink-0 w-full h-[30px] bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center">
-          <div className="max-w-[1440px] w-full mx-auto px-4 lg:px-[82px] flex items-center justify-between">
+          <div className="w-full px-6 lg:px-[100px] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Smartphone className="w-3 h-3 text-white" />
               <span className="text-[11px] font-bold text-white tracking-tight">Add your shop location to help customers find you</span>
@@ -1909,7 +1911,7 @@ export default function AdminDashboard() {
 
       {/* TOP HEADER - IDENTITY, ACTIONS */}
       <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
-        <div className="max-w-[1440px] mx-auto px-4 py-[22px] lg:py-6 lg:px-[82px]">
+        <div className="w-full px-6 lg:px-[100px] py-[18px] lg:py-5">
           {/* Single row: logo + name on left, icon buttons on right */}
           <div className="flex items-center justify-between gap-3">
             {/* Left: logo + shop name */}
@@ -1934,8 +1936,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Right: action buttons */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Right: action buttons — 50px right gap */}
+            <div className="flex items-center gap-2 shrink-0 pr-12 lg:pr-[50px]">
               {/* Quick Stats Bar Removed */}
 
               {/* Live indicator - full text on desktop, hidden on mobile */}
@@ -2600,7 +2602,7 @@ export default function AdminDashboard() {
         {/* SHOPKEEPER TRIAL & APPROVAL ALERT BANNER */}
         {shop && !isShopApproved && (
           <div className="w-full py-2.5 bg-orange-500 text-white border-t border-orange-600 shadow-sm">
-            <div className="max-w-[1440px] w-full mx-auto px-6 lg:px-[82px] flex items-center justify-between text-[12px] font-bold">
+            <div className="w-full px-6 lg:px-[100px] flex items-center justify-between text-[12px] font-bold">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 shrink-0 text-white" />
                 <span className="text-white">
@@ -2625,7 +2627,7 @@ export default function AdminDashboard() {
 
       {/* SUB HEADER - ACTIVE QUEUE TITLE & SEARCH (STATIC) */}
       <div className="shrink-0 w-full bg-[#F8FAFC]">
-        <div className="max-w-[1440px] w-full mx-auto px-6 pt-6 pb-4 lg:px-[82px]">
+        <div className="w-full px-6 lg:px-[100px] pt-6 pb-4">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <h2 className="text-[20px] font-bold tracking-tight text-black flex items-center gap-2">
               <span className="gradient-text-startup">Active Queue</span>
@@ -2654,7 +2656,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-[82px] pb-3 flex flex-col overflow-y-auto scrollbar-thin">
+      <div className="flex-1 w-full px-6 lg:px-[100px] pb-3 flex flex-col overflow-y-auto scrollbar-thin">
 
         {/* ── EMPTY STATE ── */}
         {filteredJobs.length === 0 && (

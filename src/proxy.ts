@@ -24,6 +24,7 @@ const MAINTENANCE_ALLOWED_ROUTES = [
   '/admin',
   '/platform-admin',
   '/login',
+  '/register',
   '/api/health',
   '/api/auth/callback',
   '/api/maintenance',
@@ -139,39 +140,46 @@ export async function proxy(request: NextRequest) {
 
   // ── 1. Protect /admin Route ───────────────────────────────────────────────
   if (pathname.startsWith("/admin")) {
-    // Build a Supabase server client to read the session from cookies
-    const response = NextResponse.next({
-      request: { headers: request.headers },
-    });
+    const userAgent = request.headers.get("user-agent") || "";
+    const isElectronReq = userAgent.includes("Electron") || request.nextUrl.searchParams.get("electron") === "1";
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
+    // Electron renderer uses localStorage for Supabase sessions (not SSR cookies).
+    // Admin page has its own client-side checkUser() hook for Electron.
+    if (!isElectronReq) {
+      // Build a Supabase server client to read the session from cookies
+      const response = NextResponse.next({
+        request: { headers: request.headers },
+      });
+
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value;
+            },
+            set(name: string, value: string, options: CookieOptions) {
+              response.cookies.set({ name, value, ...options });
+            },
+            remove(name: string, options: CookieOptions) {
+              response.cookies.set({ name, value: "", ...options });
+            },
           },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({ name, value: "", ...options });
-          },
-        },
+        }
+      );
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        // Not authenticated — redirect to login with return URL
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        return NextResponse.redirect(loginUrl);
       }
-    );
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      // Not authenticated — redirect to login with return URL
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      return response;
     }
-
-    return response;
   }
 
   // ── 2. Protect /platform-admin — CEO-only gate ─────────────────────────
