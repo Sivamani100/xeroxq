@@ -1,9 +1,111 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell } = require('electron');
 const path = require('path');
 const pdfToPrinter = require('pdf-to-printer');
 const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
+
+// Suppress dev-only security warnings in Electron console
+if (!app.isPackaged) {
+  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+}
+
+// ── Single Instance Lock (required for deep-link on Windows) ─────────────────
+// Ensures only one instance runs at a time. When the system browser redirects
+// to xeroxq://, Windows launches a second instance with the URL as an arg.
+// We grab the lock here, and if we're that second instance, quit immediately
+// (the 'second-instance' event on the primary instance handles it).
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
+
+// ── Deep Link / OAuth Protocol ───────────────────────────────────────────────
+// Set the display name BEFORE registering the protocol so Chrome/Windows
+// shows "Open XeroxQ" instead of "Open Electron" in the protocol prompt.
+app.setName('XeroxQ');
+
+// Register 'xeroxq://' as the app's custom URL scheme so the system browser
+// can redirect back here after Google OAuth completes.
+if (!app.isPackaged) {
+  // In dev, use the app's own executable path
+  app.setAsDefaultProtocolClient('xeroxq', process.execPath, [
+    require('path').resolve(process.argv[1] || '.')
+  ]);
+} else {
+  app.setAsDefaultProtocolClient('xeroxq');
+}
+
+// Handle deep link on Windows/Linux (second-instance event)
+app.on('second-instance', (_event, argv) => {
+  console.log('[XeroxQ OAuth] second-instance argv:', argv);
+  // On Windows, the URL may be wrapped in quotes — strip them before matching
+  const rawUrl = argv
+    .map(arg => arg.replace(/^"|"$/g, '').trim())  // strip surrounding quotes
+    .find(arg => arg.startsWith('xeroxq://'));
+  if (rawUrl) handleDeepLink(rawUrl);
+  // Bring the window to focus
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+// Handle deep link on macOS
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
+function handleDeepLink(rawUrl) {
+  console.log('[XeroxQ OAuth] Deep link received (raw):', rawUrl);
+  try {
+    // Decode any URL-encoded characters Windows may have applied
+    const url = decodeURIComponent(rawUrl);
+    console.log('[XeroxQ OAuth] Deep link decoded:', url);
+
+    const parsed = new URL(url);
+
+    // Case 1: Server forwarded the raw PKCE code for client-side exchange
+    const code = parsed.searchParams.get('code');
+
+    // Case 2: Direct tokens (fallback / non-PKCE flows)
+    const accessToken  = parsed.searchParams.get('access_token');
+    const refreshToken = parsed.searchParams.get('refresh_token');
+    const oauthError   = parsed.searchParams.get('error');
+
+    // Also check hash fragment (Supabase implicit flow uses #)
+    let hashAccessToken = null, hashRefreshToken = null;
+    if (parsed.hash) {
+      const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+      hashAccessToken  = hashParams.get('access_token');
+      hashRefreshToken = hashParams.get('refresh_token');
+    }
+
+    const finalAccessToken  = accessToken  || hashAccessToken;
+    const finalRefreshToken = refreshToken || hashRefreshToken;
+
+    console.log('[XeroxQ OAuth] Parsed — code:', code ? 'present' : 'none',
+                '| access:', finalAccessToken ? 'present' : 'none',
+                '| refresh:', finalRefreshToken ? 'present' : 'none',
+                '| error:', oauthError || 'none');
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('oauth-callback', {
+        code,
+        accessToken:  finalAccessToken,
+        refreshToken: finalRefreshToken,
+        error: oauthError,
+      });
+      mainWindow.focus();
+    }
+  } catch (e) {
+    console.error('[XeroxQ OAuth] Failed to parse deep link:', e);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('oauth-callback', { error: 'parse-failed' });
+    }
+  }
+}
 
 // Dedicated temp directory for print jobs to ensure isolation during exit cleanup
 const printJobsDir = path.join(app.getPath('temp'), 'xeroxq-print-jobs');
@@ -38,11 +140,25 @@ cleanupTempFolder();
 
 let mainWindow;
 
+// Returns the correct icon based on current system theme
+function getIcon() {
+  return nativeTheme.shouldUseDarkColors
+    ? path.join(__dirname, '../public/ion_print (2).png')  // white icon for dark mode
+    : path.join(__dirname, '../public/ion_print (1).png'); // black icon for light mode
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    title: 'XeroxQ Print HQ',
+    title: 'XeroxQ',
+    icon: getIcon(),
     width: 1200,
     height: 800,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: 'rgba(0, 0, 0, 0)',
+      symbolColor: '#18181b',
+      height: 35,
+    },
     autoHideMenuBar: true, // Hide the default menu bar completely for a clean look
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -51,14 +167,19 @@ function createWindow() {
     },
   });
 
+  // Prevent Next.js page title (SEO metadata) from overwriting the clean app title bar
+  mainWindow.on('page-title-updated', (event) => {
+    event.preventDefault();
+  });
+
   // Explicitly remove the default application menu completely
   Menu.setApplicationMenu(null);
 
   // Check if we're running in development or production (using app.isPackaged)
   const isDev = !app.isPackaged;
   const startUrl = isDev
-    ? 'http://127.0.0.1:3000'
-    : `file://${path.join(__dirname, '../out/index.html')}`; // Assuming Next.js static export for production
+    ? 'http://127.0.0.1:3000/register'
+    : `file://${path.join(__dirname, '../out/register.html')}`;
 
   mainWindow.loadURL(startUrl);
 
@@ -68,9 +189,43 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Dynamically swap the taskbar/window icon when the system theme changes
+  nativeTheme.on('updated', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setIcon(getIcon());
+    }
+  });
 }
 
-app.whenReady().then(createWindow);
+// ── IPC: Open OAuth in system browser ────────────────────────────────────────
+// Called by the renderer when the user clicks "Continue with Google".
+// Opens the OAuth URL in the default system browser (Chrome, Edge, etc.)
+ipcMain.handle('open-oauth-url', async (_event, url) => {
+  await shell.openExternal(url);
+  return { success: true };
+});
+
+// ── IPC: Open password reset link in system browser ───────────────────────────
+ipcMain.handle('open-reset-password-url', async (_event, url) => {
+  await shell.openExternal(url);
+  return { success: true };
+});
+
+app.whenReady().then(async () => {
+  if (!app.isPackaged) {
+    try {
+      const { session } = require('electron');
+      await session.defaultSession.clearStorageData({
+        storages: ['hsts', 'cookies', 'cache', 'serviceworkers']
+      });
+      console.log('[XeroxQ Dev] Cleared dev session storage & HSTS policies.');
+    } catch (e) {
+      console.error('[XeroxQ Dev] Error clearing dev session storage:', e);
+    }
+  }
+  createWindow();
+});
 
 // Register app exit handlers to securely wipe the dedicated temp directory
 app.on('before-quit', () => {

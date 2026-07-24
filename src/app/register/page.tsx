@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
@@ -10,12 +10,29 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// ── Electron bridge type ─────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    electron?: {
+      openOAuthUrl?: (url: string) => Promise<{ success: boolean }>;
+      onOAuthCallback?: (cb: (data: {
+        code?: string | null;
+        accessToken?: string | null;
+        refreshToken?: string | null;
+        error?: string | null;
+      }) => void) => () => void;
+      openResetPasswordUrl?: (url: string) => Promise<{ success: boolean }>;
+    };
+  }
+}
+
 export default function Register() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     async function checkUser() {
@@ -27,6 +44,55 @@ export default function Register() {
       }
     }
     checkUser();
+  }, [router]);
+
+  // ── Listen for OAuth deep-link callback from Electron ─────────────────────
+  useEffect(() => {
+    if (!window.electron?.onOAuthCallback) return;
+    const cleanup = window.electron.onOAuthCallback(async (data) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { code, accessToken, refreshToken, error: oauthError } = data;
+        console.log('[XeroxQ] OAuth callback — code:', code ? 'present' : 'none',
+                    '| access:', accessToken ? 'present' : 'none',
+                    '| error:', oauthError || 'none');
+        if (oauthError) {
+          setError("Google sign-in failed. Please try again.");
+          setLoading(false);
+          return;
+        }
+        // ── Case 1: PKCE code — exchange client-side ─────────────────────────
+        if (code) {
+          const { data: sessionData, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+          if (sessionData?.session) {
+            router.push("/admin");
+            return;
+          }
+          throw new Error("No session returned from code exchange.");
+        }
+        // ── Case 2: Direct tokens (fallback) ─────────────────────────────
+        if (!accessToken || !refreshToken) {
+          setError("Google sign-in failed. Please try again.");
+          setLoading(false);
+          return;
+        }
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) throw sessionError;
+        router.push("/admin");
+      } catch (err) {
+        const e = err as Error;
+        setError(e.message || "Sign-in failed after OAuth callback.");
+        setLoading(false);
+      }
+    });
+    cleanupRef.current = cleanup;
+    return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, [router]);
 
   const [formData, setFormData] = useState({
@@ -81,16 +147,32 @@ export default function Register() {
   const handleSocialLogin = async (provider: 'google' | 'azure') => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        }
-      });
-      if (error) throw error;
+      setError(null);
+      const isElectron = !!(window.electron?.openOAuthUrl);
+      if (isElectron) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `http://127.0.0.1:3000/auth/callback?electron=1`,
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+        if (!data.url) throw new Error("No OAuth URL returned");
+        await window.electron!.openOAuthUrl!(data.url);
+        // Loading stays true — waiting for the deep-link callback
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) throw error;
+      }
     } catch (err) {
       const e = err as Error;
-      setError(e.message || `Social login via ${provider} failed`);
+      setError(e.message || `Sign in with ${provider} failed`);
       setLoading(false);
     }
   };
@@ -271,7 +353,7 @@ export default function Register() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>{loading ? "Opening browser..." : "Continue with Google"}</span>
               </button>
             </div>
             

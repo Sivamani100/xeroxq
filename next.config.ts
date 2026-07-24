@@ -2,16 +2,22 @@ import type { NextConfig } from "next";
 
 const PRODUCTION_URL = "https://xeroxq.arkio.in";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 const securityHeaders = [
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
   },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
+  ...(isDev
+    ? []
+    : [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+      ]),
   {
     key: "X-Frame-Options",
     value: "DENY", // Stronger than SAMEORIGIN — prevent all framing (clickjacking)
@@ -41,17 +47,19 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' 'unsafe-hashes' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://vxittblwbyusehsrgffd.supabase.co https://api.qrserver.com https://i.pravatar.cc https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com",
-      "connect-src 'self' https://vxittblwbyusehsrgffd.supabase.co wss://vxittblwbyusehsrgffd.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
+      `connect-src 'self' ${isDev ? "ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:* ws: wss:" : ""} https://vxittblwbyusehsrgffd.supabase.co wss://vxittblwbyusehsrgffd.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com`,
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
-      "upgrade-insecure-requests",
-      "block-all-mixed-content",
+      ...(isDev ? [] : ["upgrade-insecure-requests", "block-all-mixed-content"]),
     ].join("; "),
   },
 ];
 
 const nextConfig: NextConfig = {
+  // ── Allowed Dev Origins for Electron / local cross-origin HMR ───────────────
+  allowedDevOrigins: ["127.0.0.1", "localhost", "127.0.0.1:3000", "localhost:3000"],
+
   // ── Canonical production URL ────────────────────────────────────────────────
   // Used by Next metadata for OG tags, sitemaps, etc.
   // Value: https://xeroxq.arkio.in

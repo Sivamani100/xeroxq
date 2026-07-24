@@ -8,7 +8,9 @@ import {
   RefreshCw, Settings2, FolderDown, Leaf, Monitor, Droplet, 
   Settings, ChevronRight, X, Printer, FileText, Minus, Plus,
   RotateCcw, Sun, ZoomIn, ZoomOut, Crop, SlidersHorizontal,
-  Contrast, Sparkles, Move, Maximize, BookOpen
+  Contrast, Sparkles, Move, Maximize, BookOpen, Layout,
+  ScanLine, Zap, Grid, AlignCenter, ArrowUpRight, Wand2, Focus, Eye,
+  HelpCircle, Stamp, IndianRupee, FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -69,6 +71,24 @@ export default function XeroxQPrintDialog({
   const [rotation, setRotation] = useState(0);
   const [isCropMode, setIsCropMode] = useState(false);
 
+  // STUDIO NEW FEATURES STATE
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [showMarginGuide, setShowMarginGuide] = useState(true);
+  const [showCenterGrid, setShowCenterGrid] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
+  // ADVANCED NEW FEATURES STATE
+  const [paperSize, setPaperSize] = useState<'A4' | 'Legal' | 'A3' | 'Letter'>('A4');
+  const [pageRangeMode, setPageRangeMode] = useState<'all' | 'odd' | 'even' | 'custom'>('all');
+  const [customRangeInput, setCustomRangeInput] = useState('');
+  const [watermarkText, setWatermarkText] = useState<string>('NONE');
+  const [bwRate, setBwRate] = useState<number>(2);
+  const [colorRate, setColorRate] = useState<number>(10);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+
+  // POSTER PRINTING STATE
+  const [posterMode, setPosterMode] = useState<'1x1' | '2x2' | '3x3'>('1x1');
+
   // PREVIEW & GESTURE STATE
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState(false);
@@ -85,6 +105,10 @@ export default function XeroxQPrintDialog({
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, rectX: 0, rectY: 0, rectW: 0, rectH: 0, cropT: 0, cropB: 0, cropL: 0, cropR: 0 });
 
+  // Image Scale-Up State
+  const [imageScale, setImageScale] = useState(100); // percentage: 25–300
+  const naturalImgSize = useRef<{ w: number; h: number } | null>(null);
+
   const [zoom, setZoom] = useState(0.8); 
   const [activeTab, setActiveTab] = useState<'settings' | 'laboratory'>('laboratory');
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +116,172 @@ export default function XeroxQPrintDialog({
   const touchStartZoom = useRef<number>(zoom);
 
   const paperOptions = ['Automatically Select', 'Tray 1 (Bypass)', 'Tray 2', 'Tray 3'];
+
+  // Paper Dimensions Helper (in pt)
+  const getPaperDims = (size: string, orient: 'portrait' | 'landscape') => {
+    let w = 595.27, h = 841.88;
+    if (size === 'Legal') { w = 595.27; h = 1008.0; }
+    else if (size === 'A3') { w = 841.88; h = 1190.55; }
+    else if (size === 'Letter') { w = 612.0; h = 792.0; }
+    return orient === 'landscape' ? { w: h, h: w } : { w, h };
+  };
+
+  const currentDims = getPaperDims(paperSize, orientation);
+
+  // Effective Printed Page Count Calculation
+  const getEffectivePageCount = () => {
+    let count = 1;
+    if (isImage) {
+      count = posterMode === '2x2' ? 4 : posterMode === '3x3' ? 9 : 1;
+    } else {
+      const total = numPages || 1;
+      if (pageRangeMode === 'odd') count = Math.ceil(total / 2);
+      else if (pageRangeMode === 'even') count = Math.floor(total / 2);
+      else if (pageRangeMode === 'custom' && customRangeInput.trim()) {
+        const parts = customRangeInput.split(',').flatMap(p => {
+          if (p.includes('-')) {
+            const [s, e] = p.split('-').map(n => parseInt(n.trim()));
+            if (!isNaN(s) && !isNaN(e) && s <= e) {
+              return Array.from({ length: e - s + 1 }, (_, i) => s + i);
+            }
+          }
+          const v = parseInt(p.trim());
+          return !isNaN(v) ? [v] : [];
+        });
+        count = parts.length > 0 ? parts.length : total;
+      } else {
+        count = total;
+      }
+    }
+    return count;
+  };
+
+  const effectivePages = getEffectivePageCount();
+  const estimatedCost = (colorMode === 'monochrome' ? bwRate : colorRate) * effectivePages * copies;
+
+  // Commit Crop Action
+  const commitCrop = () => {
+    if (!isCropMode) {
+      setIsCropMode(true);
+      return;
+    }
+    const croppedW = Math.max(20, imgRect.w - cropRect.l - cropRect.r);
+    const croppedH = Math.max(20, imgRect.h - cropRect.t - cropRect.b);
+    
+    // Shift position so image stays centered
+    const shiftX = (cropRect.l - cropRect.r) / 2;
+    const shiftY = (cropRect.t - cropRect.b) / 2;
+
+    setImgRect(prev => ({
+      ...prev,
+      w: croppedW,
+      h: croppedH,
+      x: prev.x + shiftX,
+      y: prev.y + shiftY,
+    }));
+    setCropRect({ t: 0, b: 0, l: 0, r: 0 });
+    setIsCropMode(false);
+    
+    if (naturalImgSize.current) {
+      naturalImgSize.current = { w: croppedW, h: croppedH };
+      setImageScale(100);
+    }
+
+    setAppliedSettingsMessage('Crop Committed Successfully');
+    setTimeout(() => setAppliedSettingsMessage(null), 3000);
+  };
+
+  // Smart Presets Handler
+  const applyPreset = (presetName: string) => {
+    setActivePreset(presetName);
+    switch (presetName) {
+      case 'clean_doc':
+        setBrightness(115);
+        setContrast(145);
+        setExposure(110);
+        setSaturation(100);
+        setHue(0);
+        setInvert(false);
+        setThreshold(0);
+        setColorMode('monochrome');
+        setAppliedSettingsMessage('Applied Document Enhancer');
+        break;
+      case 'id_card':
+        setContentScale(95);
+        setBrightness(105);
+        setContrast(115);
+        setExposure(105);
+        setSaturation(100);
+        setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
+        setAppliedSettingsMessage('Applied ID Card Optimization');
+        break;
+      case 'vivid':
+        setBrightness(105);
+        setContrast(115);
+        setSaturation(135);
+        setExposure(105);
+        setHue(0);
+        setInvert(false);
+        setColorMode('color');
+        setAppliedSettingsMessage('Applied Vivid Photo Preset');
+        break;
+      case 'high_contrast':
+        setBrightness(100);
+        setContrast(170);
+        setThreshold(120);
+        setColorMode('monochrome');
+        setAppliedSettingsMessage('Applied High Contrast B&W');
+        break;
+      case 'reset':
+        setBrightness(100);
+        setContrast(100);
+        setExposure(100);
+        setSaturation(100);
+        setHue(0);
+        setInvert(false);
+        setThreshold(0);
+        setMirrorH(false);
+        setMirrorV(false);
+        setContentScale(100);
+        setRotation(0);
+        setCropRect({ t: 0, b: 0, l: 0, r: 0 });
+        setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
+        setIsCropMode(false);
+        setActivePreset(null);
+        setAppliedSettingsMessage('Reset Laboratory Settings');
+        break;
+    }
+    setTimeout(() => setAppliedSettingsMessage(null), 3000);
+  };
+
+  // Studio Keyboard Hotkeys Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.key === 'r' || e.key === 'R') {
+        setRotation(r => (r + 90) % 360);
+        setCropRect({ t: 0, b: 0, l: 0, r: 0 });
+        setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
+        setIsCropMode(false);
+      } else if (e.key === 'c' || e.key === 'C') {
+        if (rotation === 0) setIsCropMode(c => !c);
+      } else if (e.key === 'i' || e.key === 'I') {
+        setInvert(inv => !inv);
+      } else if (e.key === 'm' || e.key === 'M') {
+        setMirrorH(mh => !mh);
+      } else if (e.key === 'v' || e.key === 'V') {
+        setMirrorV(mv => !mv);
+      } else if (e.key === '0') {
+        applyPreset('reset');
+      } else if (e.key === '?') {
+        setShowShortcutsModal(s => !s);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [rotation]);
 
   useEffect(() => {
     // If it's an image, we pre-set page count to 1
@@ -179,57 +369,91 @@ export default function XeroxQPrintDialog({
       const A4_PT_H = 841.88;
 
       if (isDragging) {
-        setImgRect(prev => {
-           let newX = dragStart.rectX + dx;
-           let newY = dragStart.rectY + dy;
-           
-           // Clamp to A4 boundaries
-           const limitX = Math.max(0, A4_PT_W/2 - prev.w/2);
-           const limitY = Math.max(0, A4_PT_H/2 - prev.h/2);
-           newX = Math.max(-limitX, Math.min(limitX, newX));
-           newY = Math.max(-limitY, Math.min(limitY, newY));
+        if (isCropMode) {
+          // Drag inside crop box -> move cropRect inside image
+          setCropRect(prev => {
+            let { t, b, l, r } = { ...prev };
+            const cropW = dragStart.rectW - dragStart.cropL - dragStart.cropR;
+            const cropH = dragStart.rectH - dragStart.cropT - dragStart.cropB;
 
-           return { ...prev, x: newX, y: newY };
-        });
+            let newL = Math.max(0, Math.min(dragStart.rectW - cropW, dragStart.cropL + dx));
+            let newT = Math.max(0, Math.min(dragStart.rectH - cropH, dragStart.cropT + dy));
+            let newR = dragStart.rectW - newL - cropW;
+            let newB = dragStart.rectH - newT - cropH;
+
+            return { t: newT, b: newB, l: newL, r: newR };
+          });
+        } else {
+          setImgRect(prev => {
+             let newX = dragStart.rectX + dx;
+             let newY = dragStart.rectY + dy;
+             
+             // Clamp to paper boundaries
+             const limitX = Math.max(0, currentDims.w/2 - prev.w/2);
+             const limitY = Math.max(0, currentDims.h/2 - prev.h/2);
+             newX = Math.max(-limitX, Math.min(limitX, newX));
+             newY = Math.max(-limitY, Math.min(limitY, newY));
+
+             return { ...prev, x: newX, y: newY };
+          });
+        }
       } else if (isResizing && resizeHandle) {
         if (isCropMode) {
           // Adjust CROP boundaries
           setCropRect(prev => {
             let { t, b, l, r } = { ...prev };
-            if (resizeHandle.includes('e')) r = Math.max(0, dragStart.cropR - dx);
-            if (resizeHandle.includes('s')) b = Math.max(0, dragStart.cropB - dy);
-            if (resizeHandle.includes('w')) l = Math.max(0, dragStart.cropL + dx);
-            if (resizeHandle.includes('n')) t = Math.max(0, dragStart.cropT + dy);
+            if (resizeHandle.includes('e')) r = Math.max(0, Math.min(dragStart.rectW - l - 20, dragStart.cropR - dx));
+            if (resizeHandle.includes('s')) b = Math.max(0, Math.min(dragStart.rectH - t - 20, dragStart.cropB - dy));
+            if (resizeHandle.includes('w')) l = Math.max(0, Math.min(dragStart.rectW - r - 20, dragStart.cropL + dx));
+            if (resizeHandle.includes('n')) t = Math.max(0, Math.min(dragStart.rectH - b - 20, dragStart.cropT + dy));
             return { t, b, l, r };
           });
         } else {
-          // Adjust IMAGE dimensions (Proportional Lock)
+          // === FIGMA-STYLE IMAGE RESIZE ===
           setImgRect(prev => {
             let { x, y, w, h } = { ...prev };
             const ratio = dragStart.rectW / dragStart.rectH;
 
-            // Simple proportional logic based on dominant handle
-            if (resizeHandle.includes('e')) {
-              w = Math.max(20, dragStart.rectW + dx);
-              h = w / ratio;
-            } else if (resizeHandle.includes('s')) {
-              h = Math.max(20, dragStart.rectH + dy);
-              w = h * ratio;
-            } else if (resizeHandle.includes('w')) {
+            if (resizeHandle === 'se') {
+              // Corner: scale proportionally from top-left
+              const newW = Math.max(20, dragStart.rectW + dx);
+              w = newW; h = w / ratio;
+            } else if (resizeHandle === 'sw') {
+              // Corner: scale from top-right, x moves
               const newW = Math.max(20, dragStart.rectW - dx);
               x = dragStart.rectX + (dragStart.rectW - newW);
-              w = newW;
-              h = w / ratio;
-            } else if (resizeHandle.includes('n')) {
+              w = newW; h = w / ratio;
+            } else if (resizeHandle === 'ne') {
+              // Corner: scale from bottom-left, y moves
               const newH = Math.max(20, dragStart.rectH - dy);
               y = dragStart.rectY + (dragStart.rectH - newH);
-              h = newH;
+              h = newH; w = h * ratio;
+            } else if (resizeHandle === 'nw') {
+              // Corner: scale from bottom-right, both x & y move
+              const newW = Math.max(20, dragStart.rectW - dx);
+              x = dragStart.rectX + (dragStart.rectW - newW);
+              w = newW; h = w / ratio;
+              y = dragStart.rectY + (dragStart.rectH - h);
+            } else if (resizeHandle === 'e') {
+              w = Math.max(20, dragStart.rectW + dx);
+              h = w / ratio;
+            } else if (resizeHandle === 's') {
+              h = Math.max(20, dragStart.rectH + dy);
               w = h * ratio;
+            } else if (resizeHandle === 'w') {
+              const newW = Math.max(20, dragStart.rectW - dx);
+              x = dragStart.rectX + (dragStart.rectW - newW);
+              w = newW; h = w / ratio;
+            } else if (resizeHandle === 'n') {
+              const newH = Math.max(20, dragStart.rectH - dy);
+              y = dragStart.rectY + (dragStart.rectH - newH);
+              h = newH; w = h * ratio;
             }
 
-            // A4 Auto-Clamping on Resize
-            if (w > A4_PT_W) { w = A4_PT_W; h = w / ratio; }
-            if (h > A4_PT_H) { h = A4_PT_H; w = h * ratio; }
+            // Sync imageScale live
+            if (naturalImgSize.current) {
+              setImageScale(Math.round((w / naturalImgSize.current.w) * 100));
+            }
 
             return { x, y, w, h };
           });
@@ -309,44 +533,111 @@ export default function XeroxQPrintDialog({
         const RES_MULT = 3;      // 3x Resolution for crisp output
 
         if (isImage && previewImage) {
-            // Bake the singular image with interactive rect and crop
+          const RES_MULT = 3;
+          const dims = getPaperDims(paperSize, orientation);
+
+          if (posterMode === '1x1') {
+            // Standard Single Page Bake
             const bakeCanvas = document.createElement('canvas');
-            bakeCanvas.width = A4_PT_W * RES_MULT;
-            bakeCanvas.height = A4_PT_H * RES_MULT;
+            bakeCanvas.width = dims.w * RES_MULT;
+            bakeCanvas.height = dims.h * RES_MULT;
             const ctx = bakeCanvas.getContext('2d');
             if (ctx) {
-              // Ensure we start with a clean white A4 slate
               ctx.scale(RES_MULT, RES_MULT);
               ctx.fillStyle = "white";
-              ctx.fillRect(0, 0, A4_PT_W, A4_PT_H);
+              ctx.fillRect(0, 0, dims.w, dims.h);
               
               ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`;
               
               const physicalW = imgRect.w - cropRect.l - cropRect.r;
               const physicalH = imgRect.h - cropRect.t - cropRect.b;
-              const drawX = A4_PT_W/2 + imgRect.x - imgRect.w/2 + cropRect.l;
-              const drawY = A4_PT_H/2 + imgRect.y - imgRect.h/2 + cropRect.t;
+              const drawX = dims.w/2 + imgRect.x - imgRect.w/2 + cropRect.l;
+              const drawY = dims.h/2 + imgRect.y - imgRect.h/2 + cropRect.t;
 
               ctx.save();
               ctx.translate(drawX + physicalW/2, drawY + physicalH/2);
               ctx.rotate((rotation * Math.PI) / 180);
               ctx.scale(mirrorH ? -1 : 1, mirrorV ? -1 : 1);
               
-              // Draw the image clipped by the cropRect
               ctx.drawImage(
-                previewImage, 
-                (cropRect.l / imgRect.w) * previewImage.naturalWidth, 
-                (cropRect.t / imgRect.h) * previewImage.naturalHeight,
-                ((imgRect.w - cropRect.l - cropRect.r) / imgRect.w) * previewImage.naturalWidth,
-                ((imgRect.h - cropRect.t - cropRect.b) / imgRect.h) * previewImage.naturalHeight,
-                -physicalW/2, 
-                -physicalH/2, 
-                physicalW, 
+                previewImage,
+                cropRect.l * (previewImage.naturalWidth / imgRect.w),
+                cropRect.t * (previewImage.naturalHeight / imgRect.h),
+                physicalW * (previewImage.naturalWidth / imgRect.w),
+                physicalH * (previewImage.naturalHeight / imgRect.h),
+                -physicalW/2,
+                -physicalH/2,
+                physicalW,
                 physicalH
               );
               ctx.restore();
+
+              if (watermarkText !== 'NONE') {
+                ctx.save();
+                ctx.font = "bold 32px sans-serif";
+                ctx.fillStyle = "rgba(239, 68, 68, 0.25)";
+                ctx.textAlign = "center";
+                ctx.translate(dims.w / 2, dims.h / 2);
+                ctx.rotate((-35 * Math.PI) / 180);
+                ctx.fillText(watermarkText, 0, 0);
+                ctx.restore();
+              }
+
               captured.push(bakeCanvas.toDataURL('image/jpeg', 0.95));
             }
+          } else {
+            // === POSTER TILING BAKE (2x2 or 3x3) ===
+            const gridDim = posterMode === '2x2' ? 2 : 3;
+            for (let r = 0; r < gridDim; r++) {
+              for (let c = 0; c < gridDim; c++) {
+                const tileCanvas = document.createElement('canvas');
+                tileCanvas.width = dims.w * RES_MULT;
+                tileCanvas.height = dims.h * RES_MULT;
+                const ctx = tileCanvas.getContext('2d');
+                if (ctx) {
+                  ctx.scale(RES_MULT, RES_MULT);
+                  ctx.fillStyle = "white";
+                  ctx.fillRect(0, 0, dims.w, dims.h);
+                  
+                  ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`;
+
+                  const physicalW = imgRect.w - cropRect.l - cropRect.r;
+                  const physicalH = imgRect.h - cropRect.t - cropRect.b;
+                  const drawX = dims.w/2 + imgRect.x - imgRect.w/2 + cropRect.l;
+                  const drawY = dims.h/2 + imgRect.y - imgRect.h/2 + cropRect.t;
+
+                  ctx.save();
+                  // Scale and offset for grid tile
+                  ctx.translate(-c * dims.w, -r * dims.h);
+                  ctx.scale(gridDim, gridDim);
+
+                  ctx.translate(drawX + physicalW/2, drawY + physicalH/2);
+                  ctx.rotate((rotation * Math.PI) / 180);
+                  ctx.scale(mirrorH ? -1 : 1, mirrorV ? -1 : 1);
+
+                  ctx.drawImage(
+                    previewImage,
+                    cropRect.l * (previewImage.naturalWidth / imgRect.w),
+                    cropRect.t * (previewImage.naturalHeight / imgRect.h),
+                    physicalW * (previewImage.naturalWidth / imgRect.w),
+                    physicalH * (previewImage.naturalHeight / imgRect.h),
+                    -physicalW/2,
+                    -physicalH/2,
+                    physicalW,
+                    physicalH
+                  );
+                  ctx.restore();
+
+                  // Tile label at bottom margin
+                  ctx.font = "bold 9px sans-serif";
+                  ctx.fillStyle = "rgba(0,0,0,0.5)";
+                  ctx.fillText(`POSTER TILE [Row ${r+1}, Col ${c+1}] · Page ${r*gridDim+c+1} of ${gridDim*gridDim}`, 15, dims.h - 15);
+
+                  captured.push(tileCanvas.toDataURL('image/jpeg', 0.95));
+                }
+              }
+            }
+          }
         } else {
             // Bake PDF canvases
             canvases.forEach((canvasElement: Element) => {
@@ -519,6 +810,23 @@ export default function XeroxQPrintDialog({
           </div>
           
           <div className="flex items-center gap-2">
+             {/* Estimated Bill Header Badge */}
+             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[5.57px]">
+                <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px] font-black text-black tabular-nums">₹{estimatedCost}</span>
+                <span className="text-[8px] font-bold text-[#7E8B9E] uppercase tracking-wider">Est. Bill</span>
+             </div>
+
+             {/* Keyboard Shortcuts Trigger */}
+             <button
+               onClick={() => setShowShortcutsModal(true)}
+               className="h-[36px] px-2.5 flex items-center gap-1 border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC] transition-colors rounded-[5.57px] shadow-sm cursor-pointer text-[10px] font-bold uppercase tracking-wider"
+               title="Keyboard Shortcuts (?)"
+             >
+                <HelpCircle className="w-[14px] h-[14px]" />
+                <span className="hidden sm:inline">Shortcuts</span>
+             </button>
+
              {onClose && (
                <button onClick={onClose} className="h-[36px] w-[36px] flex items-center justify-center border border-[#E2E8F0] bg-white text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors rounded-[5.57px] shadow-sm cursor-pointer">
                  <X className="w-[14px] h-[14px]" />
@@ -561,6 +869,63 @@ export default function XeroxQPrintDialog({
                          <button onClick={() => setCopies(copies + 1)} className="h-[32px] w-[32px] flex items-center justify-center rounded-[4px] border border-[#E2E8F0] bg-white text-black font-bold shadow-sm hover:bg-[#F8FAFC] transition-all cursor-pointer">
                             <Plus className="w-[14px] h-[14px]" />
                          </button>
+                      </div>
+                   </div>
+
+                   {/* PAGE RANGE SELECTOR */}
+                   <div className="space-y-2.5 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-[5.57px]">
+                      <label className="text-[10px] font-bold text-black uppercase tracking-[0.1em] flex items-center justify-between">
+                         <span>Page Range Selection</span>
+                         <span className="text-[9px] font-bold text-[#3568FF] uppercase">{effectivePages} Pages Selected</span>
+                      </label>
+                      <div className="grid grid-cols-4 gap-1">
+                         {(['all', 'odd', 'even', 'custom'] as const).map(m => (
+                           <button
+                             key={m}
+                             onClick={() => setPageRangeMode(m)}
+                             className={cn(
+                               "py-1.5 rounded-[4px] border text-[9px] font-bold uppercase tracking-tight transition-all cursor-pointer",
+                               pageRangeMode === m ? "bg-black text-white border-black" : "bg-white text-black border-[#E2E8F0] hover:bg-[#F1F5F9]"
+                             )}
+                           >
+                              {m}
+                           </button>
+                         ))}
+                      </div>
+                      {pageRangeMode === 'custom' && (
+                        <input
+                          type="text"
+                          placeholder="e.g. 1-3, 5, 8-10"
+                          value={customRangeInput}
+                          onChange={e => setCustomRangeInput(e.target.value)}
+                          className="w-full h-[32px] bg-white border border-[#E2E8F0] rounded-[4px] text-[11px] font-bold px-2.5 outline-none focus:border-black transition-all"
+                        />
+                      )}
+                   </div>
+
+                   {/* REAL-TIME COST CALCULATOR PANEL */}
+                   <div className="space-y-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 p-3.5 rounded-[5.57px]">
+                      <div className="flex items-center justify-between">
+                         <label className="text-[10px] font-black text-emerald-950 uppercase tracking-[0.1em] flex items-center gap-1.5">
+                            <IndianRupee className="w-3.5 h-3.5 text-emerald-600" /> Billing Calculator
+                         </label>
+                         <span className="text-[14px] font-black text-emerald-700 tabular-nums">₹{estimatedCost}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-emerald-900">
+                         <div className="flex items-center justify-between bg-white/80 p-1.5 rounded border border-emerald-100">
+                            <span>B&W Rate:</span>
+                            <div className="flex items-center gap-1">
+                               <span>₹</span>
+                               <input type="number" min="1" max="100" value={bwRate} onChange={e => setBwRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-emerald-400 font-bold outline-none" />
+                            </div>
+                         </div>
+                         <div className="flex items-center justify-between bg-white/80 p-1.5 rounded border border-emerald-100">
+                            <span>Color Rate:</span>
+                            <div className="flex items-center gap-1">
+                               <span>₹</span>
+                               <input type="number" min="1" max="200" value={colorRate} onChange={e => setColorRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-emerald-400 font-bold outline-none" />
+                            </div>
+                         </div>
                       </div>
                    </div>
 
@@ -644,8 +1009,181 @@ export default function XeroxQPrintDialog({
                 </div>
               ) : (
                 /* IMAGE LABORATORY SECTION */
-                 <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300 pb-6">
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300 pb-6">
                     
+                    {/* SMART ENHANCEMENT PRESETS */}
+                    <div className="space-y-3 bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-[5.57px] shadow-sm">
+                       <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-black uppercase tracking-[0.1em] flex items-center gap-1.5">
+                             <Wand2 className="w-3.5 h-3.5 text-[#3568FF]" /> Studio Smart Enhancers
+                          </label>
+                          <span className="text-[9px] font-bold text-[#7E8B9E] uppercase tracking-wider">1-Click</span>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => applyPreset('clean_doc')}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-[4px] border text-left transition-all cursor-pointer",
+                              activePreset === 'clean_doc' ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] hover:bg-[#F1F5F9] text-black"
+                            )}
+                          >
+                             <FileText className="w-3.5 h-3.5 shrink-0 text-[#3568FF]" />
+                             <div>
+                                <div className="text-[9px] font-extrabold uppercase tracking-tight">Clean Scan</div>
+                                <div className="text-[7px] font-bold opacity-60 uppercase">Fix camera doc</div>
+                             </div>
+                          </button>
+
+                          <button
+                            onClick={() => applyPreset('id_card')}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-[4px] border text-left transition-all cursor-pointer",
+                              activePreset === 'id_card' ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] hover:bg-[#F1F5F9] text-black"
+                            )}
+                          >
+                             <Focus className="w-3.5 h-3.5 shrink-0 text-[#16A34A]" />
+                             <div>
+                                <div className="text-[9px] font-extrabold uppercase tracking-tight">ID Card</div>
+                                <div className="text-[7px] font-bold opacity-60 uppercase">Aadhaar / PAN fit</div>
+                             </div>
+                          </button>
+
+                          <button
+                            onClick={() => applyPreset('vivid')}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-[4px] border text-left transition-all cursor-pointer",
+                              activePreset === 'vivid' ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] hover:bg-[#F1F5F9] text-black"
+                            )}
+                          >
+                             <Sparkles className="w-3.5 h-3.5 shrink-0 text-[#FF591E]" />
+                             <div>
+                                <div className="text-[9px] font-extrabold uppercase tracking-tight">Vivid Photo</div>
+                                <div className="text-[7px] font-bold opacity-60 uppercase">Color Pop</div>
+                             </div>
+                          </button>
+
+                          <button
+                            onClick={() => applyPreset('high_contrast')}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-[4px] border text-left transition-all cursor-pointer",
+                              activePreset === 'high_contrast' ? "bg-black text-white border-black" : "bg-white border-[#E2E8F0] hover:bg-[#F1F5F9] text-black"
+                            )}
+                          >
+                             <Contrast className="w-3.5 h-3.5 shrink-0 text-purple-600" />
+                             <div>
+                                <div className="text-[9px] font-extrabold uppercase tracking-tight">Mono Text</div>
+                                <div className="text-[7px] font-bold opacity-60 uppercase">Crisp B&W</div>
+                             </div>
+                          </button>
+                       </div>
+
+                       <button
+                          onClick={() => applyPreset('reset')}
+                          className="w-full py-1.5 bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] rounded-[4px] text-[9px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] hover:text-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                       >
+                          <RotateCcw className="w-3 h-3" /> Reset All Enhancements
+                       </button>
+                    </div>
+
+                    <div className="h-[1px] bg-[#E2E8F0] w-full" />
+
+                    {/* LAYOUT, PAPER SIZE & ORIENTATION CONTROLS */}
+                    <div className="space-y-3">
+                       <label className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] flex items-center justify-between">
+                          <span>Paper Size & Orientation</span>
+                       </label>
+                       
+                       {/* Paper Size Switcher */}
+                       <div className="grid grid-cols-4 gap-1">
+                          {(['A4', 'Legal', 'A3', 'Letter'] as const).map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setPaperSize(s)}
+                              className={cn(
+                                "py-1.5 rounded-[4px] border text-[9px] font-extrabold uppercase tracking-tight transition-all cursor-pointer",
+                                paperSize === s ? "bg-black text-white border-black shadow-sm" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                              )}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() => setOrientation('portrait')}
+                            className={cn(
+                              "h-[34px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[10px] font-extrabold uppercase tracking-[0.1em] transition-all cursor-pointer",
+                              orientation === 'portrait' ? "bg-black text-white border-black shadow-sm" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                            )}
+                          >
+                             <Layout className="w-3.5 h-3.5" /> Portrait {paperSize}
+                          </button>
+                          <button
+                            onClick={() => setOrientation('landscape')}
+                            className={cn(
+                              "h-[34px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[10px] font-extrabold uppercase tracking-[0.1em] transition-all cursor-pointer",
+                              orientation === 'landscape' ? "bg-black text-white border-black shadow-sm" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                            )}
+                          >
+                             <Layout className="w-3.5 h-3.5 rotate-90" /> Landscape {paperSize}
+                          </button>
+                       </div>
+
+                       <div className="grid grid-cols-3 gap-2 pt-1">
+                          <button
+                            onClick={() => setImgRect(prev => ({ ...prev, x: 0 }))}
+                            className="h-[32px] bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-[4px] text-[9px] font-bold uppercase tracking-tight text-black transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Center Horizontally"
+                          >
+                             <AlignCenter className="w-3 h-3" /> Center X
+                          </button>
+                          <button
+                            onClick={() => setImgRect(prev => ({ ...prev, y: 0 }))}
+                            className="h-[32px] bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-[4px] text-[9px] font-bold uppercase tracking-tight text-black transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Center Vertically"
+                          >
+                             <AlignCenter className="w-3 h-3 rotate-90" /> Center Y
+                          </button>
+                          <button
+                            onClick={() => {
+                              const dims = getPaperDims(paperSize, orientation);
+                              setImgRect(prev => ({ ...prev, x: 0, y: 0, w: dims.w * 0.9, h: (dims.w * 0.9) * (prev.h / prev.w) }));
+                            }}
+                            className="h-[32px] bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-[4px] text-[9px] font-bold uppercase tracking-tight text-black transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Fit 90% Page"
+                          >
+                             <Maximize className="w-3 h-3" /> Fit Page
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="h-[1px] bg-[#E2E8F0] w-full" />
+
+                    {/* DOCUMENT WATERMARK & STAMP ENGINE */}
+                    <div className="space-y-2.5">
+                       <label className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] flex items-center justify-between">
+                          <span className="flex items-center gap-1.5"><Stamp className="w-3.5 h-3.5 text-purple-600" /> Document Stamp Watermark</span>
+                       </label>
+                       <div className="grid grid-cols-3 gap-1">
+                          {['NONE', 'CONFIDENTIAL', 'OFFICIAL COPY', 'DO NOT COPY', 'DRAFT', 'URGENT'].map(w => (
+                            <button
+                              key={w}
+                              onClick={() => setWatermarkText(w)}
+                              className={cn(
+                                "py-1.5 rounded-[4px] border text-[8px] font-extrabold uppercase tracking-tight transition-all cursor-pointer truncate px-1",
+                                watermarkText === w ? "bg-purple-900 text-white border-purple-900 shadow-sm" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                              )}
+                            >
+                               {w === 'NONE' ? 'Off' : w}
+                            </button>
+                          ))}
+                       </div>
+                    </div>
+
+                    <div className="h-[1px] bg-[#E2E8F0] w-full" />
+
                     {/* Brightness & Exposure */}
                     <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-2">
@@ -717,15 +1255,180 @@ export default function XeroxQPrintDialog({
 
                     <div className="h-[1px] bg-[#E2E8F0] w-full" />
 
-                    {/* Content Scaling */}
+                    {/* IMAGE SCALE-UP CONTROL */}
+                    <div className="space-y-3 bg-gradient-to-br from-[#0F0F23] to-[#1a1a3e] border border-[#3568FF]/30 p-4 rounded-[5.57px] shadow-lg">
+                       <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-white uppercase tracking-[0.1em] flex items-center gap-1.5">
+                             <ZoomIn className="w-3.5 h-3.5 text-[#3568FF]" /> Image Scale
+                          </label>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[11px] font-black text-white tabular-nums">{imageScale}%</span>
+                             <button
+                               onClick={() => {
+                                 setImageScale(100);
+                                 if (naturalImgSize.current) {
+                                   setImgRect(prev => ({ ...prev, w: naturalImgSize.current!.w, h: naturalImgSize.current!.h }));
+                                 }
+                               }}
+                               className="text-[8px] font-bold uppercase tracking-wider text-[#3568FF] hover:text-white transition-colors cursor-pointer"
+                             >Reset</button>
+                          </div>
+                       </div>
+
+                       {/* Main Scale Slider */}
+                       <div className="space-y-1">
+                         <div className="relative">
+                           <input
+                             type="range"
+                             min="25"
+                             max="300"
+                             step="1"
+                             value={imageScale}
+                             onChange={(e) => {
+                               const s = parseInt(e.target.value);
+                               setImageScale(s);
+                               if (naturalImgSize.current) {
+                                 setImgRect(prev => ({
+                                   ...prev,
+                                   w: naturalImgSize.current!.w * s / 100,
+                                   h: naturalImgSize.current!.h * s / 100,
+                                 }));
+                               }
+                             }}
+                             className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[#3568FF]"
+                             style={{
+                               background: `linear-gradient(to right, #3568FF 0%, #3568FF ${((imageScale - 25) / 275) * 100}%, #2d2d4e ${((imageScale - 25) / 275) * 100}%, #2d2d4e 100%)`
+                             }}
+                           />
+                         </div>
+                         <div className="flex justify-between text-[8px] font-bold text-[#7E8B9E] uppercase">
+                           <span>25%</span><span>100%</span><span>200%</span><span>300%</span>
+                         </div>
+                       </div>
+
+                       {/* Quick Scale Preset Buttons */}
+                       <div className="grid grid-cols-4 gap-1.5">
+                         {[50, 75, 100, 125, 150, 200, 250, 300].map(pct => (
+                           <button
+                             key={pct}
+                             onClick={() => {
+                               setImageScale(pct);
+                               if (naturalImgSize.current) {
+                                 setImgRect(prev => ({
+                                   ...prev,
+                                   w: naturalImgSize.current!.w * pct / 100,
+                                   h: naturalImgSize.current!.h * pct / 100,
+                                 }));
+                               }
+                             }}
+                             className={cn(
+                               "h-[26px] rounded-[4px] text-[9px] font-extrabold uppercase tracking-tight transition-all cursor-pointer",
+                               imageScale === pct
+                                 ? "bg-[#3568FF] text-white shadow-sm"
+                                 : "bg-[#2d2d4e] text-[#7E8B9E] hover:bg-[#3568FF]/20 hover:text-white"
+                             )}
+                           >
+                             {pct}%
+                           </button>
+                         ))}
+                       </div>
+
+                       {/* Fill Page Button */}
+                       <button
+                         onClick={() => {
+                           const sheetW = orientation === 'portrait' ? 595.27 : 841.88;
+                           const sheetH = orientation === 'portrait' ? 841.88 : 595.27;
+                           if (naturalImgSize.current) {
+                             const ratio = naturalImgSize.current.w / naturalImgSize.current.h;
+                             let fw = sheetW * 0.95;
+                             let fh = fw / ratio;
+                             if (fh > sheetH * 0.95) { fh = sheetH * 0.95; fw = fh * ratio; }
+                             const newScale = Math.round((fw / naturalImgSize.current.w) * 100);
+                             setImageScale(newScale);
+                             setImgRect(prev => ({ ...prev, x: 0, y: 0, w: fw, h: fh }));
+                           }
+                         }}
+                         className="w-full h-[30px] bg-[#3568FF]/10 border border-[#3568FF]/30 hover:bg-[#3568FF] text-[#3568FF] hover:text-white rounded-[4px] text-[9px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                       >
+                         <Maximize className="w-3 h-3" /> Fill Page (95%)
+                       </button>
+                    </div>
+
+                    <div className="h-[1px] bg-[#E2E8F0] w-full" />
+
+                    {/* Content Scaling (PDF) */}
                     <div className="space-y-3">
                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em]">Content Fill Scale</label>
+                          <label className="text-[10px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em]">PDF Content Scale</label>
                           <span className="text-[10px] font-bold text-black">{contentScale}%</span>
                        </div>
                        <div className="flex items-center gap-2">
                          <Maximize className="w-3.5 h-3.5 text-[#7E8B9E]" />
                          <input type="range" min="50" max="200" value={contentScale} onChange={(e) => setContentScale(parseInt(e.target.value))} className="w-full h-1.5 bg-[#E2E8F0] rounded-lg appearance-none accent-black" />
+                       </div>
+                    </div>
+
+                    <div className="h-[1px] bg-[#E2E8F0] w-full" />
+
+                    {/* POSTER PRINTING & TILING ENGINE */}
+                    <div className="space-y-3 bg-gradient-to-br from-indigo-950 to-slate-900 border border-indigo-500/30 p-4 rounded-[5.57px] shadow-lg">
+                       <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-white uppercase tracking-[0.1em] flex items-center gap-1.5">
+                             <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" /> Poster Printing & Tiling
+                          </label>
+                          <span className="text-[9px] font-bold text-indigo-300 uppercase">{posterMode === '1x1' ? 'Single Sheet' : `${posterMode} Poster`}</span>
+                       </div>
+
+                       <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: '1x1', label: 'Single', desc: '1 Page' },
+                            { id: '2x2', label: '2×2 Poster', desc: '4 Pages Grid' },
+                            { id: '3x3', label: '3×3 Poster', desc: '9 Pages Grid' },
+                          ].map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => setPosterMode(p.id as any)}
+                              className={cn(
+                                "py-2 px-1 rounded-[4px] border text-center transition-all cursor-pointer",
+                                posterMode === p.id ? "bg-indigo-600 text-white border-indigo-500 shadow-md" : "bg-indigo-900/40 text-indigo-200 border-indigo-800/60 hover:bg-indigo-800/50"
+                              )}
+                            >
+                               <div className="text-[9px] font-extrabold uppercase tracking-tight">{p.label}</div>
+                               <div className="text-[7px] font-bold opacity-70 uppercase mt-0.5">{p.desc}</div>
+                            </button>
+                          ))}
+                       </div>
+
+                       {/* Poster Fill Quick Presets */}
+                       <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          <button
+                            onClick={() => {
+                              const dims = currentDims;
+                              const ratio = naturalImgSize.current ? naturalImgSize.current.w / naturalImgSize.current.h : 1;
+                              let fw = dims.w;
+                              let fh = fw / ratio;
+                              if (fh < dims.h) { fh = dims.h; fw = fh * ratio; }
+                              setImgRect(prev => ({ ...prev, x: 0, y: 0, w: fw, h: fh }));
+                              if (naturalImgSize.current) {
+                                setImageScale(Math.round((fw / naturalImgSize.current.w) * 100));
+                              }
+                            }}
+                            className="h-[28px] bg-indigo-900/60 border border-indigo-700/60 hover:bg-indigo-600 text-white rounded-[4px] text-[8px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                             <Maximize className="w-3 h-3 text-indigo-300" /> Full Cover (100% Bleed)
+                          </button>
+                          <button
+                            onClick={() => {
+                              const dims = currentDims;
+                              setImgRect(prev => ({ ...prev, x: 0, y: 0, w: dims.w, h: dims.h }));
+                              if (naturalImgSize.current) {
+                                setImageScale(Math.round((dims.w / naturalImgSize.current.w) * 100));
+                              }
+                            }}
+                            className="h-[28px] bg-indigo-900/60 border border-indigo-700/60 hover:bg-indigo-600 text-white rounded-[4px] text-[8px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                             <Maximize className="w-3 h-3 text-indigo-300" /> Stretch Fill Sheet
+                          </button>
                        </div>
                     </div>
 
@@ -742,33 +1445,26 @@ export default function XeroxQPrintDialog({
                          setCropRect({ t: 0, b: 0, l: 0, r: 0 });
                          setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
                          setIsCropMode(false);
-                       }} className="h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-black text-[11px] font-bold uppercase tracking-[0.1em] transition-all">
+                       }} className="h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-black text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer">
                          Rotate
                        </button>
-                       <button onClick={() => setMirrorH(!mirrorH)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all", mirrorH ? "bg-[#3568FF] text-white border-[#3568FF]" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
+                       <button onClick={() => setMirrorH(!mirrorH)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer", mirrorH ? "bg-[#3568FF] text-white border-[#3568FF]" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
                          Mirror H
                        </button>
-                       <button onClick={() => setMirrorV(!mirrorV)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all", mirrorV ? "bg-[#3568FF] text-white border-[#3568FF]" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
+                       <button onClick={() => setMirrorV(!mirrorV)} className={cn("h-[36px] flex items-center justify-center gap-1.5 rounded-[5.57px] border text-[11px] font-bold uppercase tracking-[0.1em] transition-all cursor-pointer", mirrorV ? "bg-[#3568FF] text-white border-[#3568FF]" : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]")}>
                          Mirror V
                        </button>
                     </div>
                     
                     <button 
-                      onClick={() => {
-                        if (rotation !== 0) return;
-                        if (!isCropMode) {
-                          // Reset position when entering crop mode for stability
-                          setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
-                        }
-                        setIsCropMode(!isCropMode);
-                      }} 
+                      onClick={commitCrop} 
                       disabled={rotation !== 0}
-                      className={cn("w-full h-[40px] flex items-center justify-center gap-2 rounded-[5.57px] border transition-all font-bold uppercase tracking-[0.1em] text-[11px] shadow-sm", 
+                      className={cn("w-full h-[40px] flex items-center justify-center gap-2 rounded-[5.57px] border transition-all font-bold uppercase tracking-[0.1em] text-[11px] shadow-sm cursor-pointer", 
                         isCropMode ? "bg-[#059669] text-white border-[#059669]" : "bg-black text-white border-black hover:bg-black/90",
                         rotation !== 0 && "opacity-50 cursor-not-allowed"
                       )}
                     >
-                       <Crop className="w-3.5 h-3.5" /> {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm Crop" : "Crop Image")}
+                       <Crop className="w-3.5 h-3.5" /> {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm & Apply Crop" : "Crop Image Mode")}
                     </button>
 
                     <div className="mt-2 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-[5.57px] flex gap-2">
@@ -799,7 +1495,47 @@ export default function XeroxQPrintDialog({
         {/* === ULTRA-WIDE CONTINUOUS PREVIEW === */}
         <div className="flex-1 bg-[#F8FAFC] relative flex flex-col overflow-hidden">
            
-           {/* Studio Tools Bar */}
+           {/* Studio Top Control Overlay Bar */}
+           <div className="absolute top-4 left-6 right-6 flex items-center justify-between z-[100] pointer-events-none">
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-[#E2E8F0] p-1.5 rounded-[5.57px] shadow-sm pointer-events-auto">
+                 <button
+                   onClick={() => setOrientation(o => o === 'portrait' ? 'landscape' : 'portrait')}
+                   className="h-[30px] px-3 flex items-center gap-1.5 bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-[4px] text-[10px] font-bold uppercase tracking-wider text-black transition-all cursor-pointer"
+                 >
+                    <Layout className={cn("w-3.5 h-3.5", orientation === 'landscape' && "rotate-90")} />
+                    {orientation === 'portrait' ? 'Portrait' : 'Landscape'}
+                 </button>
+                 <div className="w-[1px] h-5 bg-[#E2E8F0]" />
+                 <button
+                   onClick={() => setShowMarginGuide(g => !g)}
+                   className={cn(
+                     "h-[30px] px-2.5 flex items-center gap-1.5 border rounded-[4px] text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
+                     showMarginGuide ? "bg-red-50 text-red-600 border-red-200" : "bg-white text-[#7E8B9E] border-[#E2E8F0]"
+                   )}
+                   title="Toggle 5mm Printable Safety Margin"
+                 >
+                    <ScanLine className="w-3.5 h-3.5" /> Safety Margin
+                 </button>
+                 <button
+                   onClick={() => setShowCenterGrid(g => !g)}
+                   className={cn(
+                     "h-[30px] px-2.5 flex items-center gap-1.5 border rounded-[4px] text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
+                     showCenterGrid ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-[#7E8B9E] border-[#E2E8F0]"
+                   )}
+                   title="Toggle Alignment Grid Lines"
+                 >
+                    <Grid className="w-3.5 h-3.5" /> Center Grid
+                 </button>
+              </div>
+
+              {appliedSettingsMessage && (
+                <div className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase tracking-wider rounded-[5.57px] shadow-lg animate-in fade-in slide-in-from-top duration-300 pointer-events-auto">
+                   ✨ {appliedSettingsMessage}
+                </div>
+              )}
+           </div>
+
+           {/* Studio Bottom Tools Bar */}
            <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white border border-[#E2E8F0] p-1.5 rounded-[5.57px] shadow-sm z-[100] animate-in slide-in-from-right duration-500">
               <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-[4px] border border-[#E2E8F0]">
                  <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="h-[28px] w-[32px] flex items-center justify-center hover:bg-white border border-transparent hover:border-[#E2E8F0] rounded-[4px] text-black transition-all active:scale-95 cursor-pointer"><Minus className="w-[14px] h-[14px]" /></button>
@@ -833,184 +1569,285 @@ export default function XeroxQPrintDialog({
                           <div className="relative group transition-all duration-300 ease-out">
                              <div className="absolute -top-8 left-0 transition-opacity opacity-40 group-hover:opacity-100 flex items-center gap-2">
                                 <FileText className="w-3.5 h-3.5 text-[#323A46]" />
-                                <span className="text-[10px] font-bold text-[#323A46] uppercase tracking-[0.1em]">A4 SHEET VISUALIZATION</span>
+                                <span className="text-[10px] font-bold text-[#323A46] uppercase tracking-[0.1em]">{paperSize} SHEET VISUALIZATION ({orientation.toUpperCase()})</span>
                              </div>
                              <div 
                                className={cn("bg-white border border-[#E2E8F0] relative overflow-hidden transition-all duration-300", isCropMode ? "shadow-2xl ring-4 ring-black/5" : "shadow-[0px_4px_24px_rgba(0,0,0,0.06)]")}
-                               style={{ width: '595.27px', height: '841.88px' }}
+                               style={{ 
+                                 width: `${getPaperDims(paperSize, orientation).w}px`, 
+                                 height: `${getPaperDims(paperSize, orientation).h}px` 
+                               }}
                              >
-                                {/* Image container with rotation */}
-                                <div 
-                                  className="absolute"
-                                  style={{ 
-                                    left: `calc(50% + ${imgRect.x}px)`, 
-                                    top: `calc(50% + ${imgRect.y}px)`, 
-                                    width: `${imgRect.w}px`, 
-                                    height: `${imgRect.h}px`,
-                                    transform: 'translate(-50%, -50%)',
-                                    rotate: `${rotation}deg`,
-                                    scale: `${mirrorH ? -1 : 1} ${mirrorV ? -1 : 1}`,
-                                    cursor: isDragging ? 'grabbing' : 'grab'
-                                  }}
-                                  onMouseDown={onStartDrag}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setIsCropMode(!isCropMode);
-                                  }}
-                                >
-                                   {/* The Full Image */}
-                                   <div className="relative w-full h-full overflow-hidden">
-                                      <img 
-                                        id="laboratory-preview-image"
-                                        src={documentPath} 
-                                        alt="Laboratory Mesh" 
-                                        crossOrigin="anonymous"
-                                        className="absolute block m-0 p-0 pointer-events-none select-none"
-                                        style={{ 
-                                          left: -cropRect.l,
-                                          top: -cropRect.t,
-                                          width: imgRect.w,
-                                          height: imgRect.h,
-                                          clipPath: isCropMode ? `inset(${cropRect.t}px ${cropRect.r}px ${cropRect.b}px ${cropRect.l}px)` : 'none',
-                                          opacity: isCropMode ? 0.4 : 1,
-                                          filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
-                                        }}
-                                                                                 onLoad={(e) => {
-                                           setNumPages(1);
-                                           const img = e.currentTarget;
-                                           const A4_PT_W = 595.27;
-                                           const A4_PT_H = 841.88;
-                                           const ratio = img.naturalWidth / img.naturalHeight;
-                                           
-                                           // Calculate max width/height that fits within A4 while maintaining ratio
-                                           let finalW = A4_PT_W * 0.9; // 90% width
-                                           let finalH = finalW / ratio;
-                                           
-                                           if (finalH > A4_PT_H * 0.9) {
-                                             finalH = A4_PT_H * 0.9;
-                                             finalW = finalH * ratio;
-                                           }
-                                           
-                                           setImgRect(prev => ({ ...prev, w: finalW, h: finalH }));
-                                         }}
-
-                                      />
-
-                                      {/* Crop overlay - inside rotated container to rotate with image */}
-                                      {isCropMode && (
-                                        <>
-                                          {/* Dark overlay outside crop area */}
-                                          <div 
-                                            className="absolute bg-black/50 z-10 pointer-events-none"
-                                            style={{
-                                              left: 0,
-                                              top: 0,
-                                              width: imgRect.w,
-                                              height: cropRect.t,
-                                            }}
-                                          />
-                                          <div 
-                                            className="absolute bg-black/50 z-10 pointer-events-none"
-                                            style={{
-                                              left: 0,
-                                              top: imgRect.h - cropRect.b,
-                                              width: imgRect.w,
-                                              height: cropRect.b,
-                                            }}
-                                          />
-                                          <div 
-                                            className="absolute bg-black/50 z-10 pointer-events-none"
-                                            style={{
-                                              left: 0,
-                                              top: cropRect.t,
-                                              width: cropRect.l,
-                                              height: imgRect.h - cropRect.t - cropRect.b,
-                                            }}
-                                          />
-                                          <div 
-                                            className="absolute bg-black/50 z-10 pointer-events-none"
-                                            style={{
-                                              left: imgRect.w - cropRect.r,
-                                              top: cropRect.t,
-                                              width: cropRect.r,
-                                              height: imgRect.h - cropRect.t - cropRect.b,
-                                            }}
-                                          />
-
-                                          {/* Crop selection box */}
-                                          <div 
-                                            className="absolute z-20 border-2 border-white shadow-lg pointer-events-auto"
-                                            style={{
-                                              left: cropRect.l,
-                                              top: cropRect.t,
-                                              width: imgRect.w - cropRect.l - cropRect.r,
-                                              height: imgRect.h - cropRect.t - cropRect.b,
-                                              boxShadow: '0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.5)',
-                                            }}
-                                          >
-                                            {/* Grid lines */}
-                                            <div className="absolute inset-0 pointer-events-none">
-                                              <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/50" />
-                                              <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/50" />
-                                              <div className="absolute top-1/3 left-0 right-0 h-px bg-white/50" />
-                                              <div className="absolute top-2/3 left-0 right-0 h-px bg-white/50" />
-                                            </div>
-
-                                            {/* Dimensions label */}
-                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 rounded whitespace-nowrap">
-                                              {Math.round(imgRect.w - cropRect.l - cropRect.r)} × {Math.round(imgRect.h - cropRect.t - cropRect.b)} px
-                                            </div>
-                                          </div>
-
-                                          {/* Handles */}
-                                          <div className="absolute inset-0 z-30 pointer-events-auto">
-                                            {['nw', 'ne', 'sw', 'se'].map(h => (
-                                              <div 
-                                                key={h}
-                                                className={cn(
-                                                  "absolute transition-all hover:scale-110",
-                                                  "w-5 h-5 bg-white border-2 border-[#3568FF] rounded-full shadow-md",
-                                                  h === 'nw' && "cursor-nw-resize",
-                                                  h === 'ne' && "cursor-ne-resize", 
-                                                  h === 'sw' && "cursor-sw-resize",
-                                                  h === 'se' && "cursor-se-resize"
-                                                )}
-                                                style={{
-                                                  left: h === 'nw' || h === 'sw' ? cropRect.l - 10 : imgRect.w - cropRect.r - 10,
-                                                  top: h === 'nw' || h === 'ne' ? cropRect.t - 10 : imgRect.h - cropRect.b - 10,
-                                                }}
-                                                onMouseDown={(e) => onStartResize(e, h)}
-                                              />
-                                            ))}
-                                            {['n', 's'].map(h => (
-                                              <div 
-                                                key={h}
-                                                className="absolute transition-all hover:scale-110 w-8 h-3 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ns-resize"
-                                                style={{
-                                                  left: cropRect.l + (imgRect.w - cropRect.l - cropRect.r) / 2 - 16,
-                                                  top: h === 'n' ? cropRect.t - 6 : imgRect.h - cropRect.b - 6,
-                                                }}
-                                                onMouseDown={(e) => onStartResize(e, h)}
-                                              />
-                                            ))}
-                                            {['e', 'w'].map(h => (
-                                              <div 
-                                                key={h}
-                                                className="absolute transition-all hover:scale-110 w-3 h-8 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ew-resize"
-                                                style={{
-                                                  left: h === 'w' ? cropRect.l - 6 : imgRect.w - cropRect.r - 6,
-                                                  top: cropRect.t + (imgRect.h - cropRect.t - cropRect.b) / 2 - 16,
-                                                }}
-                                                onMouseDown={(e) => onStartResize(e, h)}
-                                              />
-                                            ))}
-                                          </div>
-                                        </>
-                                      )}
+                                {/* Watermark Stamp Overlay */}
+                                {watermarkText !== 'NONE' && (
+                                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 overflow-hidden">
+                                      <span className="text-[36px] font-black text-red-500/20 uppercase tracking-[0.3em] rotate-[-35deg] border-4 border-dashed border-red-500/20 px-8 py-3 rounded-2xl select-none whitespace-nowrap">
+                                         {watermarkText}
+                                      </span>
                                    </div>
-                                </div>
-                             </div>
-                          </div>
+                                )}
+                                {/* Safety Margin Overlay Guide (5mm) */}
+                                {showMarginGuide && (
+                                  <div className="absolute inset-[14px] border border-dashed border-red-400/40 pointer-events-none z-30 flex items-start justify-end p-1">
+                                     <span className="text-[7px] font-bold text-red-400/70 uppercase tracking-widest bg-white/80 px-1 rounded">5mm Printable Zone</span>
+                                  </div>
+                                )}
+
+                                {/* Center Crosshair Grid Overlay */}
+                                {showCenterGrid && (
+                                  <div className="absolute inset-0 pointer-events-none z-30">
+                                     <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-blue-400/40 border-r border-dashed border-blue-400/40" />
+                                     <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-blue-400/40 border-b border-dashed border-blue-400/40" />
+                                  </div>
+                                )}
+
+                                {/* POSTER TILING GRID OVERLAY (2x2 or 3x3) */}
+                                {posterMode !== '1x1' && (
+                                  <div className="absolute inset-0 pointer-events-none z-30 border-2 border-indigo-500/60">
+                                     <div className={cn("grid w-full h-full divide-x-2 divide-y-2 divide-indigo-500/60 divide-dashed", posterMode === '2x2' ? 'grid-cols-2 grid-rows-2' : 'grid-cols-3 grid-rows-3')}>
+                                        {Array.from({ length: posterMode === '2x2' ? 4 : 9 }).map((_, idx) => (
+                                          <div key={idx} className="flex items-center justify-center p-2 bg-indigo-500/5">
+                                             <span className="text-[10px] font-black text-indigo-600 bg-white/90 px-2 py-1 rounded shadow-sm border border-indigo-200">
+                                                Tile Page {idx + 1}
+                                             </span>
+                                          </div>
+                                        ))}
+                                     </div>
+                                  </div>
+                                )}
+
+                                {/* === FIGMA-STYLE IMAGE CONTAINER WITH RESIZE HANDLES === */}
+                                 {(() => {
+                                   // 8 handles: corners + edge midpoints
+                                   const handles = [
+                                     // Corners
+                                     { id: 'nw', cursor: 'cursor-nw-resize', style: { left: -5, top: -5 } },
+                                     { id: 'ne', cursor: 'cursor-ne-resize', style: { right: -5, top: -5 } },
+                                     { id: 'sw', cursor: 'cursor-sw-resize', style: { left: -5, bottom: -5 } },
+                                     { id: 'se', cursor: 'cursor-se-resize', style: { right: -5, bottom: -5 } },
+                                     // Edge midpoints
+                                     { id: 'n', cursor: 'cursor-n-resize', style: { left: '50%', top: -5, transform: 'translateX(-50%)' } },
+                                     { id: 's', cursor: 'cursor-s-resize', style: { left: '50%', bottom: -5, transform: 'translateX(-50%)' } },
+                                     { id: 'w', cursor: 'cursor-w-resize', style: { top: '50%', left: -5, transform: 'translateY(-50%)' } },
+                                     { id: 'e', cursor: 'cursor-e-resize', style: { top: '50%', right: -5, transform: 'translateY(-50%)' } },
+                                   ];
+                                   const isCorner = (id: string) => id.length === 2;
+
+                                   return (
+                                     <div
+                                       className="absolute group/img"
+                                       style={{ 
+                                         left: `calc(50% + ${imgRect.x}px)`, 
+                                         top: `calc(50% + ${imgRect.y}px)`, 
+                                         width: `${imgRect.w}px`, 
+                                         height: `${imgRect.h}px`,
+                                         transform: 'translate(-50%, -50%)',
+                                         rotate: `${rotation}deg`,
+                                         scale: `${mirrorH ? -1 : 1} ${mirrorV ? -1 : 1}`,
+                                       }}
+                                     >
+                                       {/* Drag-to-Move layer — sits behind handles */}
+                                       <div
+                                         className="absolute inset-0 z-10"
+                                         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                                         onMouseDown={onStartDrag}
+                                         onContextMenu={(e) => {
+                                           e.preventDefault();
+                                           setIsCropMode(!isCropMode);
+                                         }}
+                                       />
+
+                                       {/* Figma selection border — only in normal (non-crop) mode */}
+                                       {!isCropMode && (
+                                         <div className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover/img:opacity-100 transition-opacity duration-150">
+                                           <div className="absolute inset-0 border-2 border-[#3568FF] rounded-[1px]" />
+
+                                           {/* Size tooltip on hover */}
+                                           <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#3568FF] text-white text-[9px] font-black px-2 py-0.5 rounded whitespace-nowrap shadow-lg">
+                                             {Math.round(imgRect.w)} × {Math.round(imgRect.h)} pt &nbsp;·&nbsp; {imageScale}%
+                                           </div>
+                                         </div>
+                                       )}
+
+                                       {/* 8 Figma resize handles — normal mode only, show on hover */}
+                                       {!isCropMode && handles.map(h => (
+                                         <div
+                                           key={h.id}
+                                           className={`absolute z-30 opacity-0 group-hover/img:opacity-100 transition-opacity duration-150 ${h.cursor}`}
+                                           style={{
+                                             ...h.style,
+                                             width: isCorner(h.id) ? 10 : (h.id === 'n' || h.id === 's' ? 20 : 10),
+                                             height: isCorner(h.id) ? 10 : (h.id === 'e' || h.id === 'w' ? 20 : 10),
+                                           }}
+                                           onMouseDown={(e) => {
+                                             e.stopPropagation();
+                                             onStartResize(e, h.id);
+                                           }}
+                                         >
+                                           {/* Visual handle dot */}
+                                           <div
+                                             className={`absolute inset-0 rounded-sm bg-white border-2 border-[#3568FF] shadow-[0_0_0_1px_rgba(0,0,0,0.15)] hover:scale-125 transition-transform`}
+                                           />
+                                         </div>
+                                       ))}
+
+                                       {/* The Full Image */}
+                                       <div className="relative w-full h-full overflow-hidden">
+                                         <img 
+                                           id="laboratory-preview-image"
+                                           src={documentPath} 
+                                           alt="Laboratory Mesh" 
+                                           crossOrigin="anonymous"
+                                           className="absolute block m-0 p-0 pointer-events-none select-none"
+                                           style={{ 
+                                             left: -cropRect.l,
+                                             top: -cropRect.t,
+                                             width: imgRect.w,
+                                             height: imgRect.h,
+                                             clipPath: isCropMode ? `inset(${cropRect.t}px ${cropRect.r}px ${cropRect.b}px ${cropRect.l}px)` : 'none',
+                                             opacity: isCropMode ? 0.4 : 1,
+                                             filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) invert(${invert ? 1 : 0}) hue-rotate(${hue}deg) ${colorMode === 'monochrome' ? 'grayscale(1)' : ''}`,
+                                           }}
+                                           onLoad={(e) => {
+                                             setNumPages(1);
+                                             const img = e.currentTarget;
+                                             const sheetW = orientation === 'portrait' ? 595.27 : 841.88;
+                                             const sheetH = orientation === 'portrait' ? 841.88 : 595.27;
+                                             const ratio = img.naturalWidth / img.naturalHeight;
+                                             
+                                             // Calculate max width/height that fits within A4 while maintaining ratio
+                                             let finalW = sheetW * 0.9;
+                                             let finalH = finalW / ratio;
+                                             
+                                             if (finalH > sheetH * 0.9) {
+                                               finalH = sheetH * 0.9;
+                                               finalW = finalH * ratio;
+                                             }
+
+                                             // Store natural fitted dimensions as 100% base for scale control
+                                             naturalImgSize.current = { w: finalW, h: finalH };
+                                             setImageScale(100);
+                                             setImgRect(prev => ({ ...prev, w: finalW, h: finalH }));
+                                           }}
+                                         />
+
+                                         {/* Crop overlay - inside rotated container to rotate with image */}
+                                         {isCropMode && (
+                                           <>
+                                             {/* Dark overlay outside crop area */}
+                                             <div 
+                                               className="absolute bg-black/50 z-10 pointer-events-none"
+                                               style={{
+                                                 left: 0,
+                                                 top: 0,
+                                                 width: imgRect.w,
+                                                 height: cropRect.t,
+                                               }}
+                                             />
+                                             <div 
+                                               className="absolute bg-black/50 z-10 pointer-events-none"
+                                               style={{
+                                                 left: 0,
+                                                 top: imgRect.h - cropRect.b,
+                                                 width: imgRect.w,
+                                                 height: cropRect.b,
+                                               }}
+                                             />
+                                             <div 
+                                               className="absolute bg-black/50 z-10 pointer-events-none"
+                                               style={{
+                                                 left: 0,
+                                                 top: cropRect.t,
+                                                 width: cropRect.l,
+                                                 height: imgRect.h - cropRect.t - cropRect.b,
+                                               }}
+                                             />
+                                             <div 
+                                               className="absolute bg-black/50 z-10 pointer-events-none"
+                                               style={{
+                                                 left: imgRect.w - cropRect.r,
+                                                 top: cropRect.t,
+                                                 width: cropRect.r,
+                                                 height: imgRect.h - cropRect.t - cropRect.b,
+                                               }}
+                                             />
+
+                                             {/* Crop selection box */}
+                                             <div 
+                                               className="absolute z-20 border-2 border-white shadow-lg pointer-events-auto"
+                                               style={{
+                                                 left: cropRect.l,
+                                                 top: cropRect.t,
+                                                 width: imgRect.w - cropRect.l - cropRect.r,
+                                                 height: imgRect.h - cropRect.t - cropRect.b,
+                                                 boxShadow: '0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.5)',
+                                               }}
+                                             >
+                                               {/* Grid lines */}
+                                               <div className="absolute inset-0 pointer-events-none">
+                                                 <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/50" />
+                                                 <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/50" />
+                                                 <div className="absolute top-1/3 left-0 right-0 h-px bg-white/50" />
+                                                 <div className="absolute top-2/3 left-0 right-0 h-px bg-white/50" />
+                                               </div>
+
+                                               {/* Dimensions label */}
+                                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 rounded whitespace-nowrap">
+                                                 {Math.round(imgRect.w - cropRect.l - cropRect.r)} × {Math.round(imgRect.h - cropRect.t - cropRect.b)} px
+                                               </div>
+                                             </div>
+
+                                             {/* Crop Handles */}
+                                             <div className="absolute inset-0 z-30 pointer-events-auto">
+                                               {['nw', 'ne', 'sw', 'se'].map(h => (
+                                                 <div 
+                                                   key={h}
+                                                   className={cn(
+                                                     "absolute transition-all hover:scale-110",
+                                                     "w-5 h-5 bg-white border-2 border-[#3568FF] rounded-full shadow-md",
+                                                     h === 'nw' && "cursor-nw-resize",
+                                                     h === 'ne' && "cursor-ne-resize", 
+                                                     h === 'sw' && "cursor-sw-resize",
+                                                     h === 'se' && "cursor-se-resize"
+                                                   )}
+                                                   style={{
+                                                     left: h === 'nw' || h === 'sw' ? cropRect.l - 10 : imgRect.w - cropRect.r - 10,
+                                                     top: h === 'nw' || h === 'ne' ? cropRect.t - 10 : imgRect.h - cropRect.b - 10,
+                                                   }}
+                                                   onMouseDown={(e) => onStartResize(e, h)}
+                                                 />
+                                               ))}
+                                               {['n', 's'].map(h => (
+                                                 <div 
+                                                   key={h}
+                                                   className="absolute transition-all hover:scale-110 w-8 h-3 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ns-resize"
+                                                   style={{
+                                                     left: cropRect.l + (imgRect.w - cropRect.l - cropRect.r) / 2 - 16,
+                                                     top: h === 'n' ? cropRect.t - 6 : imgRect.h - cropRect.b - 6,
+                                                   }}
+                                                   onMouseDown={(e) => onStartResize(e, h)}
+                                                 />
+                                               ))}
+                                               {['e', 'w'].map(h => (
+                                                 <div 
+                                                   key={h}
+                                                   className="absolute transition-all hover:scale-110 w-3 h-8 bg-white border-2 border-[#3568FF] rounded-full shadow-md cursor-ew-resize"
+                                                   style={{
+                                                     left: h === 'w' ? cropRect.l - 6 : imgRect.w - cropRect.r - 6,
+                                                     top: cropRect.t + (imgRect.h - cropRect.t - cropRect.b) / 2 - 16,
+                                                   }}
+                                                   onMouseDown={(e) => onStartResize(e, h)}
+                                                 />
+                                               ))}
+                                             </div>
+                                           </>
+                                         )}
+                                       </div>
+                                     </div>
+                                   );
+                                 })()}
+                              </div>
+                           </div>
                        </div>
                     ) : (isRawFormat || pdfError) ? (
                       <div className="flex flex-col items-center justify-center py-20 px-10 text-center gap-4 opacity-50">
@@ -1141,6 +1978,52 @@ export default function XeroxQPrintDialog({
                {appliedSettingsMessage}
              </p>
            )}
+        </div>
+      )}
+
+      {/* KEYBOARD SHORTCUTS CHEAT-SHEET MODAL */}
+      {showShortcutsModal && (
+        <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 bg-black text-white flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-[#3568FF]" />
+                    <h3 className="text-[14px] font-extrabold uppercase tracking-wider">XeroxQ Hotkey Shortcuts</h3>
+                 </div>
+                 <button onClick={() => setShowShortcutsModal(false)} className="hover:opacity-75 transition-opacity cursor-pointer">
+                    <X className="w-4 h-4" />
+                 </button>
+              </div>
+
+              <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+                 {[
+                   { key: 'R', label: 'Rotate 90° clockwise' },
+                   { key: 'C', label: 'Toggle Crop Mode' },
+                   { key: 'I', label: 'Invert image colors' },
+                   { key: 'M', label: 'Mirror horizontally' },
+                   { key: 'V', label: 'Mirror vertically' },
+                   { key: '0', label: 'Reset all Laboratory adjustments' },
+                   { key: 'P / Enter', label: 'Start Print / Spooling job' },
+                   { key: '?', label: 'Toggle this Shortcuts Guide' },
+                 ].map(item => (
+                   <div key={item.key} className="flex items-center justify-between p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
+                      <span className="text-[11px] font-bold text-black uppercase tracking-tight">{item.label}</span>
+                      <kbd className="px-2.5 py-1 bg-white border border-[#E2E8F0] text-black font-extrabold text-[11px] rounded shadow-sm">
+                         {item.key}
+                      </kbd>
+                   </div>
+                 ))}
+              </div>
+
+              <div className="px-6 py-3 bg-[#F8FAFC] border-t border-[#E2E8F0] text-right">
+                 <button
+                   onClick={() => setShowShortcutsModal(false)}
+                   className="px-4 py-1.5 bg-black text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider hover:bg-black/90 transition-all cursor-pointer"
+                 >
+                    Got It
+                 </button>
+              </div>
+           </div>
         </div>
       )}
 

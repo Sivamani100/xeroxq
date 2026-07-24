@@ -27,6 +27,8 @@ const MAINTENANCE_ALLOWED_ROUTES = [
   '/api/health',
   '/api/auth/callback',
   '/api/maintenance',
+  '/auth/callback',
+  '/auth/reset-password',
   '/_next',
   '/favicon.ico',
   '/robots.txt',
@@ -222,10 +224,13 @@ export async function proxy(request: NextRequest) {
       // Only allow redirects to relative paths (no external URLs)
       const isRelative = next.startsWith("/") && !next.startsWith("//") && !next.includes(":");
       if (!isRelative) {
-        // Strip the dangerous `next` param and default to /admin
+        // Strip the dangerous `next` param and default to /admin,
+        // but preserve code and electron params for correct handling
         const safeUrl = new URL("/auth/callback", request.url);
         const code = searchParams.get("code");
+        const electron = searchParams.get("electron");
         if (code) safeUrl.searchParams.set("code", code);
+        if (electron) safeUrl.searchParams.set("electron", electron);
         return NextResponse.redirect(safeUrl);
       }
     }
