@@ -37,7 +37,11 @@ const itemVariant: Variants = {
 
 const transitionVariants = { item: itemVariant };
 
+import { DownloadModal } from '@/components/ui/download-modal';
+
 export function HeroSection() {
+  const [isDownloadOpen, setIsDownloadOpen] = React.useState(false);
+
   return (
     <>
       <SiteHeader />
@@ -105,16 +109,10 @@ export function HeroSection() {
                   className="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row">
                   <div className="bg-orange-50 rounded-full border border-brand-primary/10 p-0.5">
                     <Button
-                      asChild
-                      className="h-12 rounded-full px-8 text-base font-semibold bg-[#FB432C] hover:bg-black text-white shadow-xl shadow-brand-primary/20 transition-all duration-300">
-                      <a 
-                        href="/downloads/XeroxQ-Setup-0.1.0.exe" 
-                        download="XeroxQ Setup 0.1.0.exe"
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="size-5" />
-                        <span className="text-nowrap">Download Now (.exe)</span>
-                      </a>
+                      onClick={() => setIsDownloadOpen(true)}
+                      className="h-12 rounded-full px-8 text-base font-semibold bg-[#FB432C] hover:bg-black text-white shadow-xl shadow-brand-primary/20 transition-all duration-300 flex items-center gap-2">
+                      <Download className="size-5" />
+                      <span className="text-nowrap">Download Now (.exe)</span>
                     </Button>
                   </div>
                   <Button
@@ -216,6 +214,7 @@ export function HeroSection() {
         <HeroFeatures />
         <WallOfLoveSection />
       </main>
+      <DownloadModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </>
   );
 }

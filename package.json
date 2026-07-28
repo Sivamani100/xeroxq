@@ -9,7 +9,7 @@
     "lint": "next lint",
     "check-types": "tsc --noEmit",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http-get://localhost:3000/register && electron .\"",
-    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('next build', {stdio: 'inherit'})\" && npx electron-builder --win"
+    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('next build', {stdio: 'inherit'})\" && npx electron-builder --win && node -e \"require('fs').mkdirSync('public/downloads', {recursive:true}); require('fs').copyFileSync('release_build/XeroxQ Setup 0.1.0.exe', 'public/downloads/XeroxQ-Setup-0.1.0.exe'); require('fs').copyFileSync('release_build/XeroxQ 0.1.0.exe', 'public/downloads/XeroxQ-Portable-0.1.0.exe');\""
   },
   "build": {
     "appId": "com.xeroxq.desktop",
