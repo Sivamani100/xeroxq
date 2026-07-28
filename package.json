@@ -9,7 +9,7 @@
     "lint": "next lint",
     "check-types": "tsc --noEmit",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http-get://localhost:3000/register && electron .\"",
-    "desktop:build": "npx electron-builder --win"
+    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('next build', {stdio: 'inherit'})\" && npx electron-builder --win"
   },
   "build": {
     "appId": "com.xeroxq.desktop",
@@ -17,6 +17,10 @@
     "directories": {
       "output": "release_build"
     },
+    "asarUnpack": [
+      "**/node_modules/pdf-to-printer/**/*",
+      "**/*.exe"
+    ],
     "files": [
       "electron/**/*",
       "out/**/*",
@@ -29,7 +33,8 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "ia32"
           ]
         },
         {
@@ -40,7 +45,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "requestedExecutionLevel": "highestAvailable"
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
