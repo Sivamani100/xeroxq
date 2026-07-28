@@ -9,7 +9,7 @@
     "lint": "next lint",
     "check-types": "tsc --noEmit",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http-get://localhost:3000/register && electron .\"",
-    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('next build', {stdio: 'inherit'})\" && npx electron-builder --win --x64 && npx electron-builder --win --ia32 && node -e \"require('fs').mkdirSync('public/downloads', {recursive:true}); require('fs').copyFileSync('release_build/XeroxQ-Setup-x64.exe', 'public/downloads/XeroxQ-Setup-x64.exe'); require('fs').copyFileSync('release_build/XeroxQ-Setup-ia32.exe', 'public/downloads/XeroxQ-Setup-ia32.exe');\""
+    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('npx next build', {stdio: 'inherit'})\" && npx electron-builder --win --x64 && npx electron-builder --win --ia32 && node -e \"require('fs').mkdirSync('public/downloads', {recursive:true}); require('fs').copyFileSync('release_build/XeroxQ-Setup-x64.exe', 'public/downloads/XeroxQ-Setup-x64.exe'); require('fs').copyFileSync('release_build/XeroxQ-Setup-ia32.exe', 'public/downloads/XeroxQ-Setup-ia32.exe');\""
   },
   "build": {
     "appId": "com.xeroxq.desktop",
