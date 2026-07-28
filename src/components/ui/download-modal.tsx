@@ -137,8 +137,8 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     className="w-full h-11 rounded-xl bg-[#FB432C] hover:bg-black text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <a
-                      href="/downloads/XeroxQ-Setup-0.1.0.exe"
-                      download="XeroxQ Setup 0.1.0 (x64).exe"
+                      href="/downloads/XeroxQ-Setup-x64.exe"
+                      download="XeroxQ-Setup-x64.exe"
                     >
                       <Download className="h-4 w-4" />
                       <span>Download 64-Bit Installer</span>
@@ -146,7 +146,6 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                   </Button>
                 </div>
               </div>
-
               {/* Option 2: 32-Bit (x86 / ia32) Installer */}
               <div className={`relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-200 ${
                 detectedArch === "x86"
@@ -165,7 +164,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     </div>
                     <div>
                       <h3 className="font-bold text-black text-base">Windows 32-Bit (x86 / ia32)</h3>
-                      <p className="text-xs text-gray-500 font-medium">Universal Setup Installer (.exe)</p>
+                      <p className="text-xs text-gray-500 font-medium">Dedicated 32-Bit Setup Installer (.exe)</p>
                     </div>
                   </div>
                   <ul className="mt-4 space-y-2 text-xs text-gray-600 font-medium">
@@ -175,7 +174,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Universal NSIS setup supporting x86 architecture</span>
+                      <span>Native ia32 NSIS setup for 32-Bit Windows</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
@@ -189,8 +188,8 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     className="w-full h-11 rounded-xl bg-black hover:bg-[#FB432C] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <a
-                      href="/downloads/XeroxQ-Setup-0.1.0.exe"
-                      download="XeroxQ Setup 0.1.0 (x86 32-Bit).exe"
+                      href="/downloads/XeroxQ-Setup-ia32.exe"
+                      download="XeroxQ-Setup-ia32.exe"
                     >
                       <Download className="h-4 w-4" />
                       <span>Download 32-Bit Installer</span>
@@ -220,8 +219,8 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                 className="w-full sm:w-auto h-10 rounded-xl border-gray-300 font-bold text-xs hover:bg-black hover:text-white transition-all flex-shrink-0"
               >
                 <a
-                  href="/downloads/XeroxQ-Portable-0.1.0.exe"
-                  download="XeroxQ Portable 0.1.0.exe"
+                  href="/downloads/XeroxQ-Portable-x64.exe"
+                  download="XeroxQ-Portable-x64.exe"
                   className="flex items-center gap-2"
                 >
                   <Download className="h-3.5 w-3.5" />
