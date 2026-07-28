@@ -6,14 +6,30 @@ import { logger } from "@/lib/logger";
 // This professional analytical endpoint calculates business health metrics
 // including Growth Velocity, Churn Risk, and Peak Hour Distribution.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient(
+    const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+
+    if (!user || !ceoEmail || user.email?.trim().toLowerCase() !== ceoEmail) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const supabase = supabaseAdmin;
 
     // 1. Fetch historical snapshots (last 30 days)
     const thirtyDaysAgo = new Date();

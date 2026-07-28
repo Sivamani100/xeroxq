@@ -1,4 +1,4 @@
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -45,10 +45,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { maintenance_mode, admin_key } = body;
 
-    // Verify admin key (you should use a proper authentication system)
-    const expectedAdminKey = process.env.ADMIN_MAINTENANCE_KEY || 'xeroxq-admin-2024';
+    // Verify admin key from environment
+    const expectedAdminKey = process.env.ADMIN_MAINTENANCE_KEY;
     
-    if (admin_key !== expectedAdminKey) {
+    if (!expectedAdminKey || admin_key !== expectedAdminKey) {
       return NextResponse.json(
         { error: 'Unauthorized: Invalid admin key' },
         { status: 401 }

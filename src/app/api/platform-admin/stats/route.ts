@@ -1,4 +1,4 @@
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -11,9 +11,20 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const ALLOWED_DELETE_TABLES = new Set([
+  "shops",
+  "contact_submissions",
+  "newsletter_subs",
+  "partners",
+  "job_applications",
+  "blogs",
+  "platform_news",
+  "security_reports"
+]);
+
 export async function GET(req: NextRequest) {
   // ── 1. Auth gate ────────────────────────────────────────────────────────────
-  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
+  const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
   const authHeader = req.headers.get("Authorization");
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -23,7 +34,7 @@ export async function GET(req: NextRequest) {
   const token = authHeader.slice(7);
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
 
-  if (!user || (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail)) {
+  if (!user || !ceoEmail || user.email?.trim().toLowerCase() !== ceoEmail) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -133,7 +144,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth gate (CEO Only) ──────────────────────────────────────────────────
-  const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
+  const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
   const authHeader = req.headers.get("Authorization");
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -143,7 +154,7 @@ export async function POST(req: NextRequest) {
   const token = authHeader.slice(7);
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
 
-  if (!user || (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail)) {
+  if (!user || !ceoEmail || user.email?.trim().toLowerCase() !== ceoEmail) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -163,6 +174,9 @@ export async function POST(req: NextRequest) {
     let result;
 
     if (action === 'delete') {
+      if (!ALLOWED_DELETE_TABLES.has(table)) {
+        return NextResponse.json({ error: "Disallowed table for deletion" }, { status: 400 });
+      }
       result = await supabaseAdmin.from(table).delete().eq('id', id);
     } 
     else if (action === 'approve_shop' || (action === 'approve' && table === 'shops')) {

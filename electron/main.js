@@ -280,16 +280,35 @@ function createWindow() {
   });
 }
 
+function isSafeExternalUrl(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    const allowedHosts = ['accounts.google.com', 'supabase.co', 'xeroxq.arkio.in', 'localhost', '127.0.0.1'];
+    return allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+  } catch {
+    return false;
+  }
+}
+
 // ── IPC: Open OAuth in system browser ────────────────────────────────────────
 // Called by the renderer when the user clicks "Continue with Google".
 // Opens the OAuth URL in the default system browser (Chrome, Edge, etc.)
 ipcMain.handle('open-oauth-url', async (_event, url) => {
+  if (!isSafeExternalUrl(url)) {
+    console.error('[XeroxQ Security] Blocked untrusted OAuth URL:', url);
+    return { success: false, error: 'Disallowed URL' };
+  }
   await shell.openExternal(url);
   return { success: true };
 });
 
 // ── IPC: Open password reset link in system browser ───────────────────────────
 ipcMain.handle('open-reset-password-url', async (_event, url) => {
+  if (!isSafeExternalUrl(url)) {
+    console.error('[XeroxQ Security] Blocked untrusted reset password URL:', url);
+    return { success: false, error: 'Disallowed URL' };
+  }
   await shell.openExternal(url);
   return { success: true };
 });
@@ -352,12 +371,13 @@ ipcMain.handle('close-window', async (event) => {
 app.whenReady().then(async () => {
   const { session } = require('electron');
 
-  // Automatically grant all application permissions (clipboard, notifications, printing, storage)
-  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
-    callback(true);
+  // Restrict application permissions to explicit safe list (notifications, clipboard)
+  const SAFE_PERMISSIONS = new Set(['notifications', 'clipboard-read', 'clipboard-sanitized-write']);
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(SAFE_PERMISSIONS.has(permission));
   });
-  session.defaultSession.setPermissionCheckHandler(() => {
-    return true;
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    return SAFE_PERMISSIONS.has(permission);
   });
 
   // Handle app:// protocol requests for static files from out/
@@ -369,7 +389,13 @@ app.whenReady().then(async () => {
         relativePath = '/register';
       }
 
-      let targetPath = path.normalize(path.join(__dirname, '../out', relativePath));
+      const outDir = path.resolve(__dirname, '../out');
+      let targetPath = path.normalize(path.join(outDir, relativePath));
+
+      if (!targetPath.startsWith(outDir)) {
+        console.error('[XeroxQ Security] Path traversal blocked:', targetPath);
+        return new Response('Access Denied', { status: 403 });
+      }
 
       // Handle routes without file extensions (e.g. /register -> /register.html)
       if (!path.extname(targetPath)) {

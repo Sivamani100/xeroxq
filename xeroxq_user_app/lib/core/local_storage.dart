@@ -14,15 +14,20 @@ class LocalStorageService {
   static late Box<dynamic> _settings;
 
   /// Call once in main() before runApp.
-  static Future<void> initialize() async {
+  static Future<void> initialize({List<int>? cipherKey}) async {
     if (kIsWeb) {
       await Hive.initFlutter();
     } else {
       final appDocDir = await getApplicationDocumentsDirectory();
       await Hive.initFlutter(appDocDir.path);
     }
-    _vault = await Hive.openBox(_vaultBox);
-    _vaultBytes = await Hive.openBox(_vaultBytesBox);
+
+    final cipher = cipherKey != null && cipherKey.length == 32 
+        ? HiveAesCipher(cipherKey) 
+        : null;
+
+    _vault = await Hive.openBox(_vaultBox, encryptionCipher: cipher);
+    _vaultBytes = await Hive.openBox(_vaultBytesBox, encryptionCipher: cipher);
     _settings = await Hive.openBox(_settingsBox);
   }
 

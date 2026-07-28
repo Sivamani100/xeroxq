@@ -32,7 +32,7 @@ export function SiteFooter() {
     Privacy: [
       { name: "Privacy Policy", href: "/privacy" },
       { name: "Terms of Service", href: "/terms" },
-      { name: "Data Protection", href: "/data" },
+      { name: "Software Licenses", href: "/licenses" },
       { name: "Security", href: "/security" }
     ]
   };

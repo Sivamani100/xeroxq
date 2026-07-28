@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // This professional background service automatically calculates and 
 // deducts platform commissions based on daily performance snapshots.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 const COMMISSION_PER_JOB = 0.50; // MNC Policy: ₹0.50 per print job
 
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     logger.security("Rejected unauthorized billing cron attempt");
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -55,13 +55,20 @@ export async function GET(req: Request) {
       });
 
       if (updateErr) {
-        // Fallback to manual update if RPC doesn't exist yet
+        // Fallback: fetch current balance and subtract deduction
+        const { data: currentShop } = await supabase
+          .from("shops")
+          .select("platform_balance")
+          .eq("id", metric.shop_id)
+          .single();
+
+        const currentBalance = currentShop?.platform_balance || 0;
         await supabase
           .from("shops")
-          .update({ platform_balance: -deduction }) // This logic is wrong, need to find current balance first
+          .update({ platform_balance: currentBalance - deduction })
           .eq("id", metric.shop_id);
           
-        logger.error(`Failed to deduct fees for shop ${metric.shop_id}`, updateErr);
+        logger.warn(`RPC increment_shop_balance failed for ${metric.shop_id}, applied fallback update.`);
       } else {
         // Log the autonomous deduction
         await supabase.from("automation_logs").insert({

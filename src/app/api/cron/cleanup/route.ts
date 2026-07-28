@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // Deletes old document files from Supabase Storage Bucket ('documents') after 5 minutes.
 // Retains database table records in 'jobs' for analytics and queue history while clearing file_path.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 seconds allowed for this function
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
@@ -20,16 +20,21 @@ export async function POST(req: Request) {
 }
 
 async function handleCleanup(req: Request) {
-  // 1. Authorization: Allow Vercel Crons, Bearer secret, or internal requests
+  // 1. Authorization: Require CRON_SECRET via Bearer token or secret param
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (process.env.NODE_ENV === "production" && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    const url = new URL(req.url);
-    if (url.searchParams.get("secret") !== cronSecret) {
-      logger.warn("Unauthorized attempt to trigger Storage Cleanup job");
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
+  const url = new URL(req.url);
+  const paramSecret = url.searchParams.get("secret");
+
+  const isAuthorized = cronSecret && (
+    authHeader === `Bearer ${cronSecret}` || 
+    paramSecret === cronSecret
+  );
+
+  if (!isAuthorized) {
+    logger.warn("Unauthorized attempt to trigger Storage Cleanup job");
+    return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {

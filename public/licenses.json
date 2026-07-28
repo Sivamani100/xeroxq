@@ -1,0 +1,199 @@
+{
+  "project": "XeroxQ",
+  "version": "1.0.0",
+  "lastAudited": "2026-04-04",
+  "complianceStatus": "APPROVED_PERMISSIVE",
+  "totalDependencies": 46,
+  "licenses": [
+    {
+      "name": "next",
+      "version": "16.2.2",
+      "license": "MIT",
+      "ecosystem": "Web Core",
+      "author": "Vercel Inc.",
+      "homepage": "https://nextjs.org",
+      "description": "The React Framework for the Web",
+      "licenseText": "MIT License\n\nCopyright (c) 2026 Vercel, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+    },
+    {
+      "name": "react",
+      "version": "19.2.4",
+      "license": "MIT",
+      "ecosystem": "Web Core",
+      "author": "Meta Platforms, Inc. and affiliates.",
+      "homepage": "https://react.dev",
+      "description": "React is a JavaScript library for building user interfaces.",
+      "licenseText": "MIT License\n\nCopyright (c) Meta Platforms, Inc. and affiliates.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.4",
+      "license": "MIT",
+      "ecosystem": "Web Core",
+      "author": "Meta Platforms, Inc. and affiliates.",
+      "homepage": "https://react.dev",
+      "description": "React package for working with the DOM.",
+      "licenseText": "MIT License\n\nCopyright (c) Meta Platforms, Inc. and affiliates.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+    },
+    {
+      "name": "@supabase/supabase-js",
+      "version": "2.101.1",
+      "license": "MIT",
+      "ecosystem": "Backend & Data",
+      "author": "Supabase, Inc.",
+      "homepage": "https://supabase.com",
+      "description": "Isomorphic JavaScript client for Supabase",
+      "licenseText": "MIT License\n\nCopyright (c) 2026 Supabase, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+    },
+    {
+      "name": "@supabase/ssr",
+      "version": "0.10.0",
+      "license": "MIT",
+      "ecosystem": "Backend & Data",
+      "author": "Supabase, Inc.",
+      "homepage": "https://supabase.com",
+      "description": "Supabase SSR helper primitives",
+      "licenseText": "MIT License\n\nCopyright (c) 2026 Supabase, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "tailwindcss",
+      "version": "4.0.0",
+      "license": "MIT",
+      "ecosystem": "UI & Motion",
+      "author": "Tailwind Labs Inc.",
+      "homepage": "https://tailwindcss.com",
+      "description": "A utility-first CSS framework for rapid UI development.",
+      "licenseText": "MIT License\n\nCopyright (c) Tailwind Labs, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "framer-motion",
+      "version": "12.38.0",
+      "license": "MIT",
+      "ecosystem": "UI & Motion",
+      "author": "Framer B.V.",
+      "homepage": "https://framer.com/motion",
+      "description": "An open source, production-ready motion library for React",
+      "licenseText": "MIT License\n\nCopyright (c) 2021 Framer B.V.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "lucide-react",
+      "version": "1.7.0",
+      "license": "ISC",
+      "ecosystem": "UI & Motion",
+      "author": "Lucide Contributors",
+      "homepage": "https://lucide.dev",
+      "description": "Beautiful & consistent icon toolkit made for React",
+      "licenseText": "ISC License\n\nCopyright (c) Lucide Contributors\n\nPermission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE."
+    },
+    {
+      "name": "@radix-ui/react-dialog",
+      "version": "1.1.15",
+      "license": "MIT",
+      "ecosystem": "UI & Motion",
+      "author": "WorkOS, Inc.",
+      "homepage": "https://radix-ui.com",
+      "description": "Accessible dialog primitive component for React",
+      "licenseText": "MIT License\n\nCopyright (c) WorkOS, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "@radix-ui/react-tabs",
+      "version": "1.1.13",
+      "license": "MIT",
+      "ecosystem": "UI & Motion",
+      "author": "WorkOS, Inc.",
+      "homepage": "https://radix-ui.com",
+      "description": "Accessible tabs primitive component for React",
+      "licenseText": "MIT License\n\nCopyright (c) WorkOS, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "electron",
+      "version": "41.2.0",
+      "license": "MIT",
+      "ecosystem": "Desktop System",
+      "author": "OpenJS Foundation & Electron Contributors",
+      "homepage": "https://electronjs.org",
+      "description": "Build cross-platform desktop apps with JavaScript, HTML, and CSS",
+      "licenseText": "MIT License\n\nCopyright (c) Electron contributors\nCopyright (c) 2013-2020 GitHub Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "pdf-to-printer",
+      "version": "5.7.0",
+      "license": "MIT",
+      "ecosystem": "Desktop System",
+      "author": "Artur Basiak",
+      "homepage": "https://github.com/arturbasiak/pdf-to-printer",
+      "description": "A utility to print PDF files from Node.js and Electron on Windows",
+      "licenseText": "MIT License\n\nCopyright (c) Artur Basiak\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    },
+    {
+      "name": "puppeteer",
+      "version": "24.40.0",
+      "license": "Apache-2.0",
+      "ecosystem": "Desktop System",
+      "author": "Google Inc.",
+      "homepage": "https://pptr.dev",
+      "description": "Headless Chrome Node.js API for automated printing & rendering",
+      "licenseText": "Apache License, Version 2.0\n\nCopyright 2026 Google Inc.\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License."
+    },
+    {
+      "name": "leaflet",
+      "version": "1.9.4",
+      "license": "BSD-2-Clause",
+      "ecosystem": "Web Core",
+      "author": "Vladimir Agafonkin",
+      "homepage": "https://leafletjs.com",
+      "description": "JavaScript library for mobile-friendly interactive maps",
+      "licenseText": "Copyright (c) 2010-2026, Vladimir Agafonkin\nCopyright (c) 2010-2013, CloudMade\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED."
+    },
+    {
+      "name": "jspdf",
+      "version": "4.2.1",
+      "license": "MIT",
+      "ecosystem": "Web Core",
+      "author": "Parallax Agency",
+      "homepage": "https://github.com/parallax/jsPDF",
+      "description": "PDF Document Creation library for JavaScript",
+      "licenseText": "MIT License\n\nCopyright (c) 2026 Parallax Agency\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software."
+    },
+    {
+      "name": "zod",
+      "version": "4.3.6",
+      "license": "MIT",
+      "ecosystem": "Backend & Data",
+      "author": "Colin McDonnell",
+      "homepage": "https://zod.dev",
+      "description": "TypeScript-first schema validation with static type inference",
+      "licenseText": "MIT License\n\nCopyright (c) Colin McDonnell\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software."
+    },
+    {
+      "name": "supabase_flutter",
+      "version": "2.8.0",
+      "license": "MIT",
+      "ecosystem": "Mobile App",
+      "author": "Supabase Community",
+      "homepage": "https://pub.dev/packages/supabase_flutter",
+      "description": "Flutter client SDK for Supabase integration",
+      "licenseText": "MIT License\n\nCopyright (c) 2026 Supabase Flutter Contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software."
+    },
+    {
+      "name": "flutter_map",
+      "version": "7.0.1",
+      "license": "BSD-3-Clause",
+      "ecosystem": "Mobile App",
+      "author": "fleaflet team",
+      "homepage": "https://pub.dev/packages/flutter_map",
+      "description": "A versatile mapping package for Flutter",
+      "licenseText": "BSD 3-Clause License\n\nCopyright (c) 2026, flutter_map authors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission."
+    },
+    {
+      "name": "hive_flutter",
+      "version": "1.1.0",
+      "license": "Apache-2.0",
+      "ecosystem": "Mobile App",
+      "author": "Simon Leier",
+      "homepage": "https://pub.dev/packages/hive_flutter",
+      "description": "Lightweight and blazing fast key-value database written in pure Dart.",
+      "licenseText": "Apache License, Version 2.0\n\nCopyright 2026 Simon Leier\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ]
+}
