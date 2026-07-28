@@ -6,9 +6,12 @@ import { logger } from "@/lib/logger";
 // This professional diagnostic endpoint performs a "Full Circuit" test
 // of the platform's core dependency chain (DB Auth -> RLS -> Data Flow).
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET(req: Request) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ success: true });
+  }
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 

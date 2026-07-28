@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -23,6 +23,9 @@ const ALLOWED_DELETE_TABLES = new Set([
 ]);
 
 export async function GET(req: NextRequest) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ shops: [] });
+  }
   // ── 1. Auth gate ────────────────────────────────────────────────────────────
   const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
   const authHeader = req.headers.get("Authorization");

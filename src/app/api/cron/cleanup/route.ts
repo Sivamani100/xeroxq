@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // Deletes old document files from Supabase Storage Bucket ('documents') after 5 minutes.
 // Retains database table records in 'jobs' for analytics and queue history while clearing file_path.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 export const maxDuration = 60; // 60 seconds allowed for this function
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
@@ -20,6 +20,9 @@ export async function POST(req: Request) {
 }
 
 async function handleCleanup(req: Request) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ success: true });
+  }
   // 1. Authorization: Require CRON_SECRET via Bearer token or secret param
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;

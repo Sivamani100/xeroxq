@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -10,6 +10,9 @@ const supabase = createClient(
 );
 
 export async function GET() {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ maintenance_mode: false });
+  }
   try {
     
     const { data, error } = await supabase

@@ -6,9 +6,12 @@ import { logger } from "@/lib/logger";
 // This professional troubleshooting endpoint allows support teams to
 // analyze a shop's health, processing success rates, and financial status.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET(req: Request) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({});
+  }
   const { searchParams } = new URL(req.url);
   const shopId = searchParams.get("shopId");
   const authHeader = req.headers.get("Authorization");

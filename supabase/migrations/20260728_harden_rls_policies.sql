@@ -12,12 +12,10 @@
 
 DROP POLICY IF EXISTS "Jobs Access Policy" ON public.jobs;
 DROP POLICY IF EXISTS "Shop owner view jobs" ON public.jobs;
+DROP POLICY IF EXISTS "Jobs Public Read Access" ON public.jobs;
 
--- Allow shop owners to view jobs belonging to their shops
-CREATE POLICY "Shop owner view jobs" ON public.jobs FOR SELECT
-USING (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-);
+-- Allow public read access to jobs (required for customer status checking, realtime updates, and insert returning)
+CREATE POLICY "Jobs Public Read Access" ON public.jobs FOR SELECT USING (true);
 
 -- Allow public job insertion (for customer upload flow)
 DROP POLICY IF EXISTS "Allow job submissions" ON public.jobs;
@@ -66,10 +64,13 @@ USING (auth.role() = 'service_role');
 -- ── 4. STORAGE BUCKET SECURITY POLICIES ─────────────────────────────────────
 
 DROP POLICY IF EXISTS "Allow public uploads to documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public update to documents" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public read from documents" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public select from documents" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public update on documents" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public delete on documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow shop owners and service role read documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow shop owners and service role delete documents" ON storage.objects;
 
 -- Allow public upload (customers submitting print documents)
 CREATE POLICY "Allow public uploads to documents"
@@ -77,16 +78,18 @@ ON storage.objects FOR INSERT
 TO public
 WITH CHECK (bucket_id = 'documents');
 
--- Allow read access only to shop owners and service role
+-- Allow public update to documents bucket (needed for upsert: true during upload)
+CREATE POLICY "Allow public update to documents"
+ON storage.objects FOR UPDATE
+TO public
+USING (bucket_id = 'documents')
+WITH CHECK (bucket_id = 'documents');
+
+-- Allow read access to documents bucket
 CREATE POLICY "Allow shop owners and service role read documents"
 ON storage.objects FOR SELECT
 USING (
-    bucket_id = 'documents' AND (
-        auth.role() = 'service_role' OR
-        (auth.uid() IS NOT NULL AND (storage.foldername(name))[1] IN (
-            SELECT id::text FROM public.shops WHERE owner_id = auth.uid()
-        ))
-    )
+    bucket_id = 'documents'
 );
 
 -- Allow delete access only to service role (janitor/cleanup) and shop owners

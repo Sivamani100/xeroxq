@@ -1,8 +1,11 @@
+export const dynamic = "force-static";
+
 import { NextResponse } from "next/server";
 import licensesData from "../../../../public/licenses.json";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+export async function GET(request?: Request) {
+  const urlStr = request?.url || "https://xeroxq.arkio.in/api/licenses";
+  const { searchParams } = new URL(urlStr);
   const query = searchParams.get("query")?.toLowerCase() || "";
   const ecosystem = searchParams.get("ecosystem") || "";
   const licenseType = searchParams.get("license") || "";

@@ -6,9 +6,12 @@ import { logger } from "@/lib/logger";
 // This professional analytical endpoint calculates business health metrics
 // including Growth Velocity, Churn Risk, and Peak Hour Distribution.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET(req: NextRequest) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ summary: {} });
+  }
   try {
     const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
     const authHeader = req.headers.get("Authorization");

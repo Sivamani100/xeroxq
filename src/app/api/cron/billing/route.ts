@@ -6,11 +6,14 @@ import { logger } from "@/lib/logger";
 // This professional background service automatically calculates and 
 // deducts platform commissions based on daily performance snapshots.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 const COMMISSION_PER_JOB = 0.50; // MNC Policy: ₹0.50 per print job
 
 export async function GET(req: Request) {
+  if (process.env.BUILD_DESKTOP === "true") {
+    return NextResponse.json({ success: true });
+  }
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
