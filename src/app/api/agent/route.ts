@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { NextRequest, NextResponse } from "next/server";
 import puppeteerCore from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
@@ -9,13 +11,15 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 export const maxDuration = 60; // Vercel Hobby = 60s max.
 
 // Allowed file types for conversion
-const ALLOWED_EXTENSIONS = new Set(["docx", "doc", "xlsx", "xls"]);
+const ALLOWED_EXTENSIONS = new Set(["docx", "doc", "xlsx", "xls", "pptx", "ppt", "csv"]);
 const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
-  // Some browsers may send these for .docx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "text/csv",
   "application/octet-stream",
 ]);
 
@@ -56,7 +60,7 @@ export async function POST(req: NextRequest) {
     const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
     if (!ALLOWED_EXTENSIONS.has(fileExt)) {
       return NextResponse.json(
-        { error: `Unsupported file type ".${fileExt}". Only Word and Excel files can be converted.` },
+        { error: `Unsupported file type ".${fileExt}". Only Word, PowerPoint, and Excel files can be converted.` },
         { status: 400 }
       );
     }
@@ -135,8 +139,10 @@ export async function POST(req: NextRequest) {
     });
 
     let toolUrl = "https://www.ilovepdf.com/word_to_pdf";
-    if (fileExt === "xlsx" || fileExt === "xls") {
+    if (fileExt === "xlsx" || fileExt === "xls" || fileExt === "csv") {
       toolUrl = "https://www.ilovepdf.com/excel_to_pdf";
+    } else if (fileExt === "pptx" || fileExt === "ppt") {
+      toolUrl = "https://www.ilovepdf.com/powerpoint_to_pdf";
     }
 
     await page.goto(toolUrl, { waitUntil: "domcontentloaded", timeout: 45000 });

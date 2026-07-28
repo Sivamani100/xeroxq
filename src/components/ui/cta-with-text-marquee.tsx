@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ReactNode, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Download } from "lucide-react";
 
 interface VerticalMarqueeProps {
   children: ReactNode;
@@ -170,9 +171,14 @@ export default function CTAWithVerticalMarquee() {
               }}
               className="flex flex-wrap gap-4 pt-4 px-1"
             >
-              <button className="group relative h-12 px-8 bg-[#FB432C] text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-black hover:scale-[1.02] active:scale-[0.98]">
-                Add Your Xerox Shop
-              </button>
+              <a 
+                href="/downloads/XeroxQ-Setup-0.1.0.exe"
+                download="XeroxQ Setup 0.1.0.exe"
+                className="group relative h-12 px-8 bg-[#FB432C] text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-black hover:scale-[1.02] active:scale-[0.98] inline-flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Desktop App</span>
+              </a>
               <button className="group relative h-12 px-8 bg-black text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20 hover:bg-[#FB432C] hover:scale-[1.02] active:scale-[0.98]">
                 See How It Works
               </button>

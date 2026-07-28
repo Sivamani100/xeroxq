@@ -2,6 +2,8 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-static";
+
 // Helper: returns an HTML page that immediately redirects the browser tab
 // to a custom protocol URL (xeroxq://). HTTP 302 redirects do NOT work for
 // custom schemes — only JavaScript / meta-refresh does.
@@ -50,18 +52,6 @@ export async function GET(request: Request) {
   const next = isSafeNext ? rawNext : "/admin";
 
   if (code) {
-    // ── Desktop App: forward code to Electron for CLIENT-SIDE PKCE exchange ──
-    // The PKCE code_verifier was stored in the ELECTRON RENDERER's localStorage
-    // when signInWithOAuth was called. The server doesn't have access to it.
-    // Solution: pass the raw code back to the renderer via deep link so it can
-    // call supabase.auth.exchangeCodeForSession(code) client-side where the
-    // verifier IS available in localStorage.
-    if (isElectron) {
-      const deepLink = `xeroxq://auth/callback?code=${encodeURIComponent(code)}`;
-      return deepLinkRedirect(deepLink);
-    }
-
-    // ── Web: normal server-side PKCE exchange (verifier is in cookies) ────────
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,9 +70,23 @@ export async function GET(request: Request) {
         },
       }
     );
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
     if (!error && data.session) {
+      if (isElectron) {
+        const deepLink = `xeroxq://auth/callback?access_token=${encodeURIComponent(
+          data.session.access_token
+        )}&refresh_token=${encodeURIComponent(data.session.refresh_token)}`;
+        return deepLinkRedirect(deepLink);
+      }
       return NextResponse.redirect(`${origin}${next}`);
+    }
+
+    // If server cookie exchange failed but this is Electron, forward the code as fallback
+    if (isElectron) {
+      const deepLink = `xeroxq://auth/callback?code=${encodeURIComponent(code)}`;
+      return deepLinkRedirect(deepLink);
     }
   }
 

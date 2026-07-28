@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // This professional analytical endpoint calculates business health metrics
 // including Growth Velocity, Churn Risk, and Peak Hour Distribution.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET() {
   try {

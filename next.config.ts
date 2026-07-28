@@ -56,7 +56,10 @@ const securityHeaders = [
   },
 ];
 
+const isDesktopBuild = process.env.BUILD_DESKTOP === "true";
+
 const nextConfig: NextConfig = {
+  ...(isDesktopBuild ? { output: "export" } : {}),
   // ── Allowed Dev Origins for Electron / local cross-origin HMR ───────────────
   allowedDevOrigins: ["127.0.0.1", "localhost", "127.0.0.1:3000", "localhost:3000"],
 
@@ -74,6 +77,7 @@ const nextConfig: NextConfig = {
 
   // ── Image optimization ──────────────────────────────────────────────────────
   images: {
+    ...(isDesktopBuild ? { unoptimized: true } : {}),
     remotePatterns: [
       {
         protocol: "https",
@@ -86,28 +90,32 @@ const nextConfig: NextConfig = {
   },
 
   // ── HTTP Security Headers ───────────────────────────────────────────────────
-  async headers() {
-    return [
-      {
-        // Apply to all routes
-        source: "/(.*)",
-        headers: securityHeaders,
-      },
-    ];
-  },
+  ...(isDesktopBuild
+    ? {}
+    : {
+        async headers() {
+          return [
+            {
+              // Apply to all routes
+              source: "/(.*)",
+              headers: securityHeaders,
+            },
+          ];
+        },
 
-  // ── Redirects ────────────────────────────────────────────────────────────────
-  async redirects() {
-    return [
-      // www → apex redirect (handle in your DNS too, but belt-and-suspenders)
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.xeroxq.arkio.in" }],
-        destination: `${PRODUCTION_URL}/:path*`,
-        permanent: true,
-      },
-    ];
-  },
+        // ── Redirects ────────────────────────────────────────────────────────────────
+        async redirects() {
+          return [
+            // www → apex redirect (handle in your DNS too, but belt-and-suspenders)
+            {
+              source: "/:path*",
+              has: [{ type: "host", value: "www.xeroxq.arkio.in" }],
+              destination: `${PRODUCTION_URL}/:path*`,
+              permanent: true,
+            },
+          ];
+        },
+      }),
 
   // ── Compiler options ─────────────────────────────────────────────────────────
   compiler: {

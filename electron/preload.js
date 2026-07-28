@@ -19,6 +19,10 @@ const bridge = {
 
   // ── Password Reset: open the reset link in the system browser ─────────────
   openResetPasswordUrl: (url) => ipcRenderer.invoke('open-reset-password-url', url),
+
+  // ── Dedicated Studio Window ─────────────────────────────────────────────
+  openStudioWindow: (params) => ipcRenderer.invoke('open-studio-window', params),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
 };
 
 contextBridge.exposeInMainWorld('electron', bridge);

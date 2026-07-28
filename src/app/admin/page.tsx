@@ -795,9 +795,10 @@ export default function AdminDashboard() {
 
   const sendDesktopNotification = (job: Job) => {
     if ("Notification" in window && Notification.permission === "granted") {
+      const isDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
       new Notification("XeroxQ: New Job Signal", {
         body: `Customer ${job.customer_name || 'Anonymous'} transmitted a new document for physicalization.`,
-        icon: "/xeroxq_logo.png",
+        icon: isDark ? "/xeroxq_logo_white.svg" : "/xeroxq_logo_dark.svg",
         tag: job.id // Avoid duplicate alerts for same job
       });
     }
@@ -1040,8 +1041,22 @@ export default function AdminDashboard() {
       }
 
       if (storageRes.data?.signedUrl) {
-        // Pass the pre-signed URL directly to the Xerox Dialog -> Native IPC
-        setPrintPreviewUrl(storageRes.data.signedUrl);
+        const params = {
+          documentPath: storageRes.data.signedUrl,
+          jobId: job.id,
+          shopId: shop?.id || ''
+        };
+
+        if (typeof window !== 'undefined' && (window as any).electronAPI?.openStudioWindow) {
+          (window as any).electronAPI.openStudioWindow(params);
+        } else {
+          const queryString = new URLSearchParams(params).toString();
+          const w = typeof window !== 'undefined' ? window.screen.availWidth : 1280;
+          const h = typeof window !== 'undefined' ? window.screen.availHeight : 900;
+          window.open(`/studio?${queryString}`, '_blank', `width=${w},height=${h},top=0,left=0,resizable=yes,scrollbars=yes`);
+        }
+        setActivePrintJob(null);
+        setPrintPreviewUrl(null);
       }
     } catch (error) {
       const e = error as Error;
@@ -1637,10 +1652,8 @@ export default function AdminDashboard() {
     (job.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const shopPhone = shop?.upi_id ? extractPhoneFromUpi(shop.upi_id) : null;
-  const qrUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/${shop?.slug}`
-    : "";
+  const publicWebUrl = "https://xeroxq.arkio.in";
+  const qrUrl = shop?.slug ? `${publicWebUrl}/${shop.slug}` : "";
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}&color=0-0-0&bgcolor=255-255-255&margin=10`;
 
@@ -1916,8 +1929,8 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between gap-3">
             {/* Left: logo + shop name */}
             <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-              <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md shadow-black/20">
-                <Printer className="text-white w-4 h-4" />
+              <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md p-1.5 overflow-hidden">
+                <img src="/favicon.ico" alt="XeroxQ Logo" className="w-full h-full object-contain filter brightness-0 invert" />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>

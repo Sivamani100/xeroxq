@@ -1,9 +1,23 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell, nativeImage, protocol, net } = require('electron');
 const path = require('path');
 const pdfToPrinter = require('pdf-to-printer');
 const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
+
+// Register 'app://' as a privileged scheme before app ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      allowServiceWorkers: true
+    }
+  }
+]);
 
 // Suppress dev-only security warnings in Electron console
 if (!app.isPackaged) {
@@ -165,19 +179,39 @@ function cleanupTempFolder() {
   }
 }
 
-// Clean up files at startup in case of a previous crash
-cleanupTempFolder();
+// Set Windows App User Model ID so Windows taskbar uses XeroxQ name & custom icon
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.xeroxq.desktop');
+}
 
 let mainWindow;
 
-// Returns the correct icon based on current system theme
+// Returns the correct icon based on platform, system theme, and availability
 function getIcon() {
-  const iconPath = nativeTheme.shouldUseDarkColors
-    ? path.join(__dirname, '../public/ion_print (2).png')  // white icon for dark mode
-    : path.join(__dirname, '../public/ion_print (1).png'); // black icon for light mode
-  const img = nativeImage.createFromPath(iconPath);
-  return img.isEmpty() ? iconPath : img;
+  const isDark = nativeTheme.shouldUseDarkColors;
+  const icoPath = path.join(__dirname, '../build/icon.ico');
+  const whiteSvgPath = path.join(__dirname, '../public/xeroxq_logo_white.svg');
+  const darkSvgPath = path.join(__dirname, '../public/xeroxq_logo_dark.svg');
+
+  const themeSvg = isDark ? whiteSvgPath : darkSvgPath;
+  if (fs.existsSync(themeSvg)) {
+    const img = nativeImage.createFromPath(themeSvg);
+    if (!img.isEmpty()) return img;
+  }
+
+  if (process.platform === 'win32' && fs.existsSync(icoPath)) {
+    return icoPath;
+  }
+  return path.join(__dirname, '../public/icon.png');
 }
+
+// Update icon dynamically when system theme changes
+nativeTheme.on('updated', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const icon = getIcon();
+    mainWindow.setIcon(icon);
+  }
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -210,13 +244,29 @@ function createWindow() {
   // Check if we're running in development or production (using app.isPackaged)
   const isDev = !app.isPackaged;
   const startUrl = isDev
-    ? 'http://127.0.0.1:3000/register'
-    : `file://${path.join(__dirname, '../out/register.html')}`;
+    ? 'http://localhost:3000/register'
+    : 'app://local/register';
+
+  // Automatically retry loading if cold Next.js dev compilation is slow
+  if (isDev) {
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      // Ignore user-initiated aborts (-3)
+      if (errorCode === -3) return;
+      console.warn(`[XeroxQ Dev] Navigation failed for ${validatedURL} (${errorCode}: ${errorDescription}). Retrying in 1s...`);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(startUrl);
+        }
+      }, 1000);
+    });
+  }
 
   mainWindow.loadURL(startUrl);
 
-  // Open the DevTools to diagnose console errors and startup blank screens.
-  mainWindow.webContents.openDevTools();
+  // Open DevTools ONLY during local development
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -244,7 +294,99 @@ ipcMain.handle('open-reset-password-url', async (_event, url) => {
   return { success: true };
 });
 
+// ── IPC: Open dedicated XeroxQ Studio window ──────────────────────────────
+ipcMain.handle('open-studio-window', async (_event, params) => {
+  try {
+    const studioWin = new BrowserWindow({
+      title: 'XeroxQ Studio',
+      icon: getIcon(),
+      width: 1280,
+      height: 900,
+      minWidth: 1000,
+      minHeight: 700,
+      show: false,
+      titleBarStyle: 'hidden',
+      titleBarOverlay: {
+        color: 'rgba(0, 0, 0, 0)',
+        symbolColor: '#18181b',
+        height: 38,
+      },
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    studioWin.maximize();
+    studioWin.show();
+
+    studioWin.on('page-title-updated', (event) => event.preventDefault());
+
+    const isDev = !app.isPackaged;
+    const query = new URLSearchParams(params).toString();
+    const studioUrl = isDev
+      ? `http://localhost:3000/studio?${query}`
+      : `app://local/studio?${query}`;
+
+    if (isDev) {
+      studioWin.webContents.openDevTools();
+    }
+
+    studioWin.loadURL(studioUrl);
+    return { success: true };
+  } catch (err) {
+    console.error('[XeroxQ Studio Window Exception]:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// ── IPC: Close focused window ──────────────────────────────────────────────
+ipcMain.handle('close-window', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+  return { success: true };
+});
+
 app.whenReady().then(async () => {
+  const { session } = require('electron');
+
+  // Automatically grant all application permissions (clipboard, notifications, printing, storage)
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(true);
+  });
+  session.defaultSession.setPermissionCheckHandler(() => {
+    return true;
+  });
+
+  // Handle app:// protocol requests for static files from out/
+  protocol.handle('app', (request) => {
+    try {
+      const parsedUrl = new URL(request.url);
+      let relativePath = parsedUrl.pathname;
+      if (relativePath === '/' || relativePath === '') {
+        relativePath = '/register';
+      }
+
+      let targetPath = path.normalize(path.join(__dirname, '../out', relativePath));
+
+      // Handle routes without file extensions (e.g. /register -> /register.html)
+      if (!path.extname(targetPath)) {
+        if (fs.existsSync(targetPath + '.html')) {
+          targetPath = targetPath + '.html';
+        } else if (fs.existsSync(path.join(targetPath, 'index.html'))) {
+          targetPath = path.join(targetPath, 'index.html');
+        }
+      }
+
+      return net.fetch(`file://${targetPath}`);
+    } catch (e) {
+      console.error('[XeroxQ Protocol Error]:', e);
+      return new Response('File not found', { status: 404 });
+    }
+  });
+
   if (!app.isPackaged) {
     try {
       const { session } = require('electron');
@@ -363,7 +505,12 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
     // Handle incoming Base64 payload or Remote URL
     if (base64Data) {
       const base64Content = base64Data.split(';base64,').pop();
-      const ext = filePath.endsWith('.png') ? '.png' : '.pdf';
+      let ext = '.pdf';
+      if (base64Data.includes('data:image/png')) ext = '.png';
+      else if (base64Data.includes('data:image/jpeg') || base64Data.includes('data:image/jpg')) ext = '.jpg';
+      else if (base64Data.includes('data:application/pdf')) ext = '.pdf';
+      else if (filePath) ext = path.extname(filePath.split('?')[0]) || '.pdf';
+
       targetPath = path.join(printJobsDir, `xeroxq-print-${Date.now()}${ext}`);
       fs.writeFileSync(targetPath, base64Content, { encoding: 'base64' });
     } else if (filePath && filePath.startsWith('http')) {
@@ -392,23 +539,53 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
       });
     }
 
-    // Map options to printer driver specifications
+    // ── Map UI options → pdf-to-printer API (Windows) ────────────────────────
+    // IMPORTANT: pdf-to-printer uses:
+    //   - `side: 'duplex'|'duplexshort'|'duplexlong'|'simplex'`  (NOT a boolean)
+    //   - `pages: '1,3,5'` or `'1-3,5'`  for custom page ranges
+    //   - `subset: 'odd'|'even'`  for odd/even page filtering
+    //   - `monochrome: true`  for black & white
+    //   - `copies: number`  for number of copies
     const printOptions = {
       printer: options.printer,
       copies: options.copies || 1,
-      monochrome: options.monochrome === true,
-      side: options.side === 'duplex' ? 'duplex' : 'simplex',
+      monochrome: options.monochrome === true,                       // B&W toggle
+      side: options.side === 'duplex' ? 'duplex' : 'simplex',       // Duplex string
       orientation: options.orientation || 'portrait',
-      paperSize: options.paperSupply?.toLowerCase().includes('tray') ? undefined : options.paperSupply,
-      bin: options.paperSupply?.toLowerCase().includes('tray') ? options.paperSupply : undefined
+      scale: 'fit',                                                  // Fit content to page
     };
 
+    // Paper size (only pass if explicitly set, not the default A4 fallback)
+    if (options.paperSize && options.paperSize !== 'A4') {
+      printOptions.paperSize = options.paperSize;
+    }
+
+    // ── Page Range mapping ───────────────────────────────────────────────────
+    const pageRange = options.pageRange;
+    if (pageRange === 'odd') {
+      printOptions.subset = 'odd';                                   // Print only odd pages
+    } else if (pageRange === 'even') {
+      printOptions.subset = 'even';                                  // Print only even pages
+    } else if (pageRange && pageRange !== 'all' && pageRange.trim()) {
+      // Custom input: user typed "1,3,5" or "1-3,5" — pass directly as `pages`
+      // Normalize: remove spaces so "1, 3, 5" becomes "1,3,5"
+      printOptions.pages = pageRange.replace(/\s+/g, '');
+    }
+    // If 'all', don't set pages or subset — SumatraPDF prints everything by default
+
     console.log(`[XeroxQ] Spooling Protocol Initiated:`, { targetPath, printOptions });
-    
+
     if (process.platform === 'win32') {
       await pdfToPrinter.print(targetPath, printOptions);
     } else {
-      await printUnix(targetPath, printOptions);
+      await printUnix(targetPath, {
+        printer: options.printer,
+        copies: options.copies || 1,
+        monochrome: options.monochrome === true,
+        side: options.side === 'duplex' ? 'duplex' : 'simplex',
+        orientation: options.orientation || 'portrait',
+        paperSize: options.paperSize,
+      });
     }
 
     // Return success along with options actually applied (Confirmation Loop)
@@ -442,26 +619,76 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
   }
 });
 
+// Virtual/software printer names to filter out (shown below physical ones, not hidden)
+const VIRTUAL_PRINTER_KEYWORDS = [
+  'onenote', 'fax', 'xps document writer', 'root print queue',
+  'microsoft print to pdf', 'adobe pdf', 'foxit', 'bullzip',
+  'dopdf', 'pdf creator', 'cutepdf',
+];
+
+function isVirtualPrinter(name) {
+  const lower = name.toLowerCase();
+  return VIRTUAL_PRINTER_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 // Get available printers (cross-platform abstraction)
-ipcMain.handle('get-printers', async () => {
+ipcMain.handle('get-printers', async (event) => {
   try {
-    let printers;
+    let rawPrinters = [];
     if (process.platform === 'win32') {
-      printers = await pdfToPrinter.getPrinters();
+      try {
+        // Prefer Electron's built-in getPrintersAsync (most accurate on Windows)
+        if (event.sender && typeof event.sender.getPrintersAsync === 'function') {
+          rawPrinters = await event.sender.getPrintersAsync();
+          console.log('[XeroxQ Spooler] getPrintersAsync returned', rawPrinters.length, 'printers');
+        } else {
+          rawPrinters = await pdfToPrinter.getPrinters();
+          console.log('[XeroxQ Spooler] pdfToPrinter.getPrinters returned', rawPrinters.length, 'printers');
+        }
+      } catch (e) {
+        console.warn('[XeroxQ Spooler] Primary printer fetch failed, falling back to pdfToPrinter:', e.message);
+        try {
+          rawPrinters = await pdfToPrinter.getPrinters();
+        } catch (e2) {
+          console.error('[XeroxQ Spooler] pdfToPrinter fallback also failed:', e2.message);
+        }
+      }
     } else {
-      printers = await getPrintersUnix();
+      rawPrinters = await getPrintersUnix();
     }
+
+    // Deduplicate and standardize printer list
+    const printerMap = new Map();
+    for (const p of rawPrinters) {
+      const name = typeof p === 'string' ? p : (p.name || p.displayName || p.deviceId || '');
+      if (!name) continue;
+      if (printerMap.has(name)) continue;
+      printerMap.set(name, {
+        name,
+        displayName: (typeof p === 'object' && p.displayName) ? p.displayName : name,
+        isDefault: (typeof p === 'object' && p.isDefault) ? true : false,
+        status:    (typeof p === 'object' && p.status !== undefined) ? p.status : 0,
+        isVirtual: isVirtualPrinter(name),
+      });
+    }
+
+    // Sort: physical printers first, default printer at the very top, virtual last
+    const printers = Array.from(printerMap.values()).sort((a, b) => {
+      if (a.isDefault && !b.isDefault) return -1;
+      if (!a.isDefault && b.isDefault) return 1;
+      if (!a.isVirtual && b.isVirtual) return -1;
+      if (a.isVirtual && !b.isVirtual) return 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
+
+    console.log('[XeroxQ Spooler] Final printer list:', printers.map(p => `${p.displayName}${p.isDefault ? ' [DEFAULT]' : ''}${p.isVirtual ? ' [VIRTUAL]' : ''}`));
     return { success: true, printers };
   } catch (error) {
-    console.error("Get Printers Error:", error);
+    console.error('[XeroxQ Spooler] Get Printers Error:', error);
     return { 
       success: false, 
       error: error.message,
-      rawError: {
-        message: error.message,
-        code: error.code,
-        stderr: error.stderr || ""
-      }
+      printers: []
     };
   }
 });

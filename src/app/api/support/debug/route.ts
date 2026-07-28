@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // This professional troubleshooting endpoint allows support teams to
 // analyze a shop's health, processing success rates, and financial status.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

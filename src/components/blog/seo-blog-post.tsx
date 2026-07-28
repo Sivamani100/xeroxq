@@ -65,7 +65,7 @@ export function SEOBlogPost({
   tags,
   content,
   slug,
-  featuredImage = "/blog-og.jpg",
+  featuredImage = "/og-image.svg",
   tableOfContents = []
 }: SEOBlogPostProps) {
   const router = useRouter();

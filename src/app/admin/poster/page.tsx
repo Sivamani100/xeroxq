@@ -175,8 +175,8 @@ function PosterContent() {
   const [isDownloadingPNG, setIsDownloadingPNG] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [rawPath, setRawPath] = useState<string>("");
-
-  const qrUrl = typeof window !== "undefined" ? `${window.location.origin}/${slug}` : "";
+  const publicWebUrl = "https://xeroxq.arkio.in";
+  const qrUrl = slug ? `${publicWebUrl}/${slug}` : "";
 
   useEffect(() => {
     // Read raw path from hidden QR code on mount/load

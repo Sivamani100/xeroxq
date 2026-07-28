@@ -22,7 +22,7 @@ export function generateSEOMetadata(props: SEOHeadProps): Metadata {
     author = "XeroxQ Team",
     publishDate,
     modifiedDate,
-    image = "/og-image.jpg",
+    image = "/og-image.svg",
     url,
     type = 'article',
     category,
@@ -102,7 +102,7 @@ export function generateJsonLd(props: SEOHeadProps) {
     '@type': 'BlogPosting',
     headline: title,
     description,
-    image: image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : `${siteUrl}/og-image.jpg`,
+    image: image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : `${siteUrl}/og-image.svg`,
     url: fullUrl,
     datePublished: publishDate,
     dateModified: modifiedDate || publishDate,
@@ -116,7 +116,7 @@ export function generateJsonLd(props: SEOHeadProps) {
       name: 'XeroxQ',
       logo: {
         '@type': 'ImageObject',
-        url: `${siteUrl}/logo.png`,
+        url: `${siteUrl}/xeroxq_logo.png`,
       },
     },
     mainEntityOfPage: {

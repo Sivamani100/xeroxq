@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronRight, Menu, X, Printer, Shield, Zap, Globe, Trash2, Activity, Sparkles, Cpu, Fingerprint, MousePointer2, Users } from 'lucide-react';
+import { ArrowRight, ChevronRight, Menu, X, Printer, Shield, Zap, Globe, Trash2, Activity, Sparkles, Cpu, Fingerprint, MousePointer2, Users, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { HowItWorks } from "@/components/ui/how-it-works";
@@ -106,10 +106,15 @@ export function HeroSection() {
                   <div className="bg-orange-50 rounded-full border border-brand-primary/10 p-0.5">
                     <Button
                       asChild
-                      className="h-10 rounded-full px-8 text-sm font-medium bg-[#FB432C] hover:bg-black text-white shadow-xl shadow-brand-primary/20 transition-all duration-300">
-                      <Link href="/register">
-                        <span className="text-nowrap">Register Your Shop</span>
-                      </Link>
+                      className="h-12 rounded-full px-8 text-base font-semibold bg-[#FB432C] hover:bg-black text-white shadow-xl shadow-brand-primary/20 transition-all duration-300">
+                      <a 
+                        href="/downloads/XeroxQ-Setup-0.1.0.exe" 
+                        download="XeroxQ Setup 0.1.0.exe"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="size-5" />
+                        <span className="text-nowrap">Download Now (.exe)</span>
+                      </a>
                     </Button>
                   </div>
                   <Button

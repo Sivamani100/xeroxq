@@ -19,6 +19,12 @@
 
 # production
 /build
+/dist/
+dist/
+/release_build/
+release_build/
+*.exe
+/public/downloads/
 
 # misc
 .DS_Store

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Menu, X, ChevronRight } from 'lucide-react';
+import { Menu, X, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -92,9 +92,15 @@ export function SiteHeader() {
                       <Button
                         asChild
                         className="h-14 rounded-2xl w-full bg-[#FB432C] hover:bg-black text-white font-bold text-lg shadow-xl shadow-brand-primary/20 transition-all duration-300">
-                        <Link href="/register" onClick={() => setMenuState(false)}>
-                          Get Started
-                        </Link>
+                        <a 
+                          href="/downloads/XeroxQ-Setup-0.1.0.exe" 
+                          download="XeroxQ Setup 0.1.0.exe"
+                          onClick={() => setMenuState(false)}
+                          className="flex items-center justify-center gap-2"
+                        >
+                          <Download className="w-5 h-5" />
+                          <span>Download Now</span>
+                        </a>
                       </Button>
                     </div>
                   </div>
@@ -122,17 +128,15 @@ export function SiteHeader() {
               <div className="flex items-center gap-3">
                 <Button
                   asChild
-                  className={cn('h-10 rounded-full px-8 text-sm bg-[#FB432C] hover:bg-black text-white font-medium shadow-xl shadow-brand-primary/20 transition-all duration-300 active:scale-95', isScrolled && 'lg:hidden')}>
-                  <Link href="/register">
-                    <span>Get Started</span>
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  className={cn('h-10 rounded-full px-8 text-sm bg-[#FB432C] hover:bg-black text-white font-medium shadow-xl shadow-brand-primary/20 transition-all duration-300 active:scale-95', isScrolled ? 'lg:inline-flex' : 'hidden')}>
-                  <Link href="/register">
-                    <span>Register Shop</span>
-                  </Link>
+                  className="h-10 rounded-full px-6 text-sm bg-[#FB432C] hover:bg-black text-white font-medium shadow-xl shadow-brand-primary/20 transition-all duration-300 active:scale-95">
+                  <a 
+                    href="/downloads/XeroxQ-Setup-0.1.0.exe" 
+                    download="XeroxQ Setup 0.1.0.exe"
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Now</span>
+                  </a>
                 </Button>
               </div>
             </div>

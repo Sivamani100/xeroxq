@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const dynamic = "force-static";
 export const alt = "XeroxQ — Find a Xerox Shop Near You. Print Documents Online, Securely.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -93,6 +93,7 @@ export default function Image() {
         <div style={{ display: "flex", flexDirection: "column", gap: "20px", zIndex: 1, maxWidth: "800px" }}>
           <div
             style={{
+              display: "flex",
               fontSize: "64px",
               fontWeight: "900",
               color: "#000000",
@@ -103,7 +104,7 @@ export default function Image() {
             Find a Xerox Shop{" "}
             <span style={{ color: "#FB432C" }}>Near You.</span>
           </div>
-          <div style={{ fontSize: "22px", fontWeight: "500", color: "#64748B", lineHeight: "1.5", maxWidth: "620px" }}>
+          <div style={{ display: "flex", fontSize: "22px", fontWeight: "500", color: "#64748B", lineHeight: "1.5", maxWidth: "620px" }}>
             Upload your document. We find the nearest print shop. Prints &amp; vanishes.{" "}
             <span style={{ color: "#000", fontWeight: "700" }}>No WhatsApp.</span>
           </div>

@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+export const dynamic = "force-static";
+
 const BASE_URL = "https://xeroxq.arkio.in";
 
 export default function robots(): MetadataRoute.Robots {

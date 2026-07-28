@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+export const dynamic = "force-static";
+
 const BASE_URL = "https://xeroxq.arkio.in";
 const NOW = new Date();
 const CONTENT_DATE = new Date("2026-05-08");

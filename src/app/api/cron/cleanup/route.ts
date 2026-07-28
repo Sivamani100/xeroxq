@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 // Deletes old document files from Supabase Storage Bucket ('documents') after 5 minutes.
 // Retains database table records in 'jobs' for analytics and queue history while clearing file_path.
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 export const maxDuration = 60; // 60 seconds allowed for this function
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;

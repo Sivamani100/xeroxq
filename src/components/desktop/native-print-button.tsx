@@ -19,9 +19,19 @@ export default function NativePrintButton({ documentPath }: { documentPath?: str
       // Load available printers
       electronWindow.electronAPI.getPrinters()
         .then((res) => {
-          if (res.success) {
-            // @ts-ignore fallback extraction
-            setPrinters(res.printers.map((p) => p.name || p.deviceId || String(p)));
+          if (res.success && res.printers) {
+            const rawNames = res.printers.map((p) => typeof p === 'string' ? p : (p.name || p.deviceId || String(p)));
+            const uniqueNames = Array.from(new Set(rawNames.filter(Boolean)));
+            const isVirtual = (name: string) => {
+              const lower = name.toLowerCase();
+              return lower.includes('onenote') || lower.includes('fax') || lower.includes('xps document writer') || lower.includes('root print queue');
+            };
+            const physicalPrinters = uniqueNames.filter(name => !isVirtual(name));
+            const virtualPrinters = uniqueNames.filter(name => isVirtual(name));
+            const sortedPrinters = physicalPrinters.length > 0
+              ? [...physicalPrinters, ...virtualPrinters]
+              : uniqueNames;
+            setPrinters(sortedPrinters);
           }
         })
         .catch(console.error);

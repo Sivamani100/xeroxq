@@ -77,7 +77,18 @@ export default function Login() {
           return;
         }
 
-        // ── Case 1: PKCE code — exchange client-side (verifier is in localStorage) ──
+        // ── Case 1: Direct tokens from server-side exchange (Recommended) ───────────
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          router.push("/admin");
+          return;
+        }
+
+        // ── Case 2: PKCE code fallback (verifier in localStorage) ──
         if (code) {
           const { data: sessionData, error: exchangeError } =
             await supabase.auth.exchangeCodeForSession(code);
@@ -86,21 +97,10 @@ export default function Login() {
             router.push("/admin");
             return;
           }
-          throw new Error("No session returned from code exchange.");
         }
 
-        // ── Case 2: Direct tokens (fallback) ───────────────────────────────
-        if (!accessToken || !refreshToken) {
-          setError("Google sign-in failed. Please try again.");
-          setLoading(false);
-          return;
-        }
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (sessionError) throw sessionError;
-        router.push("/admin");
+        setError("Google sign-in failed. Please try again.");
+        setLoading(false);
       } catch (err) {
         const e = err as Error;
         setError(e.message || "Sign-in failed after OAuth callback.");
@@ -150,12 +150,14 @@ export default function Login() {
       if (isElectron) {
         // ── Desktop: get OAuth URL, open in system browser ──────────────────
         // We use signInWithOAuth with skipBrowserRedirect=true to just get the URL
+        const oauthBase = typeof window !== "undefined" && window.location.origin.includes("localhost")
+          ? "http://127.0.0.1:3000"
+          : "https://xeroxq.arkio.in";
+
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            // Point back to our Next.js callback with ?electron=1 so it knows
-            // to redirect via xeroxq:// deep link instead of web redirect
-            redirectTo: `http://127.0.0.1:3000/auth/callback?electron=1`,
+            redirectTo: `${oauthBase}/auth/callback?electron=1`,
             skipBrowserRedirect: true,
           },
         });
