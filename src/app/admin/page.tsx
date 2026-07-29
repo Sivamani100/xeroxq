@@ -36,7 +36,8 @@ import {
   BellOff,
   Smartphone,
   MapPin,
-  ShieldAlert
+  ShieldAlert,
+  AlertCircle
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { TableVirtuoso } from "react-virtuoso";
@@ -138,6 +139,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showQR, setShowQR] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
+  const [createShopError, setCreateShopError] = useState<string | null>(null);
   const [newShopData, setNewShopData] = useState({ name: "", phone: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
   const [printingJobId, setPrintingJobId] = useState<string | null>(null);
   const [showingSettings, setShowingSettings] = useState(false);
@@ -862,32 +864,40 @@ export default function AdminDashboard() {
   const handleCreateShop = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingShop(true);
+    setCreateShopError(null);
 
-    // Get the current session JWT — this is used for server-side auth, not owner_id from body
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("You must be logged in to create a shop.");
+      setCreateShopError("You must be logged in to create a shop.");
       setCreatingShop(false);
       return;
     }
 
     try {
-      // Auto-generate a unique slug from the shop name
-      const slug = newShopData.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 30) + "-" + Date.now().toString(36);
+      const name = newShopData.name.trim();
+      if (name.length < 2) {
+        throw new Error("Shop name must be at least 2 characters long.");
+      }
+
+      const baseSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 30) || "shop";
+      const slug = `${baseSlug}-${Date.now().toString(36)}`;
 
       const res = await fetch("/api/create-shop", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // JWT goes in header — server extracts owner_id from it, never from body
           "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          name: newShopData.name,
+          name: name,
           slug,
-          phone: newShopData.phone,
-          upi_id: newShopData.upi_id,
-          shop_location: newShopData.shop_location,
+          phone: newShopData.phone.trim(),
+          upi_id: newShopData.upi_id.trim(),
+          shop_location: newShopData.shop_location.trim(),
           shop_lat: newShopData.shop_lat,
           shop_lng: newShopData.shop_lng,
         }),
@@ -900,7 +910,7 @@ export default function AdminDashboard() {
       if (body.shop) fetchJobs(body.shop.id);
     } catch (error) {
       const e = error as Error;
-      alert("Error creating shop: " + e.message);
+      setCreateShopError(e.message || "Failed to create shop. Please check details and try again.");
     } finally {
       setCreatingShop(false);
     }
@@ -1781,6 +1791,13 @@ export default function AdminDashboard() {
                 <p className="text-[11px] text-auth-slate-50 font-medium">This helps customers find your physical shop.</p>
               </div>
             </div>
+
+            {createShopError && (
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-[8px] flex items-start gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                <span>{createShopError}</span>
+              </div>
+            )}
 
             <button
               disabled={creatingShop}

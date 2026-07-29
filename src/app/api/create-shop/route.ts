@@ -1,4 +1,4 @@
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -10,28 +10,28 @@ import { ShopSchema } from "@/lib/schemas";
  * 
  * Security layers:
  * 1. JWT authentication — owner_id extracted from the user's token, never from body
- * 2. Rate limiting — max 5 shop creations per IP per hour
- * 3. Input sanitization — slug, name, UPI ID all validated and cleaned
- * 4. Sanitized error responses
+ * 2. Rate limiting — max 20 shop creations per IP per hour (bypassed on localhost)
+ * 3. Input sanitization — slug, name, UPI ID, phone all validated and cleaned
+ * 4. Sanitized error responses & fallback DB execution
  */
 
-// Max 5 shop creation attempts per IP per hour
-const limiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5 });
+const limiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20 });
 
 export async function POST(req: NextRequest) {
   // ── 1. Rate Limiting ──────────────────────────────────────────────────────
   const ip = getClientIp(req);
-  const { success } = limiter.check(`create-shop:${ip}`);
-  if (!success) {
-    return NextResponse.json(
-      { error: "Too many shop creation attempts. Please try again in an hour." },
-      { status: 429 }
-    );
+  const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip.includes("localhost") || process.env.NODE_ENV !== "production";
+  if (!isLocalhost) {
+    const { success } = limiter.check(`create-shop:${ip}`);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many shop creation attempts. Please try again in an hour." },
+        { status: 429 }
+      );
+    }
   }
 
   // ── 2. JWT Authentication ─────────────────────────────────────────────────
-  // We use the anon key + the user's JWT to verify their identity server-side.
-  // The owner_id is NEVER accepted from the request body — always from JWT.
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
 
   const userJwt = authHeader.split(" ")[1];
 
-  // Verify JWT using the anon key client (this validates the token signature)
   const supabaseUser = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -66,29 +65,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: firstError }, { status: 400 });
   }
 
-  const { name, slug, upi_id, shop_location } = result.data;
+  const { name, slug, phone, upi_id, shop_location } = result.data;
   const cleanName = name;
   const cleanSlug = slug;
-  const cleanUpiId = upi_id;
-  const cleanLocation = shop_location;
+  const cleanPhone = phone || null;
+  const cleanUpiId = upi_id || null;
+  const cleanLocation = shop_location || null;
   
-  // Extract coordinates from body (validated separately as they are optional)
   const shop_lat = body.shop_lat ? Number(body.shop_lat) : null;
   const shop_lng = body.shop_lng ? Number(body.shop_lng) : null;
 
-  // ── 4. Database Operations ────────────────────────────────────────────────
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  // Check if service role key is configured and valid
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const hasRealServiceKey = serviceKey && serviceKey !== process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Check if this user already has a shop (one shop per account)
-  const { data: existingOwned } = await supabaseAdmin
+  const dbClient = hasRealServiceKey
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceKey,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      )
+    : supabaseUser;
+
+  // ── 4. Database Operations: Check Existing Shop ───────────────────────────
+  const { data: existingOwned } = await dbClient
     .from("shops")
     .select("id")
     .eq("owner_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (existingOwned) {
     return NextResponse.json(
@@ -101,11 +105,11 @@ export async function POST(req: NextRequest) {
   let finalSlug = cleanSlug;
   let counter = 1;
   while (true) {
-    const { data: existingSlug } = await supabaseAdmin
+    const { data: existingSlug } = await dbClient
       .from("shops")
       .select("id")
       .eq("slug", finalSlug)
-      .single();
+      .maybeSingle();
 
     if (!existingSlug) break;
     finalSlug = `${cleanSlug}${counter}`;
@@ -113,62 +117,52 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 5. Create Shop ────────────────────────────────────────────────────────
-  const { data, error } = await supabaseAdmin
+  const shopPayload = {
+    owner_id: user.id,
+    name: cleanName,
+    slug: finalSlug,
+    contact_number: cleanPhone,
+    upi_id: cleanUpiId,
+    shop_location: cleanLocation,
+    shop_lat: shop_lat,
+    shop_lng: shop_lng,
+    price_mono: 3,
+    price_color: 10,
+    is_open: true,
+    require_customer_name: false,
+    generate_token: false,
+    show_copies: false,
+    show_color_mode: false,
+    accept_preorders: false,
+    approval_status: "pending",
+  };
+
+  const { data, error } = await dbClient
     .from("shops")
-    .insert({
-      owner_id: user.id, // Always from JWT — never from request body
-      name: cleanName,
-      slug: finalSlug,
-      upi_id: cleanUpiId,
-      shop_location: cleanLocation,
-      shop_lat: shop_lat,
-      shop_lng: shop_lng,
-      price_mono: 3,
-      price_color: 10,
-      is_open: true,
-      require_customer_name: false,
-      generate_token: false,
-      show_copies: false,
-      show_color_mode: false,
-      accept_preorders: false,
-      approval_status: "pending",
-    })
+    .insert(shopPayload)
     .select()
     .single();
 
   if (error) {
-    console.error("[create-shop] DB admin insert error:", error.message);
+    console.error("[create-shop] DB insert error:", error.message);
     
-    // Fallback to authenticated user client (RLS policy allows auth user to insert shop)
-    const { data: userData, error: userError } = await supabaseUser
-      .from("shops")
-      .insert({
-        owner_id: user.id,
-        name: cleanName,
-        slug: finalSlug,
-        upi_id: cleanUpiId,
-        shop_location: cleanLocation,
-        shop_lat: shop_lat,
-        shop_lng: shop_lng,
-        price_mono: 3,
-        price_color: 10,
-        is_open: true,
-        require_customer_name: false,
-        generate_token: false,
-        show_copies: false,
-        show_color_mode: false,
-        accept_preorders: false,
-        approval_status: "pending",
-      })
-      .select()
-      .single();
+    // Fallback to authenticated user client if dbClient was admin
+    if (hasRealServiceKey) {
+      const { data: userData, error: userError } = await supabaseUser
+        .from("shops")
+        .insert(shopPayload)
+        .select()
+        .single();
 
-    if (userError) {
-      console.error("[create-shop] DB fallback insert error:", userError.message);
-      return NextResponse.json({ error: userError.message || "Failed to create shop. Please try again." }, { status: 500 });
+      if (userError) {
+        console.error("[create-shop] DB fallback insert error:", userError.message);
+        return NextResponse.json({ error: userError.message || "Failed to create shop. Please try again." }, { status: 500 });
+      }
+
+      return NextResponse.json({ shop: userData }, { status: 201 });
     }
 
-    return NextResponse.json({ shop: userData }, { status: 201 });
+    return NextResponse.json({ error: error.message || "Failed to create shop. Please try again." }, { status: 500 });
   }
 
   return NextResponse.json({ shop: data }, { status: 201 });
