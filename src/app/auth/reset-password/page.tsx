@@ -17,64 +17,29 @@ export default function ResetPassword() {
   const [error, setError]               = useState<string | null>(null);
   const [success, setSuccess]           = useState(false);
 
-  // Email resend state if session is missing
-  const [resendEmail, setResendEmail]   = useState("");
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendSuccess, setResendSuccess] = useState(false);
-  const [resendError, setResendError]   = useState<string | null>(null);
-
   useEffect(() => {
     let isMounted = true;
 
     async function init() {
-      // 1. Check for query parameters (PKCE code or OTP token)
+      // 1. Check for PKCE authorization code or OTP token in URL
       const queryCode = searchParams.get("code");
       const queryTokenHash = searchParams.get("token_hash");
       const queryType = searchParams.get("type");
 
-      // Read hash parameters
+      // 2. Read hash parameters if present
       const hash = typeof window !== "undefined" ? window.location.hash : "";
       const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
 
-      // 2. PKCE Exchange (?code=...)
       if (queryCode) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(queryCode);
-        if (error) {
-          console.warn("[ResetPassword] PKCE exchange error:", error.message);
-        } else if (data?.session) {
-          console.log("[ResetPassword] Session established via PKCE code exchange");
-        }
+        await supabase.auth.exchangeCodeForSession(queryCode);
+      } else if (queryTokenHash && (queryType === "recovery" || !queryType)) {
+        await supabase.auth.verifyOtp({ token_hash: queryTokenHash, type: "recovery" });
+      } else if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
       }
 
-      // 3. OTP Verification (?token_hash=...)
-      if (queryTokenHash && (queryType === "recovery" || !queryType)) {
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: queryTokenHash,
-          type: "recovery",
-        });
-        if (error) {
-          console.warn("[ResetPassword] OTP verify error:", error.message);
-        } else if (data?.session) {
-          console.log("[ResetPassword] Session established via OTP verify");
-        }
-      }
-
-      // 4. Hash Fragment (#access_token=...)
-      if (accessToken && refreshToken) {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) {
-          console.warn("[ResetPassword] setSession error:", error.message);
-        } else if (data?.session) {
-          console.log("[ResetPassword] Session established via setSession");
-        }
-      }
-
-      // 5. Auth State Change Listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (_event, session) => {
           if (session && isMounted) {
@@ -98,7 +63,6 @@ export default function ResetPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setResendError(null);
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
@@ -119,76 +83,17 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      // 1. Verify active session
-      let { data: { session } } = await supabase.auth.getSession();
-
-      // 2. Fallback check hash fragment if session is missing
-      if (!session && typeof window !== "undefined" && window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.slice(1));
-        const accessToken = hashParams.get("access_token");
-        const refreshToken = hashParams.get("refresh_token");
-        if (accessToken && refreshToken) {
-          const { data: setRes } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          session = setRes.session;
-        }
-      }
-
-      // 3. Fallback check query code if session is missing
-      if (!session) {
-        const queryCode = searchParams.get("code");
-        if (queryCode) {
-          const { data: codeRes } = await supabase.auth.exchangeCodeForSession(queryCode);
-          session = codeRes.session;
-        }
-      }
-
-      // 4. Update user password in Supabase
+      // Update password directly in Supabase
       const { error: updateErr } = await supabase.auth.updateUser({ password });
-      if (updateErr) {
-        if (updateErr.message.includes("session") || !session) {
-          throw new Error("Your password reset session has expired or is invalid. Please enter your email below to get a fresh reset link.");
-        }
-        throw updateErr;
-      }
+      if (updateErr) throw updateErr;
 
       setSuccess(true);
       setTimeout(() => router.push("/login"), 2500);
     } catch (err) {
       const e = err as Error;
-      const msg = e.message || "Failed to reset password. Please try again.";
-      setError(msg);
+      setError(e.message || "Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResendLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resendEmail.trim()) return;
-
-    setResendLoading(true);
-    setResendError(null);
-
-    try {
-      const isElectron = !!(typeof window !== "undefined" && window.electron);
-      const redirectTo = isElectron
-        ? `https://xeroxq.arkio.in/auth/callback?next=/auth/reset-password`
-        : `${window.location.origin}/auth/callback?next=/auth/reset-password`;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail.trim(), {
-        redirectTo,
-      });
-
-      if (error) throw error;
-      setResendSuccess(true);
-    } catch (err) {
-      const e = err as Error;
-      setResendError(e.message || "Failed to send reset email.");
-    } finally {
-      setResendLoading(false);
     }
   };
 
@@ -288,42 +193,9 @@ export default function ResetPassword() {
           </div>
 
           {error && (
-            <div className="flex flex-col gap-3 p-4 bg-amber-50 text-amber-900 rounded-xl text-xs border border-amber-200">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{error}</span>
-              </div>
-
-              {/* Inline Quick-Resend Option if session was invalid */}
-              <div className="pt-2 border-t border-amber-200/60 flex flex-col gap-2">
-                <p className="text-[11px] text-amber-800">
-                  Enter your email below to receive a fresh reset link:
-                </p>
-                {resendSuccess ? (
-                  <p className="text-[11px] font-semibold text-green-700">
-                    ✓ New reset link sent! Please check your email inbox.
-                  </p>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                      className="flex-1 px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-[12px] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleResendLink}
-                      disabled={resendLoading}
-                      className="px-3 py-1.5 bg-primary-blue text-white rounded-lg text-[11px] font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      {resendLoading ? "Sending..." : "Send Link"}
-                    </button>
-                  </div>
-                )}
-                {resendError && <p className="text-[11px] text-red-600">{resendError}</p>}
-              </div>
+            <div className="flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-xl text-xs border border-red-100 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+              <span>{error}</span>
             </div>
           )}
 
