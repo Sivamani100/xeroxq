@@ -263,31 +263,30 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final vaultRepo = context.read<VaultRepository>();
     final usedBytes = vaultRepo.totalUsedBytes();
     final storagePercent = (usedBytes / _maxBytes).clamp(0.0, 1.0);
     final usedFormatted = _bytesToString(usedBytes);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF5F5F7),
+      backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
         child: !_isAuthenticated
-            ? _buildLockedState(isDark)
+            ? _buildLockedState()
             : Column(
                 children: [
                   // Header
-                  _buildHeader(isDark, usedBytes, usedFormatted, storagePercent),
+                  _buildHeader(usedBytes, usedFormatted, storagePercent),
 
                   // Category filter chips
-                  _buildCategoryChips(isDark),
+                  _buildCategoryChips(),
 
                   // Document list / empty state
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
                         : _filteredDocs.isEmpty
-                            ? _buildEmptyState(isDark)
+                            ? _buildEmptyState()
                             : RefreshIndicator(
                                 onRefresh: _loadDocuments,
                                 child: ListView.builder(
@@ -295,7 +294,6 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
                                   itemCount: _filteredDocs.length,
                                   itemBuilder: (_, i) => _DocCard(
                                     doc: _filteredDocs[i],
-                                    isDark: isDark,
                                     onFavourite: () => _toggleFavourite(_filteredDocs[i]),
                                     onDelete: () => _deleteDocument(_filteredDocs[i]),
                                     onRename: () => _renameDocument(_filteredDocs[i]),
@@ -318,7 +316,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
                 FloatingActionButton(
                   heroTag: 'scan',
                   mini: true,
-                  backgroundColor: AppColors.cardDark,
+                  backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
                   onPressed: () async {
                     await Navigator.push(
@@ -344,7 +342,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildHeader(bool isDark, int usedBytes, String usedFormatted, double storagePercent) {
+  Widget _buildHeader(int usedBytes, String usedFormatted, double storagePercent) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       child: Column(
@@ -367,12 +365,12 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
                   decoration: BoxDecoration(
                     color: _showFavouritesOnly
                         ? AppColors.warning.withValues(alpha: 0.15)
-                        : (isDark ? AppColors.cardDark : Colors.white),
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _showFavouritesOnly
                           ? AppColors.warning
-                          : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                          : AppColors.borderLight,
                     ),
                   ),
                   child: Row(
@@ -403,10 +401,10 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                        color: AppColors.borderLight),
                   ),
                   child: Icon(
                     _lockEnabled ? Iconsax.lock : Iconsax.unlock,
@@ -423,9 +421,9 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
           // Search bar
           Container(
             decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              border: Border.all(color: AppColors.borderLight),
             ),
             child: TextField(
               onChanged: (v) {
@@ -447,9 +445,9 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(
               children: [
@@ -478,8 +476,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
                         padding: EdgeInsets.zero,
                         percent: storagePercent,
                         lineHeight: 5,
-                        backgroundColor:
-                            isDark ? AppColors.borderDark : AppColors.borderLight,
+                        backgroundColor: AppColors.borderLight,
                         progressColor: storagePercent > 0.8
                             ? AppColors.error
                             : AppColors.primary,
@@ -497,7 +494,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildCategoryChips(bool isDark) {
+  Widget _buildCategoryChips() {
     return SizedBox(
       height: 40,
       child: ListView.builder(
@@ -517,10 +514,10 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: selected ? AppColors.primary : (isDark ? AppColors.cardDark : Colors.white),
+                color: selected ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: selected ? AppColors.primary : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                  color: selected ? AppColors.primary : AppColors.borderLight,
                 ),
               ),
               child: Text(
@@ -538,7 +535,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildLockedState(bool isDark) {
+  Widget _buildLockedState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -587,14 +584,14 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildEmptyState(bool isDark) {
+  Widget _buildEmptyState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Iconsax.folder_open, size: 72, color: isDark ? AppColors.borderDark : AppColors.borderLight),
+            const Icon(Iconsax.folder_open, size: 72, color: AppColors.borderLight),
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty || _showFavouritesOnly ? 'No matches found' : 'Vault is empty',
@@ -640,7 +637,6 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
 
 class _DocCard extends StatelessWidget {
   final VaultDocument doc;
-  final bool isDark;
   final VoidCallback onFavourite;
   final VoidCallback onDelete;
   final VoidCallback onRename;
@@ -650,7 +646,6 @@ class _DocCard extends StatelessWidget {
 
   const _DocCard({
     required this.doc,
-    required this.isDark,
     required this.onFavourite,
     required this.onDelete,
     required this.onRename,
@@ -691,10 +686,10 @@ class _DocCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          color: AppColors.borderLight,
         ),
         boxShadow: [
           BoxShadow(
@@ -807,14 +802,12 @@ class _DocCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.backgroundDark : const Color(0xFFF5F5F7),
+                      color: const Color(0xFFF5F5F7),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Iconsax.more_circle,
+                    child: const Icon(Iconsax.more_circle,
                         size: 18,
-                        color: isDark
-                            ? AppColors.textSecondaryDark
-                            : AppColors.textSecondaryLight),
+                        color: AppColors.textSecondaryLight),
                   ),
                 ),
               ],

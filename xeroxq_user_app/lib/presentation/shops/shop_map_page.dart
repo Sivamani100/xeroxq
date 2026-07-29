@@ -26,7 +26,6 @@ class _ShopMapPageState extends State<ShopMapPage> {
   List<Shop> _shops = [];
   List<Shop> _filteredShops = [];
   bool _loading = true;
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -81,7 +80,6 @@ class _ShopMapPageState extends State<ShopMapPage> {
 
   void _filterShops(String val) {
     setState(() {
-      _searchQuery = val;
       _filteredShops = _shops.where((shop) {
         final matchesName = shop.name.toLowerCase().contains(val.toLowerCase());
         final matchesAddress = (shop.shopLocation ?? '').toLowerCase().contains(val.toLowerCase());
@@ -116,8 +114,6 @@ class _ShopMapPageState extends State<ShopMapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('DISCOVER SHOPS'),
@@ -135,9 +131,7 @@ class _ShopMapPageState extends State<ShopMapPage> {
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: isDark
-                          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                       subdomains: const ['a', 'b', 'c'],
                     ),
                     
@@ -216,7 +210,7 @@ class _ShopMapPageState extends State<ShopMapPage> {
             child: Container(
               height: 56,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -225,7 +219,7 @@ class _ShopMapPageState extends State<ShopMapPage> {
                     offset: const Offset(0, 5),
                   )
                 ],
-                border: Border.all(color: isDark ? AppColors.borderDark : Colors.grey[200]!),
+                border: Border.all(color: Colors.grey[200]!),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -262,7 +256,7 @@ class _ShopMapPageState extends State<ShopMapPage> {
                   }
                 });
               },
-              backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+              backgroundColor: Colors.white,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: const Icon(Iconsax.gps),
@@ -289,14 +283,13 @@ class _ShopDetailsBottomSheetState extends State<_ShopDetailsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final totalMono = _calcPages * widget.shop.priceMono;
     final totalColor = _calcPages * widget.shop.priceColor;
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),
         ),

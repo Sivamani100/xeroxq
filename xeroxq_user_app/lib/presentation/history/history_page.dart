@@ -150,10 +150,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF5F5F7),
+      backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
         title: const Text('PRINT HISTORY', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
         actions: [
@@ -177,9 +175,9 @@ class _HistoryPageState extends State<HistoryPage> {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.cardDark : Colors.white,
+                            color: Colors.white,
                             shape: BoxShape.circle,
-                            border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                            border: Border.all(color: AppColors.borderLight),
                           ),
                           child: Icon(Iconsax.clock, size: 40, color: Colors.grey[400]),
                         ),
@@ -217,9 +215,9 @@ class _HistoryPageState extends State<HistoryPage> {
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                        side: const BorderSide(color: AppColors.borderLight),
                       ),
-                      color: isDark ? AppColors.cardDark : Colors.white,
+                      color: Colors.white,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -321,7 +319,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                       icon: const Icon(Iconsax.printer, size: 16),
                                       label: const Text('Print Again', style: TextStyle(fontWeight: FontWeight.w700)),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: isDark ? Colors.white : Colors.black,
+                                        foregroundColor: Colors.black,
                                       ),
                                     ),
                                   ],

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
-  Menu, Lock, Layers, Copy, Paperclip, CheckCircle2,
+  Menu, Lock, Layers, Copy, Paperclip, CheckCircle2, Check,
   RefreshCw, Settings2, FolderDown, Leaf, Monitor, Droplet,
   Settings, ChevronRight, X, Printer, FileText, Minus, Plus,
   RotateCcw, Sun, ZoomIn, ZoomOut, Crop, SlidersHorizontal,
@@ -115,8 +115,13 @@ export default function XeroxQPrintDialog({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  const [isScaleMode, setIsScaleMode] = useState(false); // Figma Scale Tool Mode (HotKey: K)
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0, rectX: 0, rectY: 0, rectW: 0, rectH: 0, cropT: 0, cropB: 0, cropL: 0, cropR: 0 });
+  const [dragStart, setDragStart] = useState({ 
+    x: 0, y: 0, rectX: 0, rectY: 0, rectW: 0, rectH: 0, 
+    cropT: 0, cropB: 0, cropL: 0, cropR: 0,
+    boundsT: 0, boundsB: 0, boundsL: 0, boundsR: 0
+  });
   const dragStartCenter = useRef<{ x: number; y: number } | null>(null);
 
   // Image Scale-Up State & Cropping Data
@@ -281,8 +286,8 @@ export default function XeroxQPrintDialog({
     ].filter(Boolean).join(' ');
   };
 
-  // Commit Crop Action (Figma Frame Clipping Mask - Zero Distortion)
-  const commitCrop = () => {
+  // Commit Crop Action (Dual Engine: High-Fidelity Canvas + Figma DOM Clipping Fallback)
+  const commitCrop = async () => {
     if (!isCropMode) {
       setIsCropMode(true);
       return;
@@ -293,19 +298,68 @@ export default function XeroxQPrintDialog({
     const addedR = cropRect.r;
     const addedB = cropRect.b;
 
-    setCropBounds(prev => ({
-      t: prev.t + addedT,
-      b: prev.b + addedB,
-      l: prev.l + addedL,
-      r: prev.r + addedR,
-    }));
+    const cropW = imgRect.w - addedL - addedR;
+    const cropH = imgRect.h - addedT - addedB;
 
-    // Shift frame position so the cropped region stays centered in place
-    setImgRect(prev => ({
-      ...prev,
-      x: prev.x + (addedL - addedR) / 2,
-      y: prev.y + (addedT - addedB) / 2,
-    }));
+    let bakedSuccess = false;
+
+    if (cropW > 10 && cropH > 10 && (addedL > 0 || addedR > 0 || addedT > 0 || addedB > 0)) {
+      try {
+        const imgElement = document.getElementById('laboratory-preview-image') as HTMLImageElement;
+        if (imgElement && imgElement.complete) {
+          const naturalW = imgElement.naturalWidth || imgRect.w;
+          const naturalH = imgElement.naturalHeight || imgRect.h;
+
+          const scaleX = naturalW / imgRect.w;
+          const scaleY = naturalH / imgRect.h;
+
+          const srcX = Math.max(0, Math.round((cropBounds.l + addedL) * scaleX));
+          const srcY = Math.max(0, Math.round((cropBounds.t + addedT) * scaleY));
+          const srcW = Math.min(naturalW - srcX, Math.round(cropW * scaleX));
+          const srcH = Math.min(naturalH - srcY, Math.round(cropH * scaleY));
+
+          if (srcW > 0 && srcH > 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = srcW;
+            canvas.height = srcH;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(imgElement, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+              const bakedUrl = canvas.toDataURL('image/png');
+              if (bakedUrl && bakedUrl.length > 100) {
+                setCroppedDataUrl(bakedUrl);
+                setImgRect(prev => ({
+                  ...prev,
+                  w: Math.round(cropW),
+                  h: Math.round(cropH)
+                }));
+                setCropBounds({ t: 0, b: 0, l: 0, r: 0 });
+                bakedSuccess = true;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[XeroxQ Studio] Canvas crop fallback triggered:', err);
+      }
+    }
+
+    // Unstoppable Fallback Engine: If canvas toDataURL was blocked by CORS/tainted canvas
+    if (!bakedSuccess && (addedL > 0 || addedR > 0 || addedT > 0 || addedB > 0)) {
+      setCropBounds(prev => ({
+        t: prev.t + addedT,
+        b: prev.b + addedB,
+        l: prev.l + addedL,
+        r: prev.r + addedR,
+      }));
+
+      // Shift frame position so the cropped region stays centered in place
+      setImgRect(prev => ({
+        ...prev,
+        x: prev.x + (addedL - addedR) / 2,
+        y: prev.y + (addedT - addedB) / 2,
+      }));
+    }
 
     setCropRect({ t: 0, b: 0, l: 0, r: 0 });
     setIsCropMode(false);
@@ -320,10 +374,58 @@ export default function XeroxQPrintDialog({
     setCropBounds({ t: 0, b: 0, l: 0, r: 0 });
     setCropRect({ t: 0, b: 0, l: 0, r: 0 });
     setIsCropMode(false);
-    setAppliedSettingsMessage('Reset Image Crop');
+    if (naturalImgSize.current) {
+      const paper = getPaperDims(paperSize, orientation);
+      const maxW = paper.w * 0.85;
+      const maxH = paper.h * 0.85;
+      const aspect = naturalImgSize.current.w / naturalImgSize.current.h;
+      let w = maxW;
+      let h = w / aspect;
+      if (h > maxH) {
+        h = maxH;
+        w = h * aspect;
+      }
+      setImgRect({ x: 0, y: 0, w: Math.round(w), h: Math.round(h) });
+    }
+    setAppliedSettingsMessage('Reset Original Uncropped Image');
     setTimeout(() => pushHistory(), 50);
     setTimeout(() => setAppliedSettingsMessage(null), 3000);
   };
+
+  // Helper to compute rich live crop selection stats
+  const getCropInfo = () => {
+    const cropW = Math.max(1, Math.round(imgRect.w - cropRect.l - cropRect.r));
+    const cropH = Math.max(1, Math.round(imgRect.h - cropRect.t - cropRect.b));
+    const mmW = Math.round(cropW * 0.352778);
+    const mmH = Math.round(cropH * 0.352778);
+
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const g = gcd(cropW, cropH);
+    let aspectStr = `${cropW}:${cropH}`;
+    if (g > 1) {
+      const simpleW = cropW / g;
+      const simpleH = cropH / g;
+      if (simpleW <= 20 && simpleH <= 20) {
+        aspectStr = `${simpleW}:${simpleH}`;
+      }
+    }
+    const ratio = cropW / cropH;
+    if (Math.abs(ratio - 1) < 0.03) aspectStr = '1:1 Square';
+    else if (Math.abs(ratio - (4 / 3)) < 0.03) aspectStr = '4:3';
+    else if (Math.abs(ratio - (16 / 9)) < 0.03) aspectStr = '16:9';
+    else if (Math.abs(ratio - (3 / 2)) < 0.03) aspectStr = '3:2';
+
+    const origArea = Math.max(1, imgRect.w * imgRect.h);
+    const cropArea = cropW * cropH;
+    const percentRetained = Math.min(100, Math.max(1, Math.round((cropArea / origArea) * 100)));
+
+    return { cropW, cropH, mmW, mmH, aspectStr, percentRetained };
+  };
+
+  const commitCropRef = useRef(commitCrop);
+  useEffect(() => {
+    commitCropRef.current = commitCrop;
+  });
 
   // Smart Presets Handler
   const applyPreset = (presetName: string) => {
@@ -409,6 +511,21 @@ export default function XeroxQPrintDialog({
         pushHistory();
       } else if (e.key === 'c' || e.key === 'C') {
         if (rotation === 0) setIsCropMode(c => !c);
+      } else if (e.key === 'k' || e.key === 'K') {
+        setIsScaleMode(s => !s);
+        setAppliedSettingsMessage(!isScaleMode ? 'Figma Scale Tool (K) Active' : 'Select Tool (V) Active');
+        setTimeout(() => setAppliedSettingsMessage(null), 2500);
+      } else if (e.key === 'Enter') {
+        if (isCropMode) {
+          e.preventDefault();
+          commitCropRef.current();
+        }
+      } else if (e.key === 'Escape') {
+        if (isCropMode) {
+          e.preventDefault();
+          setIsCropMode(false);
+          setCropRect({ t: 0, b: 0, l: 0, r: 0 });
+        }
       } else if (e.key === 'i' || e.key === 'I') {
         setInvert(inv => !inv);
         pushHistory();
@@ -565,6 +682,15 @@ export default function XeroxQPrintDialog({
               setImageScale(Math.round((w / naturalImgSize.current.w) * 100));
             }
 
+            // CRITICAL FIGMA SCALE FIX: Scale cropBounds proportionally with image size
+            const scaleFactor = dragStart.rectW > 0 ? w / dragStart.rectW : 1;
+            setCropBounds({
+              t: dragStart.boundsT * scaleFactor,
+              b: dragStart.boundsB * scaleFactor,
+              l: dragStart.boundsL * scaleFactor,
+              r: dragStart.boundsR * scaleFactor,
+            });
+
             return { x, y, w, h };
           });
         }
@@ -595,7 +721,8 @@ export default function XeroxQPrintDialog({
     setDragStart({ 
       x: e.clientX, y: e.clientY, 
       rectX: imgRect.x, rectY: imgRect.y, rectW: imgRect.w, rectH: imgRect.h,
-      cropT: cropRect.t, cropB: cropRect.b, cropL: cropRect.l, cropR: cropRect.r
+      cropT: cropRect.t, cropB: cropRect.b, cropL: cropRect.l, cropR: cropRect.r,
+      boundsT: cropBounds.t, boundsB: cropBounds.b, boundsL: cropBounds.l, boundsR: cropBounds.r
     });
   };
 
@@ -621,7 +748,8 @@ export default function XeroxQPrintDialog({
     setDragStart({ 
       x: e.clientX, y: e.clientY, 
       rectX: imgRect.x, rectY: imgRect.y, rectW: imgRect.w, rectH: imgRect.h,
-      cropT: cropRect.t, cropB: cropRect.b, cropL: cropRect.l, cropR: cropRect.r
+      cropT: cropRect.t, cropB: cropRect.b, cropL: cropRect.l, cropR: cropRect.r,
+      boundsT: cropBounds.t, boundsB: cropBounds.b, boundsL: cropBounds.l, boundsR: cropBounds.r
     });
   };
 
@@ -1013,7 +1141,16 @@ export default function XeroxQPrintDialog({
                   <button
                     onClick={() => {
                       const dims = getPaperDims(paperSize, orientation);
-                      setImgRect(prev => ({ ...prev, x: 0, y: 0, w: dims.w * 0.9, h: (dims.w * 0.9) * (prev.h / prev.w) }));
+                      const targetW = dims.w * 0.9;
+                      const targetH = (dims.w * 0.9) * (imgRect.h / imgRect.w);
+                      const scaleFactor = imgRect.w > 0 ? targetW / imgRect.w : 1;
+                      setCropBounds(b => ({
+                        t: b.t * scaleFactor,
+                        b: b.b * scaleFactor,
+                        l: b.l * scaleFactor,
+                        r: b.r * scaleFactor,
+                      }));
+                      setImgRect(prev => ({ ...prev, x: 0, y: 0, w: targetW, h: targetH }));
                       pushHistory();
                     }}
                     className="h-8 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
@@ -1163,7 +1300,7 @@ export default function XeroxQPrintDialog({
             </div>
 
             {/* IMAGE CROP ENGINE SECTION */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                    <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
                       <Crop className="w-3.5 h-3.5 text-slate-900" /> Crop Image Tool
@@ -1182,6 +1319,36 @@ export default function XeroxQPrintDialog({
                    <Crop className="w-3.5 h-3.5" /> 
                    {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm & Apply Crop" : "Crop Image Mode")}
                 </button>
+
+                {/* Live Crop Selection Stats Card */}
+                {isCropMode && (
+                  <div className="bg-slate-900 text-white p-3 rounded-xl space-y-2 border border-slate-800 text-[10px] font-mono shadow-md animate-in fade-in duration-200">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-1.5 text-slate-400">
+                      <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-blue-400">Live Selection Size</span>
+                      <span className="text-[9px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800 font-sans">2-Finger / Dbl-Click</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-sans">Dimensions (px):</div>
+                        <div className="font-extrabold text-blue-300 text-[11px]">{getCropInfo().cropW} × {getCropInfo().cropH}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-sans">Print Size (mm):</div>
+                        <div className="font-extrabold text-emerald-300 text-[11px]">{getCropInfo().mmW} × {getCropInfo().mmH}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 border-t border-slate-800 pt-1.5">
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-sans">Aspect Ratio:</div>
+                        <div className="font-extrabold text-amber-300">{getCropInfo().aspectStr}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400 text-[9px] font-sans">Retained Area:</div>
+                        <div className="font-extrabold text-purple-300">{getCropInfo().percentRetained}%</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {(isCropMode || croppedDataUrl) && (
                    <button 
@@ -1250,6 +1417,24 @@ export default function XeroxQPrintDialog({
                 title="Redo (Ctrl+Y)"
              >
                 <Redo2 className="w-3 h-3" />
+             </button>
+
+             <div className="w-px h-3.5 bg-[#E2E8F0] mx-1" />
+
+             <button 
+                onClick={() => {
+                  setIsScaleMode(s => !s);
+                  setAppliedSettingsMessage(!isScaleMode ? 'Figma Scale Tool (K) Active' : 'Select Tool (V) Active');
+                  setTimeout(() => setAppliedSettingsMessage(null), 2500);
+                }}
+                className={cn(
+                  "h-6 px-2 flex items-center gap-1 rounded-full text-[9px] font-black uppercase transition-all cursor-pointer",
+                  isScaleMode ? "bg-blue-600 text-white shadow-sm" : "hover:bg-[#F1F5F9] text-slate-700"
+                )}
+                title="Figma Scale Tool (HotKey: K)"
+             >
+                <Maximize className="w-2.5 h-2.5" />
+                <span>{isScaleMode ? "K: Scaling" : "V: Select"}</span>
              </button>
 
              <div className="w-px h-3.5 bg-[#E2E8F0] mx-1" />
@@ -1445,8 +1630,16 @@ export default function XeroxQPrintDialog({
                                             </div>
 
                                             {/* Size & Angle tooltip on hover */}
-                                            <div className="absolute -top-13 left-1/2 -translate-x-1/2 bg-[#3568FF] text-white text-[9px] font-black px-2 py-0.5 rounded whitespace-nowrap shadow-lg">
-                                              {Math.round(frameW)} × {Math.round(frameH)} pt &nbsp;·&nbsp; {rotation}°
+                                            <div className="absolute -top-13 left-1/2 -translate-x-1/2 bg-[#3568FF] text-white text-[9px] font-black px-2.5 py-1 rounded whitespace-nowrap shadow-lg flex items-center gap-1.5">
+                                              <span>{Math.round(frameW)} × {Math.round(frameH)} pt</span>
+                                              <span>·</span>
+                                              <span>{rotation}°</span>
+                                              {isScaleMode && (
+                                                <>
+                                                  <span>·</span>
+                                                  <span className="bg-white/20 px-1 rounded text-[8.5px]">K: Scaling</span>
+                                                </>
+                                              )}
                                             </div>
                                           </div>
                                         )}
@@ -1474,7 +1667,26 @@ export default function XeroxQPrintDialog({
                                         {isCropMode && (
                                           <>
                                             {/* Dimmed backdrop outside crop area */}
-                                            <div className="absolute inset-0 z-20 pointer-events-none">
+                                            <div 
+                                              className="absolute inset-0 z-20 pointer-events-auto"
+                                              onDoubleClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                commitCrop();
+                                              }}
+                                              onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                commitCrop();
+                                              }}
+                                              onTouchStart={(e) => {
+                                                if (e.touches.length === 2) {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  commitCrop();
+                                                }
+                                              }}
+                                            >
                                               <div className="absolute left-0 right-0 top-0 bg-black/50" style={{ height: cropRect.t }} />
                                               <div className="absolute left-0 right-0 bottom-0 bg-black/50" style={{ height: cropRect.b }} />
                                               <div className="absolute top-0 bottom-0 left-0 bg-black/50" style={{ width: cropRect.l, top: cropRect.t, bottom: cropRect.b }} />
@@ -1483,7 +1695,7 @@ export default function XeroxQPrintDialog({
 
                                             {/* Active Crop Box Boundary */}
                                             <div 
-                                              className="absolute z-20 border-2 border-[#3568FF] shadow-2xl cursor-move pointer-events-auto"
+                                              className="absolute z-20 border-2 border-[#3568FF] shadow-2xl cursor-move pointer-events-auto group/cropbox"
                                               style={{
                                                 top: cropRect.t,
                                                 bottom: cropRect.b,
@@ -1491,6 +1703,23 @@ export default function XeroxQPrintDialog({
                                                 right: cropRect.r,
                                               }}
                                               onMouseDown={onStartDrag}
+                                              onDoubleClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                commitCrop();
+                                              }}
+                                              onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                commitCrop();
+                                              }}
+                                              onTouchStart={(e) => {
+                                                if (e.touches.length === 2) {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  commitCrop();
+                                                }
+                                              }}
                                             >
                                               {/* Rule of thirds grid lines */}
                                               <div className="absolute inset-0 pointer-events-none opacity-40">
@@ -1500,9 +1729,52 @@ export default function XeroxQPrintDialog({
                                                 <div className="absolute top-2/3 left-0 right-0 h-px bg-white" />
                                               </div>
 
-                                              {/* Dimensions label */}
-                                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#3568FF] text-white text-[9px] font-black px-2 py-0.5 rounded whitespace-nowrap shadow">
-                                                {Math.round(imgRect.w - cropRect.l - cropRect.r)} × {Math.round(imgRect.h - cropRect.t - cropRect.b)} px
+                                              {/* Smart Dimensions Badge */}
+                                              {(() => {
+                                                const cropInfo = getCropInfo();
+                                                const isNearTop = cropRect.t < 36;
+                                                return (
+                                                  <div 
+                                                    className={cn(
+                                                      "absolute left-1/2 -translate-x-1/2 bg-slate-900/95 text-white text-[10px] font-black px-3 py-1 rounded-full whitespace-nowrap shadow-xl border border-slate-700/80 backdrop-blur-md flex items-center gap-2 pointer-events-none z-40 transition-all",
+                                                      isNearTop ? "top-2" : "-top-9"
+                                                    )}
+                                                  >
+                                                    <span className="text-blue-400 font-mono">📐 {cropInfo.cropW} × {cropInfo.cropH} px</span>
+                                                    <span className="text-slate-500">|</span>
+                                                    <span className="text-emerald-400 font-mono">{cropInfo.mmW} × {cropInfo.mmH} mm</span>
+                                                    <span className="text-slate-500">|</span>
+                                                    <span className="text-amber-300 font-bold">{cropInfo.aspectStr}</span>
+                                                    <span className="text-slate-500">|</span>
+                                                    <span className="text-purple-300">{cropInfo.percentRetained}% Area</span>
+                                                  </div>
+                                                );
+                                              })()}
+
+                                              {/* Floating In-Canvas Quick Action Toolbar (Horizontal Single-Line UI) */}
+                                              <div className="absolute -bottom-13 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-50 pointer-events-auto bg-slate-950/95 p-1 rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md whitespace-nowrap">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    commitCrop();
+                                                  }}
+                                                  className="h-8 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-[11px] font-extrabold flex items-center gap-1.5 shadow-md whitespace-nowrap leading-none transition-all cursor-pointer active:scale-95 shrink-0"
+                                                  title="Apply Crop (Double-Click, 2-Finger Tap or Enter)"
+                                                >
+                                                  <Check className="w-3.5 h-3.5 text-white shrink-0" />
+                                                  <span>Done</span>
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    resetCrop();
+                                                  }}
+                                                  className="h-8 px-3 bg-slate-800 hover:bg-red-600 text-slate-200 hover:text-white rounded-full text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap leading-none transition-all cursor-pointer shrink-0"
+                                                  title="Cancel / Reset Crop"
+                                                >
+                                                  <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                                                  <span>Cancel</span>
+                                                </button>
                                               </div>
                                             </div>
 

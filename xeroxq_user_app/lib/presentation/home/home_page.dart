@@ -82,8 +82,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _showQuickReorderSheet(PrintJob oldJob) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     final initialShop = _nearbyShops.firstWhere(
       (s) => s.id == oldJob.shopId,
       orElse: () => _nearbyShops.isNotEmpty ? _nearbyShops.first : Shop(
@@ -112,9 +110,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             final total = copies * oldJob.pageCount * rate;
 
             return Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
               padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(sheetContext).viewInsets.bottom + 32),
               child: Column(
@@ -139,7 +137,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.borderDark.withValues(alpha: 0.3) : const Color(0xFFF5F5F7),
+                      color: const Color(0xFFF5F5F7),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -314,11 +312,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF5F5F7),
+      backgroundColor: const Color(0xFFF5F5F7),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -338,11 +333,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 children: [
                                   Text(
                                     'Good ${_greeting()},',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 13,
-                                      color: isDark
-                                          ? AppColors.textSecondaryDark
-                                          : AppColors.textSecondaryLight,
+                                      color: AppColors.textSecondaryLight,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -377,15 +370,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.cardDark : Colors.white,
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                    color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                                    color: AppColors.borderLight),
                               ),
-                              child: Icon(Iconsax.notification,
-                                  color: isDark
-                                      ? AppColors.textPrimaryDark
-                                      : AppColors.textPrimaryLight,
+                              child: const Icon(Iconsax.notification,
+                                  color: AppColors.textPrimaryLight,
                                   size: 20),
                             ),
                           ],
@@ -513,7 +504,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               final job = _recentJobs[index];
                               return _QuickReorderCard(
                                 job: job,
-                                isDark: isDark,
                                 onTap: () => _showQuickReorderSheet(job),
                               );
                             },
@@ -564,7 +554,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             itemCount: _recentDocs.length,
                             itemBuilder: (_, i) => _RecentDocCard(
                               doc: _recentDocs[i],
-                              isDark: isDark,
                             ),
                           ),
                         ),
@@ -607,7 +596,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (_, i) => _ShopListTile(shop: _nearbyShops[i], isDark: isDark),
+                          (_, i) => _ShopListTile(shop: _nearbyShops[i]),
                           childCount: _nearbyShops.length,
                         ),
                       ),
@@ -857,7 +846,6 @@ class _StorageMeterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 110,
       decoration: BoxDecoration(
@@ -905,9 +893,8 @@ class _StorageMeterCard extends StatelessWidget {
 
 class _RecentDocCard extends StatelessWidget {
   final VaultDocument doc;
-  final bool isDark;
 
-  const _RecentDocCard({required this.doc, required this.isDark});
+  const _RecentDocCard({required this.doc});
 
   IconData get _docIcon {
     switch (doc.extension) {
@@ -946,10 +933,10 @@ class _RecentDocCard extends StatelessWidget {
         width: 110,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              color: AppColors.borderLight),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -973,10 +960,10 @@ class _RecentDocCard extends StatelessWidget {
             const Spacer(),
             Text(
               doc.name,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                color: AppColors.textPrimaryLight,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -999,9 +986,8 @@ class _RecentDocCard extends StatelessWidget {
 
 class _ShopListTile extends StatelessWidget {
   final Shop shop;
-  final bool isDark;
 
-  const _ShopListTile({required this.shop, required this.isDark});
+  const _ShopListTile({required this.shop});
 
   @override
   Widget build(BuildContext context) {
@@ -1014,10 +1000,10 @@ class _ShopListTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              color: AppColors.borderLight),
         ),
         child: Row(
           children: [
@@ -1059,12 +1045,10 @@ class _ShopListTile extends StatelessWidget {
 
 class _QuickReorderCard extends StatelessWidget {
   final PrintJob job;
-  final bool isDark;
   final VoidCallback onTap;
 
   const _QuickReorderCard({
     required this.job,
-    required this.isDark,
     required this.onTap,
   });
 
@@ -1080,9 +1064,9 @@ class _QuickReorderCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Row(
           children: [

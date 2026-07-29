@@ -116,8 +116,6 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -180,9 +178,9 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
             right: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -276,9 +274,9 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
                                       margin: const EdgeInsets.only(right: 12),
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: isDark ? AppColors.borderDark.withValues(alpha: 0.2) : const Color(0xFFF5F5F7),
+                                        color: const Color(0xFFF5F5F7),
                                         borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                                        border: Border.all(color: AppColors.borderLight),
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,

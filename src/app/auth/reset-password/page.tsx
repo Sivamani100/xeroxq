@@ -21,73 +21,136 @@ export default function ResetPassword() {
   const [status, setStatus] = useState<"checking" | "ready" | "expired">("checking");
 
   useEffect(() => {
+    let isMounted = true;
+
     async function init() {
-      // ── 1. Check for error query params Supabase sends on invalid/expired links
+      // ── 1. Check for explicit error query params from Supabase
       const urlError = searchParams.get("error");
       const errorCode = searchParams.get("error_code");
+      const errorDescription = searchParams.get("error_description");
       if (urlError || errorCode) {
-        setStatus("expired");
+        if (isMounted) {
+          setError(errorDescription || "This password reset link has expired or is invalid.");
+          setStatus("expired");
+        }
         return;
       }
 
-      // ── 2. Supabase JS client auto-processes the hash fragment on init.
-      //        So getSession() is the most reliable check — no event waiting needed.
+      // Read hash fragment or query params
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+      const queryCode = searchParams.get("code");
+      const queryTokenHash = searchParams.get("token_hash");
+      const queryType = searchParams.get("type");
+
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const hashType = hashParams.get("type");
+
+      const isRecoveryLink =
+        !!(queryCode || queryTokenHash || accessToken || queryType === "recovery" || hashType === "recovery");
+
+      // ── 2. Check for PKCE Authorization Code (?code=...)
+      if (queryCode) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(queryCode);
+          if (error) {
+            console.warn("[ResetPassword] PKCE exchange error:", error.message);
+            if (isMounted) {
+              setError(error.message || "Invalid or expired reset code.");
+              setStatus("expired");
+            }
+            return;
+          }
+          if (data?.session && isMounted) {
+            setStatus("ready");
+            return;
+          }
+        } catch (e) {
+          console.warn("[ResetPassword] PKCE exception:", e);
+        }
+      }
+
+      // ── 3. Check for OTP Recovery Token (?token_hash=...&type=recovery)
+      if (queryTokenHash && (queryType === "recovery" || !queryType)) {
+        try {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: queryTokenHash,
+            type: "recovery",
+          });
+          if (error) {
+            console.warn("[ResetPassword] OTP verify error:", error.message);
+            if (isMounted) {
+              setError(error.message || "Invalid or expired recovery token.");
+              setStatus("expired");
+            }
+            return;
+          }
+          if (data?.session && isMounted) {
+            setStatus("ready");
+            return;
+          }
+        } catch (e) {
+          console.warn("[ResetPassword] OTP exception:", e);
+        }
+      }
+
+      // ── 4. Check for Hash Fragment (#access_token=...&refresh_token=...)
+      if (accessToken && refreshToken) {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) {
+            console.warn("[ResetPassword] setSession error:", error.message);
+            if (isMounted) {
+              setError(error.message || "Invalid or expired session token.");
+              setStatus("expired");
+            }
+            return;
+          }
+          if (data?.session && isMounted) {
+            setStatus("ready");
+            return;
+          }
+        } catch (e) {
+          console.warn("[ResetPassword] setSession exception:", e);
+        }
+      }
+
+      // ── 5. Check if session already exists
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && isMounted) {
         setStatus("ready");
         return;
       }
 
-      // ── 3. If no session yet, try to set it from the hash fragment manually.
-      //        e.g. #access_token=...&refresh_token=...&type=recovery
-      const hash = window.location.hash;
-      if (hash) {
-        // Remove leading # and parse as URLSearchParams
-        const params = new URLSearchParams(hash.slice(1));
-        const accessToken  = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
-        const type         = params.get("type");
-
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (!error) {
-            setStatus("ready");
-            return;
-          }
-        }
-
-        // Hash exists but has an error param
-        if (params.get("error") || params.get("error_code")) {
-          setStatus("expired");
-          return;
-        }
-      }
-
-      // ── 4. Listen for PASSWORD_RECOVERY event as a fallback.
-      //        Set a 10s timeout so we don't spin forever.
-      const timer = setTimeout(() => setStatus("expired"), 10000);
-
+      // ── 6. Listen for auth state changes (PASSWORD_RECOVERY or SIGNED_IN)
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event) => {
-          if (event === "PASSWORD_RECOVERY") {
-            clearTimeout(timer);
+        (event, currentSession) => {
+          if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || currentSession) && isMounted) {
             setStatus("ready");
           }
         }
       );
 
+      // If URL has no recovery tokens and no session exists, mark expired
+      if (!isRecoveryLink && !session && isMounted) {
+        setStatus("expired");
+      }
+
       return () => {
-        clearTimeout(timer);
         subscription.unsubscribe();
       };
     }
 
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
