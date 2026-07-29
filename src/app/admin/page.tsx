@@ -1946,8 +1946,8 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between gap-3">
             {/* Left: logo + shop name */}
             <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-              <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md p-1.5 overflow-hidden">
-                <img src="/favicon.ico" alt="XeroxQ Logo" className="w-full h-full object-contain filter brightness-0 invert" />
+              <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-sm p-0.5 overflow-hidden">
+                <img src="/logo_color.png" alt="XeroxQ Logo" className="w-full h-full object-contain" />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>

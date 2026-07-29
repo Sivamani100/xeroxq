@@ -150,9 +150,7 @@ export default function Login() {
       if (isElectron) {
         // ── Desktop: get OAuth URL, open in system browser ──────────────────
         // We use signInWithOAuth with skipBrowserRedirect=true to just get the URL
-        const oauthBase = typeof window !== "undefined" && window.location.origin.includes("localhost")
-          ? "http://127.0.0.1:3000"
-          : "https://xeroxq.arkio.in";
+        const oauthBase = "https://xeroxq.arkio.in";
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,

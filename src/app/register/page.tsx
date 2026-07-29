@@ -151,9 +151,7 @@ export default function Register() {
       setError(null);
       const isElectron = !!(window.electron?.openOAuthUrl);
       if (isElectron) {
-        const oauthBase = typeof window !== "undefined" && window.location.origin.includes("localhost")
-          ? "http://127.0.0.1:3000"
-          : "https://xeroxq.arkio.in";
+        const oauthBase = "https://xeroxq.arkio.in";
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,

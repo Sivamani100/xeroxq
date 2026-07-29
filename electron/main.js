@@ -186,23 +186,27 @@ if (process.platform === 'win32') {
 
 let mainWindow;
 
-// Returns the correct icon based on platform, system theme, and availability
+// Returns the correct desktop app icon based on logo_color.png and build/icon.ico
 function getIcon() {
-  const isDark = nativeTheme.shouldUseDarkColors;
+  const logoColorPath = path.join(__dirname, '../public/logo_color.png');
   const icoPath = path.join(__dirname, '../build/icon.ico');
-  const whiteSvgPath = path.join(__dirname, '../public/xeroxq_logo_white.svg');
-  const darkSvgPath = path.join(__dirname, '../public/xeroxq_logo_dark.svg');
+  const pngPath = path.join(__dirname, '../public/icon.png');
 
-  const themeSvg = isDark ? whiteSvgPath : darkSvgPath;
-  if (fs.existsSync(themeSvg)) {
-    const img = nativeImage.createFromPath(themeSvg);
+  if (fs.existsSync(logoColorPath)) {
+    const img = nativeImage.createFromPath(logoColorPath);
     if (!img.isEmpty()) return img;
   }
 
   if (process.platform === 'win32' && fs.existsSync(icoPath)) {
     return icoPath;
   }
-  return path.join(__dirname, '../public/icon.png');
+
+  if (fs.existsSync(pngPath)) {
+    const img = nativeImage.createFromPath(pngPath);
+    if (!img.isEmpty()) return img;
+  }
+
+  return logoColorPath;
 }
 
 // Update icon dynamically when system theme changes

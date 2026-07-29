@@ -1057,8 +1057,8 @@ export default function XeroxQPrintDialog({
       {/* Studio Header Bar */}
       <header className="h-[48px] border-b border-[#E2E8F0] bg-white px-5 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-black rounded-[6px] flex items-center justify-center p-1 shadow-sm overflow-hidden shrink-0">
-            <img src="/favicon.ico" alt="XeroxQ Logo" className="w-full h-full object-contain filter brightness-0 invert" />
+          <div className="w-7 h-7 rounded-[6px] flex items-center justify-center p-0.5 shadow-sm overflow-hidden shrink-0">
+            <img src="/logo_color.png" alt="XeroxQ Logo" className="w-full h-full object-contain" />
           </div>
           <span className="font-black text-[14px] text-slate-900 tracking-tight">XeroxQ Studio</span>
         </div>

@@ -86,7 +86,15 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
-    console.warn("[AuthCallback] PKCE exchange error:", error?.message);
+    console.warn("[AuthCallback] PKCE exchange error on server:", error?.message);
+
+    // If server-side PKCE code exchange failed (e.g., PKCE code_verifier was stored in desktop app's storage),
+    // forward the code via deep link to Electron so the desktop client can exchange it!
+    if (isElectron) {
+      console.log("[AuthCallback] Forwarding code to Electron for client-side PKCE exchange");
+      const deepLink = `xeroxq://auth/callback?code=${encodeURIComponent(code)}`;
+      return deepLinkRedirect(deepLink);
+    }
   }
 
   // 2. Handle OTP Token Hash Verification (?token_hash=...&type=recovery)
