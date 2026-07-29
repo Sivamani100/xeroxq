@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Mail, KeyRound } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound } from "lucide-react";
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -40,34 +40,37 @@ export default function ResetPassword() {
 
       // 2. PKCE Exchange (?code=...)
       if (queryCode) {
-        try {
-          await supabase.auth.exchangeCodeForSession(queryCode);
-        } catch (e) {
-          console.warn("[ResetPassword] PKCE exchange handled:", e);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(queryCode);
+        if (error) {
+          console.warn("[ResetPassword] PKCE exchange error:", error.message);
+        } else if (data?.session) {
+          console.log("[ResetPassword] Session established via PKCE code exchange");
         }
       }
 
       // 3. OTP Verification (?token_hash=...)
       if (queryTokenHash && (queryType === "recovery" || !queryType)) {
-        try {
-          await supabase.auth.verifyOtp({
-            token_hash: queryTokenHash,
-            type: "recovery",
-          });
-        } catch (e) {
-          console.warn("[ResetPassword] OTP verify handled:", e);
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: queryTokenHash,
+          type: "recovery",
+        });
+        if (error) {
+          console.warn("[ResetPassword] OTP verify error:", error.message);
+        } else if (data?.session) {
+          console.log("[ResetPassword] Session established via OTP verify");
         }
       }
 
       // 4. Hash Fragment (#access_token=...)
       if (accessToken && refreshToken) {
-        try {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-        } catch (e) {
-          console.warn("[ResetPassword] setSession handled:", e);
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) {
+          console.warn("[ResetPassword] setSession error:", error.message);
+        } else if (data?.session) {
+          console.log("[ResetPassword] Session established via setSession");
         }
       }
 
@@ -116,9 +119,40 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      // 1. Attempt to update password directly in Supabase
+      // 1. Verify active session
+      let { data: { session } } = await supabase.auth.getSession();
+
+      // 2. Fallback check hash fragment if session is missing
+      if (!session && typeof window !== "undefined" && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { data: setRes } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          session = setRes.session;
+        }
+      }
+
+      // 3. Fallback check query code if session is missing
+      if (!session) {
+        const queryCode = searchParams.get("code");
+        if (queryCode) {
+          const { data: codeRes } = await supabase.auth.exchangeCodeForSession(queryCode);
+          session = codeRes.session;
+        }
+      }
+
+      // 4. Update user password in Supabase
       const { error: updateErr } = await supabase.auth.updateUser({ password });
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        if (updateErr.message.includes("session") || !session) {
+          throw new Error("Your password reset session has expired or is invalid. Please enter your email below to get a fresh reset link.");
+        }
+        throw updateErr;
+      }
 
       setSuccess(true);
       setTimeout(() => router.push("/login"), 2500);
@@ -141,8 +175,8 @@ export default function ResetPassword() {
     try {
       const isElectron = !!(typeof window !== "undefined" && window.electron);
       const redirectTo = isElectron
-        ? `https://xeroxq.arkio.in/auth/reset-password`
-        : `${window.location.origin}/auth/reset-password`;
+        ? `https://xeroxq.arkio.in/auth/callback?next=/auth/reset-password`
+        : `${window.location.origin}/auth/callback?next=/auth/reset-password`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(resendEmail.trim(), {
         redirectTo,
@@ -175,7 +209,7 @@ export default function ResetPassword() {
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-black tracking-tight">Password Updated!</h1>
             <p className="text-auth-slate-50 font-medium text-[14px]">
-              Your password has been saved in Supabase. Redirecting to login...
+              Your new password has been saved to Supabase. Redirecting to login...
             </p>
           </div>
           <div className="w-8 h-8 border-2 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto mt-4" />
@@ -184,7 +218,7 @@ export default function ResetPassword() {
     );
   }
 
-  // ── Reset Form (Default Active View) ────────────────────────────────────────
+  // ── Reset Form ─────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
       <motion.div
@@ -263,11 +297,11 @@ export default function ResetPassword() {
               {/* Inline Quick-Resend Option if session was invalid */}
               <div className="pt-2 border-t border-amber-200/60 flex flex-col gap-2">
                 <p className="text-[11px] text-amber-800">
-                  If your link has expired, enter your email below to send a brand new link:
+                  Enter your email below to receive a fresh reset link:
                 </p>
                 {resendSuccess ? (
                   <p className="text-[11px] font-semibold text-green-700">
-                    ✓ New reset link sent! Please check your inbox.
+                    ✓ New reset link sent! Please check your email inbox.
                   </p>
                 ) : (
                   <div className="flex gap-2">

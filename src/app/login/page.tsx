@@ -196,8 +196,8 @@ export default function Login() {
       // rejected as an unauthorized redirect URL by Supabase.
       // In web: use the current origin so it works both in dev and production.
       const redirectTo = isElectron
-        ? `https://xeroxq.arkio.in/auth/reset-password`
-        : `${window.location.origin}/auth/reset-password`;
+        ? `https://xeroxq.arkio.in/auth/callback?next=/auth/reset-password`
+        : `${window.location.origin}/auth/callback?next=/auth/reset-password`;
 
       // Wrap in a timeout so it never hangs forever if Supabase is unreachable
       const timeoutPromise = new Promise<never>((_, reject) =>
