@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -13,19 +13,19 @@ function deepLinkRedirect(url: string, errorMode = false) {
         <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff}</style>
       </head><body>
         <div style="text-align:center">
-          <p style="font-size:18px;color:#ef4444;font-weight:600">Sign-in failed.</p>
+          <p style="font-size:18px;color:#ef4444;font-weight:600">Authentication failed.</p>
           <p style="color:#6b7280;font-size:14px">You can close this tab and try again.</p>
         </div>
         <script>window.location.href="${url}";</script>
       </body></html>`
-    : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing you in…</title>
+    : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Authenticating…</title>
         <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff}
         .spin{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
         @keyframes spin{to{transform:rotate(360deg)}}</style>
       </head><body>
         <div style="text-align:center">
           <div class="spin"></div>
-          <p style="font-size:16px;font-weight:600;color:#111827">Signing you in…</p>
+          <p style="font-size:16px;font-weight:600;color:#111827">Authenticating…</p>
           <p style="color:#6b7280;font-size:13px font-weight:500">Returning to XeroxQ. You can close this tab.</p>
         </div>
         <script>window.location.href="${url}";</script>
@@ -38,13 +38,11 @@ function deepLinkRedirect(url: string, errorMode = false) {
 }
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const { searchParams, origin } = requestUrl;
-
+  const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
-  const rawNext = searchParams.get("next") ?? "/admin";
+  const rawNext = searchParams.get("next") ?? "/auth/update-password";
   const isElectron = searchParams.get("electron") === "1";
 
   // Prevent open redirect vulnerabilities
@@ -52,7 +50,7 @@ export async function GET(request: Request) {
     rawNext.startsWith("/") &&
     !rawNext.startsWith("//") &&
     !rawNext.includes(":");
-  const next = isSafeNext ? rawNext : "/admin";
+  const next = isSafeNext ? rawNext : "/auth/update-password";
 
   const cookieStore = await cookies();
   const supabase = createServerClient(
@@ -60,14 +58,17 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Server component / route handler mitigation
+          }
         },
       },
     }
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
-    console.warn("[AuthCallback] PKCE exchange warning/error:", error?.message);
+    console.warn("[AuthCallback] PKCE exchange error:", error?.message);
   }
 
   // 2. Handle OTP Token Hash Verification (?token_hash=...&type=recovery)
@@ -103,21 +104,12 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
-    console.warn("[AuthCallback] OTP verify warning/error:", error?.message);
+    console.warn("[AuthCallback] OTP verify error:", error?.message);
   }
 
-  // 3. Fallback: If destination is reset-password, forward query parameters directly
-  if (next.includes("reset-password") || rawNext.includes("reset-password")) {
-    const targetUrl = new URL(`${origin}/auth/reset-password`);
-    searchParams.forEach((value, key) => {
-      targetUrl.searchParams.set(key, value);
-    });
-    return NextResponse.redirect(targetUrl.toString());
-  }
-
-  // Default error fallback
+  // Fallback to error page if exchange fails
   if (isElectron) {
     return deepLinkRedirect(`xeroxq://auth/callback?error=auth-callback-failed`, true);
   }
-  return NextResponse.redirect(`${origin}/login?error=auth-callback-failed`);
+  return NextResponse.redirect(`${origin}/auth/auth-error`);
 }
