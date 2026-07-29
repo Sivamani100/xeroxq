@@ -4,141 +4,81 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Mail, KeyRound } from "lucide-react";
 
 export default function ResetPassword() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [password, setPassword]       = useState("");
-  const [confirm, setConfirm]         = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [success, setSuccess]         = useState(false);
+  const [password, setPassword]         = useState("");
+  const [confirm, setConfirm]           = useState("");
+  const [showPassword, setShowPassword]   = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+  const [success, setSuccess]           = useState(false);
 
-  // "checking" — verifying the link | "ready" — show form | "expired" — bad link
-  const [status, setStatus] = useState<"checking" | "ready" | "expired">("checking");
+  // Email resend state if session is missing
+  const [resendEmail, setResendEmail]   = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError]   = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     async function init() {
-      // ── 1. Check for explicit error query params from Supabase
-      const urlError = searchParams.get("error");
-      const errorCode = searchParams.get("error_code");
-      const errorDescription = searchParams.get("error_description");
-      if (urlError || errorCode) {
-        if (isMounted) {
-          setError(errorDescription || "This password reset link has expired or is invalid.");
-          setStatus("expired");
-        }
-        return;
-      }
-
-      // Read hash fragment or query params
-      const hash = typeof window !== "undefined" ? window.location.hash : "";
-      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+      // 1. Check for query parameters (PKCE code or OTP token)
       const queryCode = searchParams.get("code");
       const queryTokenHash = searchParams.get("token_hash");
       const queryType = searchParams.get("type");
 
+      // Read hash parameters
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
-      const hashType = hashParams.get("type");
 
-      const isRecoveryLink =
-        !!(queryCode || queryTokenHash || accessToken || queryType === "recovery" || hashType === "recovery");
-
-      // ── 2. Check for PKCE Authorization Code (?code=...)
+      // 2. PKCE Exchange (?code=...)
       if (queryCode) {
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(queryCode);
-          if (error) {
-            console.warn("[ResetPassword] PKCE exchange error:", error.message);
-            if (isMounted) {
-              setError(error.message || "Invalid or expired reset code.");
-              setStatus("expired");
-            }
-            return;
-          }
-          if (data?.session && isMounted) {
-            setStatus("ready");
-            return;
-          }
+          await supabase.auth.exchangeCodeForSession(queryCode);
         } catch (e) {
-          console.warn("[ResetPassword] PKCE exception:", e);
+          console.warn("[ResetPassword] PKCE exchange handled:", e);
         }
       }
 
-      // ── 3. Check for OTP Recovery Token (?token_hash=...&type=recovery)
+      // 3. OTP Verification (?token_hash=...)
       if (queryTokenHash && (queryType === "recovery" || !queryType)) {
         try {
-          const { data, error } = await supabase.auth.verifyOtp({
+          await supabase.auth.verifyOtp({
             token_hash: queryTokenHash,
             type: "recovery",
           });
-          if (error) {
-            console.warn("[ResetPassword] OTP verify error:", error.message);
-            if (isMounted) {
-              setError(error.message || "Invalid or expired recovery token.");
-              setStatus("expired");
-            }
-            return;
-          }
-          if (data?.session && isMounted) {
-            setStatus("ready");
-            return;
-          }
         } catch (e) {
-          console.warn("[ResetPassword] OTP exception:", e);
+          console.warn("[ResetPassword] OTP verify handled:", e);
         }
       }
 
-      // ── 4. Check for Hash Fragment (#access_token=...&refresh_token=...)
+      // 4. Hash Fragment (#access_token=...)
       if (accessToken && refreshToken) {
         try {
-          const { data, error } = await supabase.auth.setSession({
+          await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          if (error) {
-            console.warn("[ResetPassword] setSession error:", error.message);
-            if (isMounted) {
-              setError(error.message || "Invalid or expired session token.");
-              setStatus("expired");
-            }
-            return;
-          }
-          if (data?.session && isMounted) {
-            setStatus("ready");
-            return;
-          }
         } catch (e) {
-          console.warn("[ResetPassword] setSession exception:", e);
+          console.warn("[ResetPassword] setSession handled:", e);
         }
       }
 
-      // ── 5. Check if session already exists
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && isMounted) {
-        setStatus("ready");
-        return;
-      }
-
-      // ── 6. Listen for auth state changes (PASSWORD_RECOVERY or SIGNED_IN)
+      // 5. Auth State Change Listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, currentSession) => {
-          if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || currentSession) && isMounted) {
-            setStatus("ready");
+        (_event, session) => {
+          if (session && isMounted) {
+            setError(null);
           }
         }
       );
-
-      // If URL has no recovery tokens and no session exists, mark expired
-      if (!isRecoveryLink && !session && isMounted) {
-        setStatus("expired");
-      }
 
       return () => {
         subscription.unsubscribe();
@@ -155,34 +95,77 @@ export default function ResetPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setResendError(null);
 
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (!/[a-zA-Z]/.test(password)) { setError("Password must contain at least one letter."); return; }
-    if (!/[0-9]/.test(password)) { setError("Password must contain at least one number."); return; }
-    if (password !== confirm) { setError("Passwords don't match."); return; }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[a-zA-Z]/.test(password)) {
+      setError("Password must contain at least one letter.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError("Password must contain at least one number.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match. Please check again.");
+      return;
+    }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      // 1. Attempt to update password directly in Supabase
+      const { error: updateErr } = await supabase.auth.updateUser({ password });
+      if (updateErr) throw updateErr;
+
       setSuccess(true);
-      setTimeout(() => router.push("/login"), 3000);
+      setTimeout(() => router.push("/login"), 2500);
     } catch (err) {
       const e = err as Error;
-      setError(e.message || "Failed to reset password. Please try again.");
+      const msg = e.message || "Failed to reset password. Please try again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  const handleResendLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resendEmail.trim()) return;
+
+    setResendLoading(true);
+    setResendError(null);
+
+    try {
+      const isElectron = !!(typeof window !== "undefined" && window.electron);
+      const redirectTo = isElectron
+        ? `https://xeroxq.arkio.in/auth/reset-password`
+        : `${window.location.origin}/auth/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail.trim(), {
+        redirectTo,
+      });
+
+      if (error) throw error;
+      setResendSuccess(true);
+    } catch (err) {
+      const e = err as Error;
+      setResendError(e.message || "Failed to send reset email.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  // ── Success Screen ──────────────────────────────────────────────────────────
   if (success) {
     return (
       <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full p-12 bg-[#FAFAFC] border border-slate-200 rounded-[30px] text-center space-y-6"
+          className="max-w-md w-full p-12 bg-[#FAFAFC] border border-slate-200 rounded-[30px] text-center space-y-6 shadow-sm"
         >
           <div className="flex justify-center">
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
@@ -191,79 +174,32 @@ export default function ResetPassword() {
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-black tracking-tight">Password Updated!</h1>
-            <p className="text-auth-slate-50 font-medium">
-              Your password has been reset. Redirecting to login...
+            <p className="text-auth-slate-50 font-medium text-[14px]">
+              Your password has been saved in Supabase. Redirecting to login...
             </p>
           </div>
-          <div className="w-8 h-8 border-2 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto mt-4" />
         </motion.div>
       </main>
     );
   }
 
-  // ── Expired / invalid link screen ──────────────────────────────────────────
-  if (status === "expired") {
-    return (
-      <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full p-12 bg-[#FAFAFC] border border-slate-200 rounded-[30px] text-center space-y-6"
-        >
-          <div className="flex justify-center">
-            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center border border-red-100">
-              <XCircle className="w-10 h-10 text-red-500" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-black">Link Expired</h1>
-            <p className="text-auth-slate-50 font-medium text-[14px] leading-relaxed">
-              This password reset link has expired or is invalid. Reset links are valid for 1 hour.
-            </p>
-          </div>
-          <button
-            onClick={() => router.push("/login")}
-            className="w-full h-[42px] btn-auth-primary text-[14px] cursor-pointer"
-          >
-            Back to Login
-          </button>
-          <p className="text-[12px] text-auth-slate-20">
-            You can request a new reset link from the login page.
-          </p>
-        </motion.div>
-      </main>
-    );
-  }
-
-  // ── Verifying screen ───────────────────────────────────────────────────────
-  if (status === "checking") {
-    return (
-      <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="max-w-md w-full p-12 bg-[#FAFAFC] border border-slate-200 rounded-[30px] text-center space-y-6"
-        >
-          <div className="w-10 h-10 border-2 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-auth-slate-50 font-medium text-[14px]">Verifying reset link...</p>
-        </motion.div>
-      </main>
-    );
-  }
-
-  // ── Reset form ─────────────────────────────────────────────────────────────
+  // ── Reset Form (Default Active View) ────────────────────────────────────────
   return (
     <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-[420px]"
       >
-        <div className="flex flex-col gap-[1.75px] mb-8">
-          <h1 className="text-[36px] font-bold text-black leading-[1.2]">Reset Password</h1>
+        <div className="flex flex-col gap-2 mb-8">
+          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 mb-2">
+            <KeyRound className="w-6 h-6 text-primary-blue" />
+          </div>
+          <h1 className="text-[32px] font-bold text-black leading-[1.2]">Reset Password</h1>
           <p className="text-[14px] font-medium text-auth-slate-50">
-            Choose a new secure password for your account.
+            Create a new password for your XeroxQ account.
           </p>
         </div>
 
@@ -281,7 +217,7 @@ export default function ResetPassword() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full auth-input pr-12 placeholder:text-auth-slate-20 text-[12.27px]"
+                className="w-full auth-input pr-12 placeholder:text-auth-slate-20 text-[13px]"
               />
               <button
                 type="button"
@@ -305,31 +241,64 @@ export default function ResetPassword() {
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="w-full auth-input placeholder:text-auth-slate-20 text-[12.27px]"
+              className="w-full auth-input placeholder:text-auth-slate-20 text-[13px]"
             />
           </div>
 
-          {/* Hint */}
-          <div className="flex items-start gap-2 p-3 bg-blue-50/50 border border-blue-100 rounded-[5.57px]">
+          {/* Guidelines */}
+          <div className="flex items-start gap-2 p-3 bg-blue-50/50 border border-blue-100 rounded-[8px]">
             <div className="w-1.5 h-1.5 rounded-full bg-primary-blue mt-1.5 shrink-0" />
-            <p className="text-[11px] font-medium text-auth-slate-50 leading-[1.6]">
+            <p className="text-[11.5px] font-medium text-auth-slate-50 leading-[1.6]">
               Minimum 8 characters with at least one letter and one number.
             </p>
           </div>
 
           {error && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="flex flex-col gap-3 p-4 bg-amber-50 text-amber-900 rounded-xl text-xs border border-amber-200">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>{error}</span>
+              </div>
+
+              {/* Inline Quick-Resend Option if session was invalid */}
+              <div className="pt-2 border-t border-amber-200/60 flex flex-col gap-2">
+                <p className="text-[11px] text-amber-800">
+                  If your link has expired, enter your email below to send a brand new link:
+                </p>
+                {resendSuccess ? (
+                  <p className="text-[11px] font-semibold text-green-700">
+                    ✓ New reset link sent! Please check your inbox.
+                  </p>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      className="flex-1 px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-[12px] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleResendLink}
+                      disabled={resendLoading}
+                      className="px-3 py-1.5 bg-primary-blue text-white rounded-lg text-[11px] font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      {resendLoading ? "Sending..." : "Send Link"}
+                    </button>
+                  </div>
+                )}
+                {resendError && <p className="text-[11px] text-red-600">{resendError}</p>}
+              </div>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight cursor-pointer mt-2"
+            className="w-full h-[44px] btn-auth-primary text-[14px] font-semibold tracking-tight cursor-pointer mt-2"
           >
-            {loading ? "Updating..." : "Set New Password"}
+            {loading ? "Saving to Supabase..." : "Set New Password"}
           </button>
 
           <button
