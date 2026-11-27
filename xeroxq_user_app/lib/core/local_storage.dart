@@ -1,17 +1,67 @@
-import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List, debugPrint;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Hive-backed local storage service.
-/// Replaces SharedPreferences JSON blob for VaultDocument metadata.
+/// Encrypted Hive-backed local storage service for VaultDocument metadata & bytes.
 class LocalStorageService {
   static const String _vaultBox = 'vault_documents';
   static const String _vaultBytesBox = 'vault_bytes';
   static const String _settingsBox = 'vault_settings';
+  static const String _secureKeyStorageName = 'xeroxq_vault_aes256_key_v1';
+
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static late Box<dynamic> _vault;
   static late Box<dynamic> _vaultBytes;
   static late Box<dynamic> _settings;
+
+  static Future<List<int>> _getOrCreateVaultCipherKey() async {
+    final existing = await _secureStorage.read(key: _secureKeyStorageName);
+    if (existing != null && existing.isNotEmpty) {
+      try {
+        final decoded = base64Decode(existing);
+        if (decoded.length == 32) {
+          return decoded;
+        }
+      } catch (e) {
+        debugPrint('Corrupted stored vault key; regenerating: $e');
+      }
+    }
+
+    final random = Random.secure();
+    final key = List<int>.generate(32, (_) => random.nextInt(256));
+    await _secureStorage.write(
+      key: _secureKeyStorageName,
+      value: base64Encode(key),
+    );
+    return key;
+  }
+
+  static Future<Box<dynamic>> _openEncryptedBox(
+    String boxName,
+    HiveAesCipher cipher,
+  ) async {
+    try {
+      return await Hive.openBox(boxName, encryptionCipher: cipher);
+    } catch (_) {
+      // One-time seamless migration if a legacy unencrypted box already exists on disk
+      final legacyBox = await Hive.openBox(boxName);
+      final snapshot = Map<dynamic, dynamic>.from(legacyBox.toMap());
+      await legacyBox.close();
+      await Hive.deleteBoxFromDisk(boxName);
+
+      final encryptedBox = await Hive.openBox(boxName, encryptionCipher: cipher);
+      if (snapshot.isNotEmpty) {
+        await encryptedBox.putAll(snapshot);
+      }
+      return encryptedBox;
+    }
+  }
 
   /// Call once in main() before runApp.
   static Future<void> initialize({List<int>? cipherKey}) async {
@@ -22,12 +72,14 @@ class LocalStorageService {
       await Hive.initFlutter(appDocDir.path);
     }
 
-    final cipher = cipherKey != null && cipherKey.length == 32 
-        ? HiveAesCipher(cipherKey) 
-        : null;
+    final resolvedKey = (cipherKey != null && cipherKey.length == 32)
+        ? cipherKey
+        : await _getOrCreateVaultCipherKey();
 
-    _vault = await Hive.openBox(_vaultBox, encryptionCipher: cipher);
-    _vaultBytes = await Hive.openBox(_vaultBytesBox, encryptionCipher: cipher);
+    final cipher = HiveAesCipher(resolvedKey);
+
+    _vault = await _openEncryptedBox(_vaultBox, cipher);
+    _vaultBytes = await _openEncryptedBox(_vaultBytesBox, cipher);
     _settings = await Hive.openBox(_settingsBox);
   }
 

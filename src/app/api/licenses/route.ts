@@ -1,10 +1,9 @@
-export const dynamic = "force-static";
-
 import { NextResponse } from "next/server";
 import licensesData from "../../../../public/licenses.json";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export async function GET(request?: Request) {
-  const urlStr = request?.url || "https://xeroxq.arkio.in/api/licenses";
+  const urlStr = request?.url || `${getPublicOrigin()}/api/licenses`;
   const { searchParams } = new URL(urlStr);
   const query = searchParams.get("query")?.toLowerCase() || "";
   const ecosystem = searchParams.get("ecosystem") || "";

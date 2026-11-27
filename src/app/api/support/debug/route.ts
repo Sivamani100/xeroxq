@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin, timingSafeSecretMatch } from "@/lib/server-supabase";
 import { logger } from "@/lib/logger";
 
 // ── Technical Support: L3 Diagnostic Probe ──────────────────────────────
 // This professional troubleshooting endpoint allows support teams to
 // analyze a shop's health, processing success rates, and financial status.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (process.env.BUILD_DESKTOP === "true") {
-    return NextResponse.json({});
-  }
   const { searchParams } = new URL(req.url);
   const shopId = searchParams.get("shopId");
-  const authHeader = req.headers.get("Authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const cronSecret = process.env.CRON_SECRET ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
   // 1. Authorization: Only allow authorized L3 support staff
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !timingSafeSecretMatch(token, cronSecret)) {
     logger.security("Rejected unauthorized Support Debug request");
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -28,10 +26,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getSupabaseAdmin();
 
     // 2. Aggregate Shop Health Diagnostic
     const [shopRes, jobsRes, metricsRes] = await Promise.all([

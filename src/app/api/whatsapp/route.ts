@@ -1,73 +1,52 @@
-export const dynamic = "force-static";
-
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { generateToken } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { validateTwilioSignature } from "@/lib/twilio-verify";
 import { logger } from "@/lib/logger";
-import { WorkerProcessSchema } from "@/lib/schemas";
+import { getSupabaseAdmin } from "@/lib/server-supabase";
+import { processWhatsAppMediaJob } from "@/lib/whatsapp-worker";
 
-/**
- * WhatsApp Webhook for Twilio — HARDENED
- * 
- * Security layers:
- * 1. Twilio signature verification (rejects all non-Twilio requests)
- * 2. Rate limiting (20 req/min per IP)
- * 3. Sanitized error responses (no internal info leaked to users)
- * 4. Async media ingestion (fire & forget worker pattern)
- */
-
-// Rate limiter: 20 requests per minute per IP
 const limiter = rateLimit({ windowMs: 60_000, max: 20 });
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
 export async function POST(req: NextRequest) {
-  // ── 1. Rate Limiting ──────────────────────────────────────────────────────
   const ip = getClientIp(req);
   const { success } = limiter.check(`whatsapp:${ip}`);
   if (!success) {
     return twimlResponse("Too many requests. Please wait a moment before trying again.");
   }
 
-  // ── 2. Twilio Signature Verification ────────────────────────────────────────
-  // Skip in development for easier testing
+  // Fail closed in production when TWILIO_AUTH_TOKEN is missing
   if (process.env.NODE_ENV === "production") {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const signature = req.headers.get("x-twilio-signature") || "";
-    
-    if (!authToken) {
-      console.error("[XeroxQ] CRITICAL: TWILIO_AUTH_TOKEN not set — webhook is unverified!");
-    } else {
-      // Reconstruct the full URL for verification
-      const host = req.headers.get("host") || "";
-      const proto = req.headers.get("x-forwarded-proto") || "https";
-      const url = `${proto}://${host}${req.nextUrl.pathname}`;
-      
-      // Parse form body for verification
-      const clonedReq = req.clone();
-      const formData = await clonedReq.formData();
-      const params: Record<string, string> = {};
-      formData.forEach((value, key) => { params[key] = value.toString(); });
 
-      if (!validateTwilioSignature(authToken, signature, url, params)) {
-        logger.security(`Rejected forged Twilio request from ${ip}`, { url, signature });
-        return new NextResponse("Forbidden", { status: 403 });
-      }
+    if (!authToken) {
+      logger.security("Rejected WhatsApp webhook: TWILIO_AUTH_TOKEN not configured");
+      return new NextResponse("Webhook authentication unconfigured", { status: 500 });
+    }
+
+    const configuredWebhook = process.env.NEXT_PUBLIC_WHATSAPP_WEBHOOK_URL;
+    const url = configuredWebhook || req.nextUrl.toString();
+
+    const clonedReq = req.clone();
+    const formData = await clonedReq.formData();
+    const params: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      params[key] = value.toString();
+    });
+
+    if (!validateTwilioSignature(authToken, signature, url, params)) {
+      logger.security(`Rejected forged Twilio request from ${ip}`, { url });
+      return new NextResponse("Forbidden", { status: 403 });
     }
   }
 
-  // ── 3. Parse Request ──────────────────────────────────────────────────────
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const formData = await req.formData();
     const from = formData.get("From") as string;
     const body = (formData.get("Body") as string) || "";
-    const numMedia = parseInt(formData.get("NumMedia") as string || "0");
+    const numMedia = parseInt((formData.get("NumMedia") as string) || "0", 10);
     const mediaUrl = formData.get("MediaUrl0") as string;
     const contentType = formData.get("MediaContentType0") as string;
 
@@ -78,21 +57,22 @@ export async function POST(req: NextRequest) {
     const senderPhone = from.replace("whatsapp:", "").trim();
     let shopSlug = "";
 
-    // ── 4. Identify Shop from Message ───────────────────────────────────────
     const slugMatch = body.match(/PRINT AT ([a-z0-9-]+)/i);
     if (slugMatch) {
-      shopSlug = slugMatch[1].toLowerCase().slice(0, 60); // Limit length
+      shopSlug = slugMatch[1].toLowerCase().slice(0, 60);
 
       await supabaseAdmin
         .from("whatsapp_sessions")
-        .upsert({
-          phone_number: senderPhone,
-          shop_slug: shopSlug,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "phone_number" });
+        .upsert(
+          {
+            phone_number: senderPhone,
+            shop_slug: shopSlug,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "phone_number" }
+        );
     }
 
-    // ── 5. Retrieve Shop from Session ────────────────────────────────────────
     if (!shopSlug) {
       const { data: session } = await supabaseAdmin
         .from("whatsapp_sessions")
@@ -101,22 +81,19 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (session) {
-        // Session expiry: 2 hours
         const sessionAge = Date.now() - new Date(session.updated_at).getTime();
         if (sessionAge < 2 * 60 * 60 * 1000) {
           shopSlug = session.shop_slug;
         } else {
-          // Session expired — clear it
           await supabaseAdmin.from("whatsapp_sessions").delete().eq("phone_number", senderPhone);
         }
       }
     }
 
     if (!shopSlug) {
-      return twimlResponse("Hello! 👋 Please scan a shop's QR code or type *PRINT AT [shop-code]* to get started.");
+      return twimlResponse("Hello! Please scan a shop's QR code or type *PRINT AT [shop-code]* to get started.");
     }
 
-    // ── 6. Fetch Shop ────────────────────────────────────────────────────────
     const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
       .select("id, name, is_open, is_active, approval_status, total_files_processed")
@@ -128,14 +105,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (shop.is_active === false) {
-      return twimlResponse(`*${shop.name}* is temporarily undergoing maintenance. Please contact the shop owner directly or try another location. 🛠️`);
+      return twimlResponse(`*${shop.name}* is temporarily offline. Please try another location.`);
     }
 
     if (shop.is_open === false) {
-      return twimlResponse(`*${shop.name}* is currently closed. Please try again later. 🔒`);
+      return twimlResponse(`*${shop.name}* is currently closed. Please try again later.`);
     }
 
-    // ── 7. Handle Media Ingestion (Async) ────────────────────────────────────
+    if (shop.approval_status !== "approved" && (shop.total_files_processed ?? 0) >= 3) {
+      return twimlResponse(
+        `*${shop.name}* has reached its 3-file free trial limit while awaiting verification.`
+      );
+    }
+
     if (numMedia > 0 && mediaUrl) {
       const newToken = generateToken();
 
@@ -151,8 +133,7 @@ export async function POST(req: NextRequest) {
             color: false,
             copies: 1,
             doubleSided: false,
-            _wa_media_url: mediaUrl,
-            _wa_content_type: contentType
+            _wa_content_type: contentType,
           },
           shop_id: shop.id,
           expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
@@ -160,58 +141,50 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
-      if (jobError) {
-        console.error("[WA Webhook] Job insert failed:", jobError.message);
+      if (jobError || !jobData) {
+        console.error("[WA Webhook] Job insert failed:", jobError?.message);
         return twimlResponse("Failed to queue your print job. Please try again.");
       }
 
-      // Increment persistent billing counter (survives job deletion)
-      await supabaseAdmin.rpc('increment_shop_files', { shop_row_id: shop.id });
+      // Note: Once 20261126_security_hardening runs, tr_enforce_job_insert_security increments total_files_processed;
+      // keep fallback safe only when running before migration if needed, avoiding double-increment after migration.
+      await processWhatsAppMediaJob({
+        jobId: jobData.id,
+        mediaUrl,
+        contentType: contentType || "application/octet-stream",
+        senderPhone,
+      });
 
-      const workerSecret = process.env.WORKER_SECRET;
-      const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-      const host = req.headers.get("host");
-      const workerUrl = `${protocol}://${host}/api/worker/process-wa`;
-
-      // We must AWAIT the fetch. In Vercel serverless environments, 
-      // fire-and-forget promises are instantly killed when the handler returns.
-      // Twilio timeout is 15s, which is plenty of time for this internal download.
-      await fetch(workerUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-worker-secret": workerSecret || "",
-        },
-        body: JSON.stringify({ jobId: jobData.id, mediaUrl, contentType, senderPhone }),
-      }).catch((err) => console.error("[WA Webhook] Worker trigger failed:", err.message));
-
-      return twimlResponse(`✅ *Files received!*\n\nYour file has been sent to *${shop.name}*. Please wait while we process your print job. 🖨️`);
+      return twimlResponse(
+        `*Files received!*\n\nYour file has been sent to *${shop.name}* (Token: *${newToken}*).`
+      );
     }
 
-    // ── 8. Text-only Reply ───────────────────────────────────────────────────
-    if (slugMatch) {
-      return twimlResponse(`🏪 You're now connected to *${shop.name}*.\n\nPlease share your documents in this chat and we'll print them for you!`);
-    }
-
-    return twimlResponse(`You're connected to *${shop.name}*. Send me a file and I'll print it for you! 🖨️`);
-
+    return twimlResponse(
+      `Connected to *${shop.name}*.\n\nSend any PDF, Word, or Image document right here to add it to the shop queue.`
+    );
   } catch (error) {
     const e = error as Error;
-    console.error("[WA Webhook] Unhandled error:", e?.message || error);
-    // Never expose internal errors to WhatsApp users
-    return twimlResponse("Something went wrong. Please try again in a moment.");
+    console.error("[WA Webhook] Internal error:", e?.message);
+    return twimlResponse("An unexpected error occurred. Please try again shortly.");
   }
 }
 
-function twimlResponse(message: string) {
-  // Escape XML special chars to prevent injection
+function twimlResponse(message: string): NextResponse {
   const safeMessage = message
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 
-  return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safeMessage}</Message></Response>`,
-    { headers: { "Content-Type": "text/xml" } }
-  );
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>${safeMessage}</Message>
+</Response>`;
+
+  return new NextResponse(xml, {
+    status: 200,
+    headers: { "Content-Type": "text/xml" },
+  });
 }

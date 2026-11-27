@@ -57,6 +57,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     if (!mounted) return;
     final vaultRepo = context.read<VaultRepository>();
     final lockEnabled = await vaultRepo.isLockEnabled();
+    if (!mounted) return;
     setState(() {
       _lockEnabled = lockEnabled;
       _isAuthenticated = !lockEnabled;
@@ -74,6 +75,7 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
         localizedReason: 'Authenticate to access your Secure Document Vault',
         options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
       );
+      if (!mounted) return;
       if (ok) {
         setState(() => _isAuthenticated = true);
         _loadDocuments();
@@ -82,11 +84,13 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
       }
     } catch (e) {
       debugPrint('Biometric error: $e');
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }
 
   Future<void> _loadDocuments() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     if (!mounted) return;
     final vaultRepo = context.read<VaultRepository>();
@@ -214,50 +218,44 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     _loadDocuments();
   }
 
-  void _shareDocument(VaultDocument doc) {
+  Future<void> _shareDocument(VaultDocument doc) async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sharing not supported on web preview')),
       );
       return;
     }
-    Share.shareXFiles([XFile(doc.localPath)], text: 'Document from XeroxQ Vault');
+    final vaultRepo = context.read<VaultRepository>();
+    final tempFile = await vaultRepo.materializeTempFile(doc);
+    await Share.shareXFiles([XFile(tempFile.path)], text: 'Document from XeroxQ Vault');
   }
 
   void _sendToPrint(VaultDocument doc) async {
-    context.read<VaultRepository>().markRecentlyAccessed(doc.id);
-    if (kIsWeb) {
-      final bytes = await context.read<VaultRepository>().getDocumentBytes(doc);
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PrintWizardPage(
-            initialFileName: doc.name,
-            initialBytes: bytes,
-          ),
+    final vaultRepo = context.read<VaultRepository>();
+    vaultRepo.markRecentlyAccessed(doc.id);
+    final bytes = await vaultRepo.getDocumentBytes(doc);
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PrintWizardPage(
+          initialFileName: doc.name,
+          initialBytes: bytes,
         ),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PrintWizardPage(
-            initialFile: File(doc.localPath),
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   void _openDoc(VaultDocument doc) async {
-    context.read<VaultRepository>().markRecentlyAccessed(doc.id);
+    final vaultRepo = context.read<VaultRepository>();
+    vaultRepo.markRecentlyAccessed(doc.id);
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Direct file viewing not supported on web preview')),
       );
     } else {
-      OpenFile.open(doc.localPath);
+      final tempFile = await vaultRepo.materializeTempFile(doc);
+      await OpenFile.open(tempFile.path);
     }
   }
 
@@ -614,9 +612,25 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
   Future<void> _toggleLock() async {
     if (!mounted) return;
     final vaultRepo = context.read<VaultRepository>();
-    await vaultRepo.setLockEnabled(!_lockEnabled);
-    setState(() => _lockEnabled = !_lockEnabled);
+
+    // Require device/biometric authentication before disabling vault lock
+    if (_lockEnabled) {
+      try {
+        final ok = await _auth.authenticate(
+          localizedReason: 'Authenticate to disable Vault lock',
+          options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        );
+        if (!ok || !mounted) return;
+      } catch (e) {
+        debugPrint('Lock toggle auth failed: $e');
+        return;
+      }
+    }
+
+    final nextState = !_lockEnabled;
+    await vaultRepo.setLockEnabled(nextState);
     if (!mounted) return;
+    setState(() => _lockEnabled = nextState);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(_lockEnabled ? 'Vault lock enabled' : 'Vault lock disabled'),
       behavior: SnackBarBehavior.floating,

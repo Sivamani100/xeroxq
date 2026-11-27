@@ -2,9 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 // Helper: returns an HTML page that redirects the browser tab
 // to a custom protocol URL (xeroxq://) for Electron desktop app.
 function deepLinkRedirect(url: string, errorMode = false) {
@@ -49,6 +46,7 @@ export async function GET(request: Request) {
   const isSafeNext =
     rawNext.startsWith("/") &&
     !rawNext.startsWith("//") &&
+    !rawNext.includes("\\") &&
     !rawNext.includes(":");
   const next = isSafeNext ? rawNext : "/auth/update-password";
 
@@ -86,7 +84,15 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
-    console.warn("[AuthCallback] PKCE exchange error:", error?.message);
+    console.warn("[AuthCallback] PKCE exchange error on server:", error?.message);
+
+    // If server-side PKCE code exchange failed (e.g., PKCE code_verifier was stored in desktop app's storage),
+    // forward the code via deep link to Electron so the desktop client can exchange it!
+    if (isElectron) {
+      console.log("[AuthCallback] Forwarding code to Electron for client-side PKCE exchange");
+      const deepLink = `xeroxq://auth/callback?code=${encodeURIComponent(code)}`;
+      return deepLinkRedirect(deepLink);
+    }
   }
 
   // 2. Handle OTP Token Hash Verification (?token_hash=...&type=recovery)

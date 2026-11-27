@@ -925,9 +925,11 @@ class _RecentDocCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        context.read<VaultRepository>().markRecentlyAccessed(doc.id);
-        OpenFile.open(doc.localPath);
+      onTap: () async {
+        final vaultRepo = context.read<VaultRepository>();
+        vaultRepo.markRecentlyAccessed(doc.id);
+        final tempFile = await vaultRepo.materializeTempFile(doc);
+        await OpenFile.open(tempFile.path);
       },
       child: Container(
         width: 110,

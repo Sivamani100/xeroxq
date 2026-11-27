@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, Monitor, ShieldCheck, Cpu, CheckCircle2, Sparkles, ExternalLink, HardDrive } from "lucide-react";
+import { X, Download, Monitor, ShieldCheck, Cpu, CheckCircle2, Sparkles, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface DownloadModalProps {
@@ -10,20 +10,60 @@ interface DownloadModalProps {
   onClose: () => void;
 }
 
+const DOWNLOAD_BASE_URL = (
+  process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_BASE_URL || "/downloads"
+).replace(/\/$/, "");
+
 export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
   const [detectedArch, setDetectedArch] = useState<"x64" | "x86" | "unknown">("unknown");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const detectFromUserAgent = () => {
       const ua = navigator.userAgent.toLowerCase();
-      if (ua.includes("win64") || ua.includes("x64") || ua.includes("wow64") || navigator.maxTouchPoints > 0) {
-        setDetectedArch("x64");
-      } else if (ua.includes("win32") || ua.includes("x86")) {
-        setDetectedArch("x86");
-      } else {
-        setDetectedArch("x64"); // Default modern PCs
+      if (ua.includes("win64") || ua.includes("x64") || ua.includes("wow64")) {
+        return "x64" as const;
       }
+      if (ua.includes("win32") || ua.includes("x86")) {
+        return "x86" as const;
+      }
+      return "x64" as const;
+    };
+
+    const navWithHints = navigator as Navigator & {
+      userAgentData?: {
+        getHighEntropyValues?: (hints: string[]) => Promise<{
+          architecture?: string;
+          bitness?: string;
+        }>;
+      };
+    };
+
+    if (navWithHints.userAgentData?.getHighEntropyValues) {
+      navWithHints.userAgentData
+        .getHighEntropyValues(["architecture", "bitness"])
+        .then((hints) => {
+          if (cancelled) return;
+          if (hints.bitness === "64") {
+            setDetectedArch("x64");
+          } else if (hints.bitness === "32" || hints.architecture === "x86") {
+            setDetectedArch("x86");
+          } else {
+            setDetectedArch(detectFromUserAgent());
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setDetectedArch(detectFromUserAgent());
+        });
+    } else {
+      setDetectedArch(detectFromUserAgent());
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!isOpen) return null;
@@ -137,7 +177,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     className="w-full h-11 rounded-xl bg-[#FB432C] hover:bg-black text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <a
-                      href="/downloads/XeroxQ-Setup-x64.exe"
+                      href={`${DOWNLOAD_BASE_URL}/XeroxQ-Setup-x64.exe`}
                       download="XeroxQ-Setup-x64.exe"
                     >
                       <Download className="h-4 w-4" />
@@ -188,7 +228,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                     className="w-full h-11 rounded-xl bg-black hover:bg-[#FB432C] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <a
-                      href="/downloads/XeroxQ-Setup-ia32.exe"
+                      href={`${DOWNLOAD_BASE_URL}/XeroxQ-Setup-ia32.exe`}
                       download="XeroxQ-Setup-ia32.exe"
                     >
                       <Download className="h-4 w-4" />
@@ -219,7 +259,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                 className="w-full sm:w-auto h-10 rounded-xl border-gray-300 font-bold text-xs hover:bg-black hover:text-white transition-all flex-shrink-0"
               >
                 <a
-                  href="/downloads/XeroxQ-Portable-x64.exe"
+                  href={`${DOWNLOAD_BASE_URL}/XeroxQ-Portable-x64.exe`}
                   download="XeroxQ-Portable-x64.exe"
                   className="flex items-center gap-2"
                 >
@@ -229,11 +269,21 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
               </Button>
             </div>
 
+            {/* Windows SmartScreen Tip */}
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs text-amber-900">
+              <Info className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+              <p className="font-medium leading-relaxed">
+                If Windows SmartScreen shows <span className="font-bold">&ldquo;Windows protected your PC&rdquo;</span>, click{" "}
+                <span className="font-bold underline">More info</span> and then{" "}
+                <span className="font-bold">&ldquo;Run anyway&rdquo;</span> to launch the installer.
+              </p>
+            </div>
+
             {/* Verification Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs text-gray-400 font-medium">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <span>Digitally Signed & Code Audited (Zero Malware)</span>
+                <span>Verified Windows Installer (.exe) • Supports 64-Bit &amp; 32-Bit</span>
               </div>
               <span>Works with all Windows Printers</span>
             </div>

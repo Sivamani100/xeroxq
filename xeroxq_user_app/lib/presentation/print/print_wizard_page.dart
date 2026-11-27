@@ -82,28 +82,42 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
   }
 
   Future<void> _loadInitialData() async {
-    // Load shop list
-    final shopRepo = context.read<ShopRepository>();
-    final shops = await shopRepo.fetchShops();
-    
-    // Load vault docs
-    if (!mounted) return;
-    final vaultRepo = context.read<VaultRepository>();
-    final docs = await vaultRepo.getDocuments();
+    try {
+      // Load shop list
+      final shopRepo = context.read<ShopRepository>();
+      List<Shop> shops = [];
+      try {
+        shops = await shopRepo.fetchShops();
+      } catch (e) {
+        debugPrint('Failed to load shops in PrintWizardPage: $e');
+      }
 
-    // Load saved contact info
-    final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('xeroxq_user_name') ?? '';
-    final savedPhone = prefs.getString('xeroxq_user_phone') ?? '';
+      // Load vault docs
+      if (!mounted) return;
+      final vaultRepo = context.read<VaultRepository>();
+      final docs = await vaultRepo.getDocuments();
 
-    setState(() {
-      _allShops = shops;
-      _filteredShops = shops;
-      _vaultDocs = docs;
-      _loadingDocs = false;
-      _nameController.text = savedName;
-      _phoneController.text = savedPhone;
-    });
+      // Load saved contact info
+      final prefs = await SharedPreferences.getInstance();
+      final savedName = prefs.getString('xeroxq_user_name') ?? '';
+      final savedPhone = prefs.getString('xeroxq_user_phone') ?? '';
+
+      if (!mounted) return;
+      setState(() {
+        _allShops = shops;
+        _filteredShops = shops;
+        _vaultDocs = docs;
+        _loadingDocs = false;
+        _nameController.text = savedName;
+        _phoneController.text = savedPhone;
+      });
+    } catch (e) {
+      debugPrint('Error loading PrintWizard initial data: $e');
+      if (!mounted) return;
+      setState(() {
+        _loadingDocs = false;
+      });
+    }
   }
 
   int _extractPdfPageCount(Uint8List bytes) {
@@ -222,11 +236,7 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
   void _selectVaultFile(VaultDocument doc) async {
     final vaultRepo = context.read<VaultRepository>();
     final bytes = await vaultRepo.getDocumentBytes(doc);
-    if (kIsWeb) {
-      _addBytesToList(bytes, doc.name);
-    } else {
-      await _addFileToList(File(doc.localPath));
-    }
+    _addBytesToList(bytes, doc.name);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -293,6 +303,7 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
         shopId: _selectedShop!.id,
         shopName: _selectedShop!.name,
         onProgress: (index, progress) {
+          if (!mounted) return;
           setState(() {
             _uploadingIndex = index;
             _uploadProgress = progress;
@@ -300,22 +311,22 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
         },
       );
 
+      if (!mounted) return;
       setState(() => _isUploading = false);
 
-      if (mounted) {
-        // Navigate to Job tracking screen, passing the list of jobs!
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => JobTrackingPage(
-              jobIds: jobs.map((j) => j.id).toList(),
-              shop: _selectedShop!,
-            ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => JobTrackingPage(
+            jobIds: jobs.map((j) => j.id).toList(),
+            shop: _selectedShop!,
           ),
-        );
-      }
+        ),
+      );
     } catch (e) {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
       debugPrint('Job submission error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

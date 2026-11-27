@@ -43,21 +43,25 @@ export function extractPhoneFromUpi(upiId: string): string | null {
   return null;
 }
 
+export function hasWhatsAppBot(): boolean {
+  return Boolean(WHATSAPP_BOT_NUMBER && WHATSAPP_BOT_NUMBER.trim().length >= 7);
+}
+
 /**
  * Generates a WhatsApp deep link (wa.me).
  * If a bot number is used, it includes a pre-filled message for routing.
  * If mapping to a shop phone directly, it just opens the chat.
+ * Returns null if neither bot number nor shop phone is configured.
  */
-export function generateWhatsAppLink(shopSlug: string, shopPhone?: string | null): string {
-  // If we want it to go to the official bot (for automation with Twilio)
-  if (WHATSAPP_BOT_NUMBER) {
-    return `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(`PRINT AT ${shopSlug}`)}`;
-  }
-  
-  // High-friction fallback: Go to shopkeeper directly (requires manual forwarding or bridge)
-  if (shopPhone) {
-    return `https://wa.me/${shopPhone}`;
+export function generateWhatsAppLink(shopSlug: string, shopPhone?: string | null): string | null {
+  if (WHATSAPP_BOT_NUMBER && WHATSAPP_BOT_NUMBER.trim()) {
+    return `https://wa.me/${WHATSAPP_BOT_NUMBER.trim()}?text=${encodeURIComponent(`PRINT AT ${shopSlug}`)}`;
   }
 
-  return `https://wa.me/${WHATSAPP_BOT_NUMBER}`;
+  const cleanPhone = (shopPhone || "").replace(/[^0-9]/g, "");
+  if (cleanPhone.length >= 10) {
+    return `https://wa.me/${cleanPhone}`;
+  }
+
+  return null;
 }

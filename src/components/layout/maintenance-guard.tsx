@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { isMaintenanceEnabled } from "@/lib/maintenance";
 import { motion, AnimatePresence } from "framer-motion";
 import { Hammer, Loader2, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const [isMaintenance, setIsMaintenance] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [isAdminMode, setIsAdminMode] = useState(false);
 
   useEffect(() => {
@@ -21,7 +21,6 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
 
       // Don't show maintenance overlay on admin routes
       if (isAdminRoute) {
-        setLoading(false);
         return;
       }
 
@@ -30,15 +29,13 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
           .from("platform_settings")
           .select("value")
           .eq("key", "maintenance_mode")
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
-          setIsMaintenance(!!data.value);
+          setIsMaintenance(isMaintenanceEnabled(data.value));
         }
       } catch (err) {
         console.error("Maintenance Check Error:", err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -54,7 +51,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
         table: 'platform_settings',
         filter: 'key=eq.maintenance_mode'
       }, (payload) => {
-        const newMaintenanceState = !!payload.new.value;
+        const newMaintenanceState = isMaintenanceEnabled(payload.new?.value);
         setIsMaintenance(newMaintenanceState);
         
         // If maintenance is turned off and we're on maintenance page, redirect home
@@ -68,8 +65,6 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  if (loading) return null;
 
   return (
     <>

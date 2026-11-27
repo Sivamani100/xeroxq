@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CONFIG } from "@/lib/config";
+import { buildShopPortalUrl, formatDisplayUrl, sanitizeExternalHttpUrl } from "@/lib/site-url";
+import { isMaintenanceEnabled } from "@/lib/maintenance";
 import {
   UserPlus,
   FileEdit,
@@ -186,7 +188,11 @@ export default function PlatformAdminDashboard() {
         return;
       }
 
-      if (ceoEmailEnv && user.email?.trim().toLowerCase() !== ceoEmailEnv) {
+      const role = user.app_metadata?.role;
+      const isAdminClaim = role === "platform_admin" || role === "ceo";
+      const matchesCeoEmail = Boolean(ceoEmailEnv && user.email?.trim().toLowerCase() === ceoEmailEnv);
+
+      if (!isAdminClaim && !matchesCeoEmail) {
         setAuthChecked(true);
         setIsAuthorized(false);
         setCeoEmail(user.email ?? "");
@@ -313,9 +319,14 @@ export default function PlatformAdminDashboard() {
     // Determine specific action for API
     let apiAction = action as string;
     if (table === 'platform_settings' && id === 'maintenance_mode') apiAction = 'toggle_maintenance';
+    if (action === ('review_poc' as any)) {
+      title = "Update Security Report Status?";
+      desc = "Advance this bug bounty report status (Reported -> Reviewed -> Resolved)?";
+      confirmText = "Update Status";
+    }
 
     if (table === 'platform_settings' && id === 'maintenance_mode') {
-      const isCurrentlyActive = !!settings.find(s => s.key === id)?.value;
+      const isCurrentlyActive = isMaintenanceEnabled(settings.find(s => s.key === id)?.value);
       title = isCurrentlyActive ? "Disable Maintenance?" : "Enable Maintenance Mode?";
       desc = isCurrentlyActive 
         ? "The site will go LIVE immediately for all customers. Are you sure?"
@@ -394,29 +405,26 @@ export default function PlatformAdminDashboard() {
     }
 
     try {
-      // Parallel client-side direct update attempts (via browser Supabase client)
-      await Promise.allSettled([
-        supabase.rpc("update_shop_approval_status", { target_shop_id: shopId, new_status: "approved" }),
-        supabase.from("shops").update({ approval_status: "approved" }).eq("id", shopId)
-      ]);
-
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session");
+
       const res = await fetch("/api/platform-admin/stats", {
         method: "POST",
         headers: { 
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}` 
+            Authorization: `Bearer ${session.access_token}` 
         },
         body: JSON.stringify({ action: 'approve_shop', table: 'shops', id: shopId })
       });
       
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.warn("[Platform Admin] Approve POST response note:", body);
+        throw new Error(body.error || "Failed to approve shop");
       }
       await fetchData();
     } catch (err: any) {
       console.error("[Platform Admin] Approve shop notice:", err);
+      alert(err?.message || "Failed to approve shop");
       await fetchData();
     } finally {
       setActionShopId(null);
@@ -439,29 +447,26 @@ export default function PlatformAdminDashboard() {
     setSelectedShop(prev => prev && prev.id === shopId ? { ...prev, approval_status: "rejected" } : prev);
 
     try {
-      // Parallel client-side direct update attempts
-      await Promise.allSettled([
-        supabase.rpc("update_shop_approval_status", { target_shop_id: shopId, new_status: "rejected" }),
-        supabase.from("shops").update({ approval_status: "rejected" }).eq("id", shopId)
-      ]);
-
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session");
+
       const res = await fetch("/api/platform-admin/stats", {
         method: "POST",
         headers: { 
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}` 
+            Authorization: `Bearer ${session.access_token}` 
         },
         body: JSON.stringify({ action: 'reject_shop', table: 'shops', id: shopId })
       });
       
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.warn("[Platform Admin] Reject POST response note:", body);
+        throw new Error(body.error || "Failed to reject shop");
       }
       await fetchData();
     } catch (err: any) {
       console.error("[Platform Admin] Reject shop notice:", err);
+      alert(err?.message || "Failed to reject shop");
       await fetchData();
     } finally {
       setActionShopId(null);
@@ -1067,7 +1072,9 @@ export default function PlatformAdminDashboard() {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E2E8F0]">
-                       {careers.map(app => (
+                       {careers.map(app => {
+                          const profileUrl = sanitizeExternalHttpUrl(app.portfolio_url || app.resume_url || app.linkedin_url);
+                          return (
                           <tr key={app.id} className="hover:bg-gray-50 transition-colors">
                              <td className="p-4">
                                 <p className="text-[14px] font-black text-black">{app.full_name}</p>
@@ -1075,26 +1082,36 @@ export default function PlatformAdminDashboard() {
                              </td>
                              <td className="p-4">
                                 <p className="text-[13px] font-bold text-black">{app.email}</p>
-                                <p className="text-[12px] text-gray-400">{app.whatsapp}</p>
+                                {app.whatsapp && <p className="text-[12px] text-gray-400">{app.whatsapp}</p>}
                              </td>
                              <td className="p-4">
                                 <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-100">
-                                   {app.position || "Developer"}
+                                   {app.job_id || app.position || "Developer"}
                                 </span>
                              </td>
                              <td className="p-4">
-                                <a href={app.linkedin_url} target="_blank" className="text-blue-500 hover:underline flex items-center gap-1.5 text-[12px] font-bold">
-                                   <ExternalLink className="w-3 h-3" /> Profile
-                                </a>
+                                {profileUrl ? (
+                                   <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1.5 text-[12px] font-bold">
+                                      <ExternalLink className="w-3 h-3" /> Profile
+                                   </a>
+                                ) : (
+                                   <span className="text-[12px] text-gray-400">Not Provided</span>
+                                )}
                              </td>
                              <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                   <button className="h-8 px-4 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-all">Confirm</button>
+                                   <button
+                                     onClick={() => handleAction('job_applications', app.id, 'approve')}
+                                     disabled={app.status === 'approved'}
+                                     className="h-8 px-4 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-all"
+                                   >
+                                     {app.status === 'approved' ? 'Confirmed' : 'Confirm'}
+                                   </button>
                                    <button onClick={() => handleAction('job_applications', app.id, 'delete')} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"><XCircle className="w-4 h-4" /></button>
                                 </div>
                              </td>
                           </tr>
-                       ))}
+                       );})}
                     </tbody>
                  </table>
               </div>
@@ -1173,17 +1190,21 @@ export default function PlatformAdminDashboard() {
                                 <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest", report.severity === 'critical' ? 'bg-red-600 text-white' : report.severity === 'high' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600')}>
                                    {report.severity}
                                 </span>
-                                <h4 className="text-[15px] font-black text-black uppercase tracking-tighter">{report.vulnerability_type} Disclosed</h4>
+                                <h4 className="text-[15px] font-black text-black uppercase tracking-tighter">{report.type || report.vulnerability_type || "Security"} Disclosed</h4>
                              </div>
                              <p className="text-[12px] text-gray-500 leading-relaxed font-medium italic">"{report.description}"</p>
                              <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                <span className="flex items-center gap-1.5"><AtSign className="w-3 h-3" /> {report.reporter_email}</span>
+                                <span className="flex items-center gap-1.5"><AtSign className="w-3 h-3" /> {report.email || report.reporter_email}</span>
                                 <span>•</span>
                                 <span>{new Date(report.created_at).toLocaleString()}</span>
+                                <span>•</span>
+                                <span className="uppercase">{report.status || "reported"}</span>
                              </div>
                           </div>
                           <div className="flex items-center gap-2">
-                             <button className="h-10 px-6 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-xl">Review PoC</button>
+                             <button onClick={() => handleAction('security_reports', report.id, 'review_poc' as any)} className="h-10 px-6 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-all">
+                               {report.status === 'reviewed' ? 'Mark Resolved' : report.status === 'resolved' ? 'Resolved' : 'Review PoC'}
+                             </button>
                              <button onClick={() => handleAction('security_reports', report.id, 'delete')} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"><XCircle className="w-4 h-4" /></button>
                           </div>
                        </div>
@@ -2045,8 +2066,8 @@ export default function PlatformAdminDashboard() {
               <div className="flex items-start justify-between mb-6 border-b border-[#E2E8F0] pb-4">
                 <div>
                   <h2 className="text-[20px] font-black tracking-tight text-black">{selectedShop.name}</h2>
-                  <a href={`/${selectedShop.slug}`} target="_blank" className="text-[12px] font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1">
-                    xeroxq.arkio.in/{selectedShop.slug}
+                  <a href={`/${selectedShop.slug}`} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1">
+                    {formatDisplayUrl(buildShopPortalUrl(selectedShop.slug))}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>

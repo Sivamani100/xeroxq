@@ -60,12 +60,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/ion_print.png", type: "image/png", sizes: "192x192" },
+      { url: "/logo_color.png", type: "image/png", sizes: "192x192" },
     ],
     apple: [
-      { url: "/ion_print.png", sizes: "180x180", type: "image/png" },
+      { url: "/logo_color.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/ion_print.png",
+    shortcut: "/logo_color.png",
   },
 
   // ── Open Graph ────────────────────────────────────────────────────────────

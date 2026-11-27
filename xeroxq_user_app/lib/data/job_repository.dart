@@ -4,12 +4,46 @@ import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List, debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../core/supabase_client.dart';
 import 'models.dart';
 
 class JobRepository {
   final SupabaseClient _client = SupabaseClientService().client;
   static const String _historyKey = 'xeroxq_print_history';
+  static const Uuid _uuid = Uuid();
+
+  Future<String?> _ensureSessionUid() async {
+    try {
+      final session = _client.auth.currentSession;
+      if (session?.user.id != null) return session!.user.id;
+      final res = await _client.auth.signInAnonymously();
+      return res.user?.id;
+    } catch (e) {
+      debugPrint('Anonymous auth check failed: $e');
+      return _client.auth.currentUser?.id;
+    }
+  }
+
+  Future<void> _assertShopCanAcceptFiles(String shopId, int fileCount) async {
+    final shop = await _client
+        .from('shops')
+        .select('is_active, is_open, approval_status, total_files_processed')
+        .eq('id', shopId)
+        .single();
+
+    if (shop['is_active'] == false) {
+      throw Exception('This shop account is currently inactive.');
+    }
+    if (shop['is_open'] == false) {
+      throw Exception('This shop is currently closed for new print jobs.');
+    }
+    final approval = shop['approval_status'] as String?;
+    final processed = (shop['total_files_processed'] as num?)?.toInt() ?? 0;
+    if (approval != 'approved' && (processed + fileCount) > 3) {
+      throw Exception('This shop has reached its 3-file trial limit while pending approval.');
+    }
+  }
 
   // Generate 2-digit code matching the platform standards (00-99)
   String generateToken() {
@@ -28,9 +62,12 @@ class JobRepository {
     File? file,
     Uint8List? fileBytes,
   }) async {
-    // 1. Prepare Storage Path
+    await _assertShopCanAcceptFiles(shopId, 1);
+    final uid = await _ensureSessionUid();
+
+    // 1. Prepare Scoped Storage Path (<shop_id>/<uid>/<uuid>.<ext>)
     final fileExt = fileName.split('.').last.toLowerCase();
-    final randomName = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$fileExt';
+    final storagePath = '$shopId/${uid ?? 'guest'}/${_uuid.v4()}.$fileExt';
 
     // 2. Upload file to 'documents' bucket using correct platform data format
     try {
@@ -39,11 +76,11 @@ class JobRepository {
           throw Exception('Web upload requires file bytes');
         }
         await _client.storage.from('documents').uploadBinary(
-              randomName,
+              storagePath,
               fileBytes,
               fileOptions: FileOptions(
                 contentType: _getContentType(fileExt),
-                upsert: true,
+                upsert: false,
               ),
             );
       } else {
@@ -51,15 +88,15 @@ class JobRepository {
           throw Exception('Mobile upload requires File object');
         }
         await _client.storage.from('documents').upload(
-              randomName,
+              storagePath,
               file,
               fileOptions: FileOptions(
                 contentType: _getContentType(fileExt),
-                upsert: true,
+                upsert: false,
               ),
             );
       }
-      debugPrint('Uploaded file successfully: $randomName');
+      debugPrint('Uploaded file successfully: $storagePath');
     } catch (e) {
       throw Exception('Failed to upload file to storage: $e');
     }
@@ -77,7 +114,7 @@ class JobRepository {
         final response = await _client.from('jobs').insert({
           'token': finalToken,
           'customer_name': customerName.isEmpty ? 'Guest' : customerName,
-          'file_path': randomName,
+          'file_path': storagePath,
           'file_name': fileName,
           'preferences': preferences.toJson(),
           'page_count': pageCount,
@@ -89,13 +126,6 @@ class JobRepository {
         }).select('id, token, customer_name, file_path, file_name, preferences, page_count, is_preorder, is_paid, customer_phone, shop_id, status, expires_at, created_at').single();
 
         createdJobData = response;
-        
-        // RPC Increment for analytics
-        try {
-          await _client.rpc('increment_shop_files', params: {'shop_row_id': shopId});
-        } catch (rpcErr) {
-          debugPrint('RPC increment failed (non-critical): $rpcErr');
-        }
         break;
       } catch (e) {
         debugPrint('DB insert try failed. Error: $e');
@@ -103,7 +133,7 @@ class JobRepository {
         if (retries == 0) {
           // Rollback file if DB insert completely fails
           try {
-            await _client.storage.from('documents').remove([randomName]);
+            await _client.storage.from('documents').remove([storagePath]);
           } catch (delErr) {
             debugPrint('Rollback delete failed: $delErr');
           }
@@ -129,6 +159,8 @@ class JobRepository {
     required String shopName,
     required Function(int fileIndex, double progress) onProgress,
   }) async {
+    await _assertShopCanAcceptFiles(shopId, printFiles.length);
+    final uid = await _ensureSessionUid();
     final List<PrintJob> submittedJobs = [];
     
     for (int i = 0; i < printFiles.length; i++) {
@@ -136,9 +168,9 @@ class JobRepository {
       
       onProgress(i, 0.1);
       
-      // 1. Prepare Storage Path
+      // 1. Prepare Scoped Storage Path (<shop_id>/<uid>/<uuid>.<ext>)
       final fileExt = printFile.extension;
-      final randomName = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$fileExt';
+      final storagePath = '$shopId/${uid ?? 'guest'}/${_uuid.v4()}.$fileExt';
       
       // 2. Upload file to 'documents' bucket
       try {
@@ -147,11 +179,11 @@ class JobRepository {
             throw Exception('Web upload requires file bytes');
           }
           await _client.storage.from('documents').uploadBinary(
-            randomName,
+            storagePath,
             printFile.bytes!,
             fileOptions: FileOptions(
               contentType: _getContentType(fileExt),
-              upsert: true,
+              upsert: false,
             ),
           );
         } else {
@@ -159,11 +191,11 @@ class JobRepository {
             throw Exception('Mobile upload requires File object');
           }
           await _client.storage.from('documents').upload(
-            randomName,
+            storagePath,
             printFile.file!,
             fileOptions: FileOptions(
               contentType: _getContentType(fileExt),
-              upsert: true,
+              upsert: false,
             ),
           );
         }
@@ -193,7 +225,7 @@ class JobRepository {
           final response = await _client.from('jobs').insert({
             'token': finalToken,
             'customer_name': customerName.isEmpty ? 'Guest' : customerName,
-            'file_path': randomName,
+            'file_path': storagePath,
             'file_name': printFile.name,
             'preferences': preferences.toJson(),
             'page_count': printFile.pagesToPrintCount,
@@ -205,13 +237,6 @@ class JobRepository {
           }).select('id, token, customer_name, file_path, file_name, preferences, page_count, is_preorder, is_paid, customer_phone, shop_id, status, expires_at, created_at').single();
 
           createdJobData = response;
-          
-          // RPC Increment for analytics
-          try {
-            await _client.rpc('increment_shop_files', params: {'shop_row_id': shopId});
-          } catch (rpcErr) {
-            debugPrint('RPC increment failed (non-critical): $rpcErr');
-          }
           break;
         } catch (e) {
           debugPrint('DB insert try failed. Error: $e');
@@ -219,7 +244,7 @@ class JobRepository {
           if (retries == 0) {
             // Rollback file if DB insert completely fails
             try {
-              await _client.storage.from('documents').remove([randomName]);
+              await _client.storage.from('documents').remove([storagePath]);
             } catch (delErr) {
               debugPrint('Rollback delete failed: $delErr');
             }
@@ -333,10 +358,30 @@ class JobRepository {
   }
 
   Future<void> deleteJobByUser(String jobId) async {
+    await _ensureSessionUid();
     try {
+      final jobRow = await _client
+          .from('jobs')
+          .select('file_path')
+          .eq('id', jobId)
+          .maybeSingle();
+
+      final filePath = jobRow?['file_path'] as String?;
+      if (filePath != null && filePath.isNotEmpty) {
+        try {
+          await _client.storage.from('documents').remove([filePath]);
+        } catch (storageErr) {
+          debugPrint('Failed to remove storage file for $jobId: $storageErr');
+        }
+      }
+
       await _client
           .from('jobs')
-          .update({'is_deleted_by_user': true})
+          .update({
+            'is_deleted_by_user': true,
+            'file_path': null,
+            'deleted_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', jobId);
     } catch (e) {
       debugPrint('Failed to mark job as deleted in Supabase: $e');
@@ -359,10 +404,23 @@ class JobRepository {
     required bool color,
     required int copies,
   }) async {
-    // Generate unique 2-digit pickup token (retry on collision)
+    await _assertShopCanAcceptFiles(shopId, 1);
+    await _ensureSessionUid();
+
+    if (oldJob.filePath.isEmpty) {
+      throw Exception('Original file has expired and been purged. Please upload the file again.');
+    }
+
+    try {
+      await _client.storage.from('documents').createSignedUrl(oldJob.filePath, 30);
+    } catch (_) {
+      throw Exception('Original file was auto-deleted after expiration. Please pick it again from your Vault.');
+    }
+
+    // Generate unique 2-digit pickup token securely (retry on collision)
     String token = '';
     for (int retry = 0; retry < 5; retry++) {
-      token = (Random().nextInt(90) + 10).toString();
+      token = generateToken();
       final collisionCheck = await _client
           .from('jobs')
           .select('id')
@@ -394,7 +452,7 @@ class JobRepository {
       'is_paid': false,
       'shop_id': shopId,
       'status': 'pending',
-      'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+      'expires_at': DateTime.now().add(const Duration(minutes: 5)).toIso8601String(),
     }).select().single();
 
     final newJob = PrintJob.fromJson(response);

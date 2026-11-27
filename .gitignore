@@ -20,12 +20,13 @@
 # production
 /dist/
 dist/
+# Binaries — excluded; re-add with LFS when ready to ship
 /release_build/
 release_build/
+public/downloads/
 *.exe
-!public/downloads/*.exe
-!/XeroxQ*.exe
-!XeroxQ*.exe
+*.apk
+xeroxq_user_app/build/
 
 # misc
 .DS_Store

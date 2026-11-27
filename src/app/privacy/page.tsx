@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 
 export default function PrivacyPolicy() {
   const sections = [
-    { title: "Transparency First", content: "At XeroxQ, privacy is not a feature—it's the foundation. We operate a zero-knowledge protocol where your documents are encrypted locally on your device before reaching any print node. The shop owner can only decrypt it exactly when they click print." },
-    { title: "Data Autonomy", content: "You own your data. We do not store, scan, or monetize any document content. Once a document is printed or the session expires, it is permanently erased from the network's transient memory via a military-grade 7-pass overwrite." },
-    { title: "Information We Collect", content: "We collect minimal metadata: strictly what is necessary for shop routing and payment verification. This includes IP-based geolocation (for shop discovery), device type for responsive UI formatting, and basic temporal transaction logs." },
-    { title: "Network Nodes", content: "XeroxQ shops are independent operators. While they process your documents under our security protocol, they never have access to your raw files on their persistent disk drives. The protocol handles the spooling natively in RAM." },
-    { title: "Security Protocols", content: "We use high-grade AES-256 encryption over TLS 1.3. Every 'Signal' sent through the XeroxQ Mesh is authenticated and verified for integrity, ensuring no packet interception or man-in-the-middle attack is possible." },
+    { title: "Transparency First", content: "At XeroxQ, privacy is foundational. Your documents are transmitted over TLS 1.3 to private shop-scoped cloud storage encrypted at rest with AES-256, and accessed only by the authorized shop terminal via short-lived signed URLs during active printing." },
+    { title: "Ephemeral Retention & Auto-Purge", content: "You stay in control of your files. You can manually delete uploaded files anytime from your tracking screen, and expired unprinted/completed files are automatically purged from cloud storage after their short expiration window." },
+    { title: "Third-Party Office Document Conversion", content: "PDF and image files are processed directly without external document processors. If you upload legacy Office formats (.doc, .docx, .xls, .xlsx, .ppt, .pptx) on the web converter, those unencrypted Office files may be relayed through third-party conversion tooling (iLovePDF) to generate a printable PDF." },
+    { title: "Information We Collect", content: "We collect minimal metadata strictly necessary for shop routing, queue tracking, and payment confirmation. This includes optional phone/name inputs you provide, shop discovery coordinates if enabled, and anonymous session identifiers." },
+    { title: "Network Nodes", content: "XeroxQ shops are independent print partners. While authenticated terminals retrieve your temporary signed print file to execute physical printing, the mobile app's local vault stores documents locally on your device using encrypted storage." },
     { title: "Children's Privacy", content: "XeroxQ does not knowingly collect any personally identifiable information from children under the age of 13. If you believe your child provided this information, please contact our data officers immediately." }
   ];
 

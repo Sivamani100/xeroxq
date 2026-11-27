@@ -21,6 +21,7 @@ interface LocationAutocompleteProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  required?: boolean;
 }
 
 export function LocationAutocomplete({
@@ -28,17 +29,27 @@ export function LocationAutocomplete({
   onChange,
   placeholder = "e.g., Rajamundry, Andhra Pradesh",
   className = "",
-  disabled = false
+  disabled = false,
+  required = false
 }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const isAutoSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
+    if (isAutoSelecting.current) {
+      isAutoSelecting.current = false;
+      setSuggestions([]);
+      setIsOpen(false);
+      setLoading(false);
+      return;
+    }
+
     const fetchSuggestions = async () => {
       if (value.length < 2) {
         setSuggestions([]);
@@ -96,6 +107,7 @@ export function LocationAutocomplete({
   };
 
   const selectSuggestion = (suggestion: LocationSuggestion) => {
+    isAutoSelecting.current = true;
     onChange(suggestion.fullAddress, suggestion.lat, suggestion.lng);
     setIsOpen(false);
     setSelectedIndex(-1);
@@ -115,34 +127,73 @@ export function LocationAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) return;
+  const handleUseCurrentLocation = async () => {
     setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+
+    const tryBrowserGeo = (): Promise<{ latitude: number; longitude: number }> => {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("No geolocation"));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          (err) => reject(err),
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        );
+      });
+    };
+
+    try {
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      try {
+        const coords = await tryBrowserGeo();
+        lat = coords.latitude;
+        lng = coords.longitude;
+      } catch (e) {
+        console.warn("[LocationAutocomplete] Browser geolocation failed, trying server IP:", e);
+      }
+
+      // ── IF BROWSER GEOLOCATION OBTAINED LAT/LNG: ──────────────────────────
+      if (lat != null && lng != null) {
+        let fullAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { "Accept-Language": "en" } }
-          );
+          const res = await fetch(`/api/location-suggestions?lat=${lat}&lng=${lng}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.fullAddress) {
+              fullAddress = data.fullAddress;
+            }
+          }
+        } catch (_) {}
+
+        isAutoSelecting.current = true;
+        onChange(fullAddress, lat, lng);
+        setGeoLoading(false);
+        return;
+      }
+
+      // ── IF BROWSER GEOLOCATION FAILED, TRY SERVER IP GEOLOCATION: ──────────
+      try {
+        const res = await fetch(`/api/location-suggestions?ip=true`);
+        if (res.ok) {
           const data = await res.json();
-          const addr = data.address || {};
-          const parts = [
-            addr.village || addr.town || addr.city_district || addr.suburb || addr.neighbourhood,
-            addr.city || addr.county,
-            addr.state,
-          ].filter(Boolean);
-          onChange(parts.join(", ") || data.display_name || "", latitude, longitude);
-        } catch {
-          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude);
-        } finally {
-          setGeoLoading(false);
+          if (data && data.fullAddress && data.lat != null && data.lng != null) {
+            isAutoSelecting.current = true;
+            onChange(data.fullAddress, data.lat, data.lng);
+            setGeoLoading(false);
+            return;
+          }
         }
-      },
-      () => setGeoLoading(false),
-      { timeout: 8000 }
-    );
+      } catch (_) {}
+
+      // ── ONLY IF BOTH BROWSER GPS AND SERVER IP GEOLOCATION FAILED: ────────
+      alert("Could not auto-detect location. Please type your shop location in the search box.");
+    } catch (err) {
+      console.error("[LocationAutocomplete] Failed to auto-detect location:", err);
+      alert("Could not auto-detect location. Please type your shop location in the search box.");
+    } finally {
+      setGeoLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -168,6 +219,7 @@ export function LocationAutocomplete({
           }}
           placeholder={placeholder}
           disabled={disabled}
+          required={required}
           className={`auth-input w-full px-3 pr-10 text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white ${className}`}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">

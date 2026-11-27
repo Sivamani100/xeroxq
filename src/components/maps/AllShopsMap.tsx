@@ -94,20 +94,41 @@ export default function AllShopsMap({
       
       const marker = L.marker([Number(shop.shop_lat), Number(shop.shop_lng)], { icon: customIcon }).addTo(mapInstanceRef.current!);
 
-      // Premium styling popup content
-      const popupContent = `
-        <div style="font-family: ui-sans-serif, system-ui, sans-serif; padding: 6px; width: 220px;">
-          <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 800; color: #000;">${shop.name}</h4>
-          <p style="margin: 0 0 8px 0; font-size: 11px; color: #64748B; line-height: 1.4;">${shop.shop_location || 'Address not listed'}</p>
-          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; display: inline-block; background-color: ${markerColor};"></span>
-            <span style="font-size: 10px; font-weight: 700; color: ${markerColor};">${markerText}</span>
-          </div>
-          <a href="/${shop.slug}" style="display: block; width: 100%; text-align: center; padding: 8px 0; background-color: #000; color: #fff; font-size: 11px; font-weight: 700; border-radius: 6px; text-decoration: none; transition: background-color 0.2s;">
-            Visit Shop Queue
-          </a>
-        </div>
-      `;
+      // Safe DOM construction prevents stored XSS from shop names, locations, or slugs
+      const popupContent = document.createElement('div');
+      popupContent.style.cssText = 'font-family: ui-sans-serif, system-ui, sans-serif; padding: 6px; width: 220px;';
+
+      const title = document.createElement('h4');
+      title.style.cssText = 'margin: 0 0 4px 0; font-size: 14px; font-weight: 800; color: #000;';
+      title.textContent = shop.name || 'Print Shop';
+
+      const address = document.createElement('p');
+      address.style.cssText = 'margin: 0 0 8px 0; font-size: 11px; color: #64748B; line-height: 1.4;';
+      address.textContent = shop.shop_location || 'Address not listed';
+
+      const statusRow = document.createElement('div');
+      statusRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-bottom: 10px;';
+
+      const dot = document.createElement('span');
+      dot.style.cssText = `width: 7px; height: 7px; border-radius: 50%; display: inline-block; background-color: ${markerColor};`;
+
+      const statusLabel = document.createElement('span');
+      statusLabel.style.cssText = `font-size: 10px; font-weight: 700; color: ${markerColor};`;
+      statusLabel.textContent = markerText;
+
+      statusRow.appendChild(dot);
+      statusRow.appendChild(statusLabel);
+
+      const safeSlug = encodeURIComponent((shop.slug || '').replace(/[^a-zA-Z0-9_-]/g, ''));
+      const link = document.createElement('a');
+      link.href = `/${safeSlug}`;
+      link.style.cssText = 'display: block; width: 100%; text-align: center; padding: 8px 0; background-color: #000; color: #fff; font-size: 11px; font-weight: 700; border-radius: 6px; text-decoration: none; transition: background-color 0.2s;';
+      link.textContent = 'Visit Shop Queue';
+
+      popupContent.appendChild(title);
+      popupContent.appendChild(address);
+      popupContent.appendChild(statusRow);
+      popupContent.appendChild(link);
 
       marker.bindPopup(popupContent);
       markersRef.current.push(marker);

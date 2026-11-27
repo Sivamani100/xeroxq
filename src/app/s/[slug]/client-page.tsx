@@ -1,24 +1,35 @@
 "use client";
 
-
-
 import { use, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Printer, ArrowRight, ShieldCheck, Zap, Store } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import {
+  ArrowRight,
+  MessageSquare,
+  ShieldCheck,
+  Store,
+  UploadCloud,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
-import { SiteFooter } from "@/components/layout/site-footer";
+import cn from "@/lib/utils";
 
 interface Shop {
   id: string;
   name: string;
   slug: string;
   is_open?: boolean;
+  is_active?: boolean;
+  contact_number?: string;
 }
 
-export default function FastPairPage({ params }: { params: Promise<{ slug: string }> }) {
+const SPRING = { type: "spring" as const, stiffness: 380, damping: 30 };
+
+export default function FastPairPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = use(params);
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,30 +38,26 @@ export default function FastPairPage({ params }: { params: Promise<{ slug: strin
     async function fetchShop() {
       const { data, error } = await supabase
         .from("shops")
-        .select("id, name, slug, is_open")
+        .select("id, name, slug, is_open, is_active, contact_number")
         .eq("slug", slug)
         .single();
-      
-      if (!error && data) {
-        setShop(data);
+
+      if (!error && data && data.is_active !== false) {
+        setShop(data as Shop);
       }
       setLoading(false);
     }
     fetchShop();
   }, [slug]);
 
-  const handleConnect = () => {
-    if (!shop) return;
-    const link = generateWhatsAppLink(shop.slug);
-    window.location.href = link;
-  };
-
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin" />
-          <p className="text-[14px] text-slate-500 font-bold animate-pulse tracking-tight">Identifying Shop...</p>
+      <main className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-7 h-7 rounded-full border-2 border-[#FB432C] border-t-transparent animate-spin" />
+          <p className="text-xs text-[#6B7280] font-semibold">
+            Connecting to shop…
+          </p>
         </div>
       </main>
     );
@@ -58,83 +65,136 @@ export default function FastPairPage({ params }: { params: Promise<{ slug: strin
 
   if (!shop) {
     return (
-      <main className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+      <main className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-10 border border-black/5 shadow-2xl rounded-[16px] max-w-[400px] w-full flex flex-col items-center text-center"
+          transition={SPRING}
+          className="bg-white p-8 border border-black/[0.06] shadow-[0_12px_36px_rgba(0,0,0,0.06)] rounded-[28px] max-w-sm w-full flex flex-col items-center text-center"
         >
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 border border-red-100">
-            <Store className="w-8 h-8 text-red-500" />
+          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-5 border border-red-100">
+            <Store className="w-7 h-7 text-red-500" />
           </div>
-          <h1 className="text-[24px] font-black text-black tracking-tight mb-2">Shop Offline</h1>
-          <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed">
-            This shop does not exist or is no longer active.
+          <h1 className="text-xl font-extrabold text-[#111827] tracking-tight mb-2">
+            Shop Unavailable
+          </h1>
+          <p className="text-sm text-[#6B7280] mb-7 leading-relaxed">
+            This shop does not exist or is currently inactive.
           </p>
-          <Button 
-            onClick={() => window.location.href = "/"} 
-            className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold rounded-[8px] transition-all"
+          <Link
+            href="/upload"
+            className="w-full h-12 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(251,67,44,0.28)]"
+            style={{
+              background: "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
+            }}
           >
-            Go Back Home
-          </Button>
+            Find Another Shop
+          </Link>
         </motion.div>
       </main>
     );
   }
 
+  const isOpen = shop.is_open !== false;
+  const whatsappUrl = generateWhatsAppLink(shop.slug, shop.contact_number);
+
   return (
-    <main className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-10 border border-black/5 shadow-2xl rounded-[16px] max-w-[420px] w-full flex flex-col items-center text-center"
+    <main className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={SPRING}
+        className="bg-white p-7 sm:p-9 border border-black/[0.06] shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-[28px] max-w-[420px] w-full flex flex-col items-center text-center"
       >
-        <div className="w-20 h-20 bg-blue-50/50 rounded-full flex items-center justify-center mb-6 border border-blue-100/50 relative">
-          <Printer className="w-10 h-10 text-blue-600" />
-          <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-            <MessageSquare className="w-3 h-3 text-white" />
-          </div>
+        <div className="w-16 h-16 rounded-[20px] bg-white border border-black/[0.07] shadow-[0_4px_14px_rgba(0,0,0,0.07)] flex items-center justify-center mb-5 p-3">
+          <img
+            src="/logo_color.png"
+            alt="XeroxQ"
+            className="w-full h-full object-contain"
+          />
         </div>
-        
-        <h1 className="text-[28px] font-black text-black tracking-tight mb-1 leading-tight">
-          XeroxQ Connect
+
+        <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight mb-1.5">
+          {shop.name}
         </h1>
-        <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed">
-          Pairing with <span className="font-bold text-black">{shop.name}</span>
-        </p>
 
-        <div className="w-full space-y-3 mb-8">
-          <div className="flex items-center gap-4 text-left p-4 rounded-[12px] bg-[#FDFDFD] border border-black/5 shadow-sm">
-            <div className="w-10 h-10 rounded-[8px] bg-green-50 flex items-center justify-center shrink-0 border border-green-100">
-              <MessageSquare className="w-5 h-5 text-green-600" />
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-6",
+            isOpen ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+          )}
+        >
+          <span
+            className={cn(
+              "h-2 w-2 rounded-full",
+              isOpen ? "bg-[#34C759]" : "bg-[#FF3B30]"
+            )}
+          />
+          {isOpen ? "Open for Printing" : "Currently Closed"}
+        </span>
+
+        <div className="w-full space-y-2.5 mb-6 text-left">
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F7F7FA] border border-black/[0.04]">
+            <div className="w-9 h-9 rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0">
+              <UploadCloud className="w-4 h-4 text-[#FB432C]" />
             </div>
             <div>
-              <div className="font-bold text-black text-[14px]">Direct WhatsApp Print</div>
-              <p className="text-slate-500 text-[12px] leading-snug mt-0.5">Send documents seamlessly.</p>
+              <div className="font-semibold text-[#111827] text-sm">
+                Quick Upload
+              </div>
+              <p className="text-[#6B7280] text-xs">
+                Send PDFs, Word docs or photos and get your pickup number right away.
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-left p-4 rounded-[12px] bg-[#FDFDFD] border border-black/5 shadow-sm">
-            <div className="w-10 h-10 rounded-[8px] bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
-              <ShieldCheck className="w-5 h-5 text-slate-600" />
+
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F7F7FA] border border-black/[0.04]">
+            <div className="w-9 h-9 rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-[#34C759]" />
             </div>
             <div>
-              <div className="font-bold text-black text-[14px]">Private & Secure</div>
-              <p className="text-slate-500 text-[12px] leading-snug mt-0.5">End-to-end encrypted transfer.</p>
+              <div className="font-semibold text-[#111827] text-sm">
+                Private by Default
+              </div>
+              <p className="text-[#6B7280] text-xs">
+                Files are automatically deleted after 5 minutes for your safety.
+              </p>
             </div>
           </div>
         </div>
 
-        <Button 
-          onClick={handleConnect}
-          className="w-full h-14 bg-black text-white hover:bg-black/90 font-bold rounded-[8px] transition-all flex items-center justify-center gap-2 group shadow-md"
-        >
-          <Zap className="w-4 h-4 fill-white" />
-          Connect via WhatsApp
-        </Button>
-        
-        <div className="mt-8 flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-[0.15em] border-t border-black/5 w-full pt-6">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          Official XeroxQ Portal
+        <div className="w-full space-y-2.5">
+          <Link
+            href={`/${shop.slug}`}
+            className={cn(
+              "w-full h-13 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-opacity",
+              isOpen
+                ? "shadow-[0_6px_20px_rgba(251,67,44,0.28)] hover:opacity-95"
+                : "opacity-60"
+            )}
+            style={{
+              background: "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
+            }}
+          >
+            <UploadCloud className="w-4 h-4" strokeWidth={2.4} />
+            {isOpen ? "Upload Files Now" : "View Shop Portal"}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+
+          {whatsappUrl && isOpen && (
+            <a
+              href={whatsappUrl}
+              className="w-full h-12 rounded-2xl bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4 text-[#34C759]" />
+              Send via WhatsApp Instead
+            </a>
+          )}
+        </div>
+
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-[#6B7280] font-medium border-t border-black/[0.06] w-full pt-4">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#34C759]" />
+          Official XeroxQ Shop Portal
         </div>
       </motion.div>
     </main>

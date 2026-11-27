@@ -1,9 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Download } from "lucide-react";
+import { DownloadModal } from "@/components/ui/download-modal";
 
 interface VerticalMarqueeProps {
   children: ReactNode;
@@ -80,6 +82,7 @@ const marqueeItems = [
 
 export default function CTAWithVerticalMarquee() {
   const marqueeRef = useRef<HTMLDivElement>(null);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
 
   useEffect(() => {
     const marqueeContainer = marqueeRef.current;
@@ -171,17 +174,20 @@ export default function CTAWithVerticalMarquee() {
               }}
               className="flex flex-wrap gap-4 pt-4 px-1"
             >
-              <a 
-                href="/downloads/XeroxQ-Setup-0.1.0.exe"
-                download="XeroxQ Setup 0.1.0.exe"
-                className="group relative h-12 px-8 bg-[#FB432C] text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-black hover:scale-[1.02] active:scale-[0.98] inline-flex items-center gap-2"
+              <button
+                type="button"
+                onClick={() => setIsDownloadOpen(true)}
+                className="group relative h-12 px-8 bg-[#FB432C] text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-black hover:scale-[1.02] active:scale-[0.98] inline-flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Desktop App</span>
-              </a>
-              <button className="group relative h-12 px-8 bg-black text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20 hover:bg-[#FB432C] hover:scale-[1.02] active:scale-[0.98]">
-                See How It Works
               </button>
+              <Link
+                href="/how-it-works"
+                className="group relative h-12 px-8 bg-black text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20 hover:bg-[#FB432C] hover:scale-[1.02] active:scale-[0.98] inline-flex items-center"
+              >
+                See How It Works
+              </Link>
             </motion.div>
           </div>
 
@@ -215,6 +221,7 @@ export default function CTAWithVerticalMarquee() {
           </motion.div>
         </div>
       </motion.div>
+      <DownloadModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </section>
   );
 }

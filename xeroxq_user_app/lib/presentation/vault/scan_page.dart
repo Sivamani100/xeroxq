@@ -46,12 +46,14 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
     try {
       final shopRepo = context.read<ShopRepository>();
       final list = await shopRepo.fetchShops();
+      if (!mounted) return;
       setState(() {
         _shops = list;
         _loadingShops = false;
       });
     } catch (e) {
       debugPrint('Error loading shops: $e');
+      if (!mounted) return;
       setState(() {
         _loadingShops = false;
       });
@@ -61,23 +63,25 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
   Future<void> _scanFromGallery() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        _simulateSuccessfulScan();
-      }
+      if (image == null || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Offline gallery QR decoding is unavailable. Please enter the shop code below or select a shop.'),
+        ),
+      );
     } catch (e) {
       debugPrint('Error picking QR: $e');
     }
   }
 
-  void _simulateSuccessfulScan({Shop? selectedShop}) {
-    final targetShop = selectedShop ?? (_shops.isNotEmpty ? _shops.first : null);
-    if (targetShop == null) {
+  void _connectToShop(Shop targetShop) {
+    if (!targetShop.isActive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No shops available to connect.')),
+        const SnackBar(content: Text('This shop is currently inactive.')),
       );
       return;
     }
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -88,10 +92,10 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
             children: [
               Icon(Icons.qr_code_scanner, color: AppColors.primary),
               SizedBox(width: 10),
-              Text('QR Code Detected', style: TextStyle(fontWeight: FontWeight.w900)),
+              Text('Shop Selected', style: TextStyle(fontWeight: FontWeight.w900)),
             ],
           ),
-          content: Text('Connected successfully to ${targetShop.name}. Do you want to start printing?'),
+          content: Text('Connect to ${targetShop.name} to start printing?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -210,18 +214,22 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
                       ElevatedButton(
                         onPressed: () {
                           final code = _codeController.text.trim().toLowerCase();
-                          final match = _shops.firstWhere(
-                            (s) => s.slug.toLowerCase() == code || s.name.toLowerCase().contains(code),
-                            orElse: () => _shops.isNotEmpty ? _shops.first : Shop(
-                              id: '1',
-                              name: 'XeroxQ Partner',
-                              slug: 'partner',
-                              priceMono: 1.0,
-                              priceColor: 5.0,
-                              isOpen: true,
-                            ),
-                          );
-                          _simulateSuccessfulScan(selectedShop: match);
+                          if (code.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter a valid shop code or slug.')),
+                            );
+                            return;
+                          }
+                          final matches = _shops.where(
+                            (s) => s.slug.toLowerCase() == code || s.name.toLowerCase() == code || s.name.toLowerCase().contains(code),
+                          ).toList();
+                          if (matches.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Shop not found. Check the code and try again.')),
+                            );
+                            return;
+                          }
+                          _connectToShop(matches.first);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -268,7 +276,7 @@ class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin
                                 itemBuilder: (context, index) {
                                   final shop = _shops[index];
                                   return GestureDetector(
-                                    onTap: () => _simulateSuccessfulScan(selectedShop: shop),
+                                    onTap: () => _connectToShop(shop),
                                     child: Container(
                                       width: 140,
                                       margin: const EdgeInsets.only(right: 12),

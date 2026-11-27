@@ -6,6 +6,7 @@ import { Printer, ShieldCheck, Zap, Scissors, Download, RefreshCw } from "lucide
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QRCodeSVG } from "qrcode.react";
+import { getPublicOrigin, formatDisplayUrl } from "@/lib/site-url";
 
 // Helper to parse the SVG path of standard QRCodeSVG into a matrix
 function parsePathToMatrix(d: string, numCells: number): boolean[][] {
@@ -175,7 +176,7 @@ function PosterContent() {
   const [isDownloadingPNG, setIsDownloadingPNG] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [rawPath, setRawPath] = useState<string>("");
-  const publicWebUrl = "https://xeroxq.arkio.in";
+  const publicWebUrl = getPublicOrigin();
   const qrUrl = slug ? `${publicWebUrl}/${slug}` : "";
 
   useEffect(() => {
@@ -424,7 +425,7 @@ function PosterContent() {
           </div>
           <div className="text-right">
             <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1 text-black/20">Powered by</p>
-            <p className="text-[16px] font-black tracking-tighter text-black">XeroxQ.Arkio.in</p>
+            <p className="text-[16px] font-black tracking-tighter text-black">{formatDisplayUrl(publicWebUrl) || "XeroxQ"}</p>
           </div>
         </footer>
       </motion.div>

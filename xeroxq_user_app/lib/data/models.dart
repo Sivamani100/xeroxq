@@ -11,6 +11,9 @@ class Shop {
   final double priceMono;
   final double priceColor;
   final bool isOpen;
+  final bool isActive;
+  final String? approvalStatus;
+  final int totalFilesProcessed;
   final double? shopLat;
   final double? shopLng;
 
@@ -24,6 +27,9 @@ class Shop {
     required this.priceMono,
     required this.priceColor,
     required this.isOpen,
+    this.isActive = true,
+    this.approvalStatus,
+    this.totalFilesProcessed = 0,
     this.shopLat,
     this.shopLng,
   });
@@ -39,6 +45,9 @@ class Shop {
       priceMono: (json['price_mono'] as num?)?.toDouble() ?? 1.0,
       priceColor: (json['price_color'] as num?)?.toDouble() ?? 5.0,
       isOpen: json['is_open'] as bool? ?? true,
+      isActive: json['is_active'] as bool? ?? true,
+      approvalStatus: json['approval_status'] as String?,
+      totalFilesProcessed: (json['total_files_processed'] as num?)?.toInt() ?? 0,
       shopLat: (json['shop_lat'] as num?)?.toDouble(),
       shopLng: (json['shop_lng'] as num?)?.toDouble(),
     );
@@ -55,6 +64,9 @@ class Shop {
       'price_mono': priceMono,
       'price_color': priceColor,
       'is_open': isOpen,
+      'is_active': isActive,
+      'approval_status': approvalStatus,
+      'total_files_processed': totalFilesProcessed,
       'shop_lat': shopLat,
       'shop_lng': shopLng,
     };

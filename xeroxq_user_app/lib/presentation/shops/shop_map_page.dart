@@ -31,6 +31,7 @@ class _ShopMapPageState extends State<ShopMapPage> {
   void initState() {
     super.initState();
     _determinePosition().then((pos) {
+      if (!mounted) return;
       if (pos != null) {
         setState(() {
           _userPosition = LatLng(pos.latitude, pos.longitude);
@@ -59,8 +60,10 @@ class _ShopMapPageState extends State<ShopMapPage> {
       if (permission == LocationPermission.deniedForever) return null;
 
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
       );
     } catch (e) {
       debugPrint('Location fetch error: $e');
@@ -69,13 +72,22 @@ class _ShopMapPageState extends State<ShopMapPage> {
   }
 
   Future<void> _loadShops() async {
-    final repo = context.read<ShopRepository>();
-    final list = await repo.fetchShops();
-    setState(() {
-      _shops = list;
-      _filteredShops = list;
-      _loading = false;
-    });
+    try {
+      final repo = context.read<ShopRepository>();
+      final list = await repo.fetchShops();
+      if (!mounted) return;
+      setState(() {
+        _shops = list;
+        _filteredShops = list;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('Failed to load shops on map: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   void _filterShops(String val) {

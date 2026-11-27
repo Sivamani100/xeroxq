@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { getPublicOrigin } from '@/lib/site-url';
 
 export interface SEOHeadProps {
   title: string;
@@ -29,7 +30,7 @@ export function generateSEOMetadata(props: SEOHeadProps): Metadata {
     tags
   } = props;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://xeroxq.com';
+  const siteUrl = getPublicOrigin();
   const fullUrl = url ? `${siteUrl}${url}` : siteUrl;
 
   return {
@@ -94,7 +95,7 @@ export function generateJsonLd(props: SEOHeadProps) {
     tags
   } = props;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://xeroxq.com';
+  const siteUrl = getPublicOrigin();
   const fullUrl = url ? `${siteUrl}${url}` : siteUrl;
 
   return {

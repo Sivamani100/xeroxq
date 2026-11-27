@@ -1,42 +1,48 @@
-export const dynamic = "force-static";
-
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { getSupabaseAdmin, timingSafeSecretMatch } from "@/lib/server-supabase";
 
-// Standard health check probe for load balancers and monitoring tools.
-export async function GET() {
+export async function GET(req: NextRequest) {
   const startTime = Date.now();
-  
+  const authHeader = req.headers.get("Authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const isDetailedAuthorized = timingSafeSecretMatch(bearerToken, cronSecret);
+
   try {
-    // 1. Check Supabase Connectivity
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service key for deep health audit
-    );
+    const supabase = getSupabaseAdmin();
 
     const dbStart = Date.now();
     const { error: dbErr } = await supabase.from("shops").select("id").limit(1);
     const dbLatency = Date.now() - dbStart;
-
     if (dbErr) throw new Error(`Database unreachable: ${dbErr.message}`);
 
-    // 2. Check Storage Connectivity
     const storageStart = Date.now();
     const { data: buckets, error: storageErr } = await supabase.storage.listBuckets();
     const storageLatency = Date.now() - storageStart;
-
     if (storageErr) throw new Error(`Storage Audit Failed: ${storageErr.message}`);
-    
-    const docBucket = buckets.find(b => b.name === 'documents');
+
+    const docBucket = buckets.find((b) => b.name === "documents");
     if (!docBucket) throw new Error("Storage Audit Failed: 'documents' bucket is missing.");
 
-    // 3. Environment Integrity Audit (MNC Standard)
-    const requiredKeys = ['TWILIO_AUTH_TOKEN', 'CRON_SECRET', 'WORKER_SECRET', 'NEXT_PUBLIC_SUPABASE_URL'];
-    const missingKeys = requiredKeys.filter(key => !process.env[key]);
-
     const duration = Date.now() - startTime;
-    logger.info(`Deep Health check passed in ${duration}ms (DB: ${dbLatency}ms, Storage: ${storageLatency}ms)`);
+    logger.info(`Health check passed in ${duration}ms`);
+
+    if (!isDetailedAuthorized) {
+      return NextResponse.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const requiredKeys = [
+      "TWILIO_AUTH_TOKEN",
+      "CRON_SECRET",
+      "WORKER_SECRET",
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+    ];
+    const missingKeys = requiredKeys.filter((key) => !process.env[key]);
 
     return NextResponse.json({
       status: "healthy",
@@ -45,21 +51,30 @@ export async function GET() {
       latency: {
         total: `${duration}ms`,
         database: `${dbLatency}ms`,
-        storage: `${storageLatency}ms`
+        storage: `${storageLatency}ms`,
       },
       integrity: {
         database: "synchronized",
         storage: docBucket.public ? "public-access" : "private-protected",
-        environment: missingKeys.length === 0 ? "verified" : `missing_keys: ${missingKeys.join(', ')}`
-      }
+        environment: missingKeys.length === 0 ? "verified" : `missing_keys_count: ${missingKeys.length}`,
+      },
     });
-  } catch (err: any) {
-    logger.error("Health check failed", err);
-    
-    return NextResponse.json({
-      status: "unhealthy",
-      timestamp: new Date().toISOString(),
-      error: err.message
-    }, { status: 503 });
+  } catch (err) {
+    const e = err as Error;
+    logger.error("Health check failed", e);
+
+    return NextResponse.json(
+      isDetailedAuthorized
+        ? {
+            status: "unhealthy",
+            timestamp: new Date().toISOString(),
+            error: e.message,
+          }
+        : {
+            status: "unhealthy",
+            timestamp: new Date().toISOString(),
+          },
+      { status: 503 }
+    );
   }
 }

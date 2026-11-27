@@ -30,11 +30,11 @@ export default function SecurityPage() {
     try {
       const { error } = await supabase.from("security_reports").insert({
         reporter_name: formData.get("name"),
-        reporter_email: formData.get("email"),
-        vulnerability_type: formData.get("type"),
+        email: formData.get("email"),
+        type: formData.get("type"),
         severity: formData.get("severity"),
         description: formData.get("description"),
-        status: "pending"
+        status: "reported"
       });
 
       if (error) throw error;
@@ -52,29 +52,29 @@ export default function SecurityPage() {
 
   const securityLayers = [
     {
-      title: "AES-GCM Encryption",
-      desc: "All document payloads are encrypted on the client device using AES-256-GCM before traversing the network. XeroxQ servers route ciphertext exclusively.",
+      title: "Private Bucket Isolation",
+      desc: "Documents are transmitted over TLS 1.3 and stored inside private shop-scoped cloud storage encrypted with AES-256 at rest, accessible only via short-lived signed URLs.",
       icon: Lock,
       bg: "bg-blue-500",
       border: "border-blue-400"
     },
     {
-      title: "Ephemeral Routing",
-      desc: "State does not exist in the print mesh. Payloads are buffered in high-speed RAM and flushed via 7-pass military wipe exactly 30s post-print.",
+      title: "Ephemeral Auto-Purge",
+      desc: "Uploaded print files are transient by design: customers can manually delete their files anytime, and expired print jobs are automatically purged after their 5-minute window.",
       icon: Server,
       bg: "bg-emerald-500",
       border: "border-emerald-400"
     },
     {
-      title: "The QR Handshake",
-      desc: "Authentication is decentralized. The QR code on a shop's desk serves as a one-time physical cryptographic key for signal decryption at the terminal.",
+      title: "The QR & Session Binding",
+      desc: "Uploads bind directly to the target shop and anonymous user session so only the submitting session and authenticated shopkeeper can track or manage the print job.",
       icon: QrCode,
       bg: "bg-purple-500",
       border: "border-purple-400"
     },
     {
-      title: "Node Audits",
-      desc: "Every physical shop partner undergoes rigorous signal and hardware screening in Andhra Pradesh before receiving a live routing token.",
+      title: "Partner Shop Verification",
+      desc: "Every physical print shop partner undergoes platform verification before its routing slug and live queue go public.",
       icon: ScanEye,
       bg: "bg-orange-500",
       border: "border-orange-400"

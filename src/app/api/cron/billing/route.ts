@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin, timingSafeSecretMatch } from "@/lib/server-supabase";
 import { logger } from "@/lib/logger";
 
 // ── Automation: Autonomous Billing Engine ────────────────────────────────
 // This professional background service automatically calculates and 
 // deducts platform commissions based on daily performance snapshots.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 const COMMISSION_PER_JOB = 0.50; // MNC Policy: ₹0.50 per print job
 
 export async function GET(req: Request) {
-  if (process.env.BUILD_DESKTOP === "true") {
-    return NextResponse.json({ success: true });
-  }
-  const authHeader = req.headers.get("Authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const cronSecret = process.env.CRON_SECRET ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !timingSafeSecretMatch(token, cronSecret)) {
     logger.security("Rejected unauthorized billing cron attempt");
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getSupabaseAdmin();
 
     // 1. Fetch un-billed snapshots
     // For simplicity in this automation, we deduct for the previous day.

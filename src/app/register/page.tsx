@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getPublicOrigin } from "@/lib/site-url";
 import { motion } from "framer-motion";
 import { 
   CheckCircle2,
@@ -151,9 +152,7 @@ export default function Register() {
       setError(null);
       const isElectron = !!(window.electron?.openOAuthUrl);
       if (isElectron) {
-        const oauthBase = typeof window !== "undefined" && window.location.origin.includes("localhost")
-          ? "http://127.0.0.1:3000"
-          : "https://xeroxq.arkio.in";
+        const oauthBase = getPublicOrigin();
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,

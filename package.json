@@ -1,6 +1,12 @@
 {
   "name": "xeroxq",
   "version": "0.1.0",
+  "description": "XeroxQ — Privacy-first document printing desktop terminal for print shops.",
+  "author": {
+    "name": "Arkio",
+    "email": "support@arkio.in"
+  },
+  "homepage": "https://xeroxq.arkio.in",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,12 +14,14 @@
     "start": "next start",
     "lint": "next lint",
     "check-types": "tsc --noEmit",
+    "clean": "node -e \"['.next', 'out', 'release_build', 'public/downloads'].forEach(d => require('fs').rmSync(d, { recursive: true, force: true }))\"",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http-get://localhost:3000/register && electron .\"",
-    "desktop:build": "node -e \"process.env.BUILD_DESKTOP='true'; require('child_process').execSync('npx next build', {stdio: 'inherit'})\" && npx electron-builder --win --x64 && npx electron-builder --win --ia32 && node -e \"require('fs').mkdirSync('public/downloads', {recursive:true}); require('fs').copyFileSync('release_build/XeroxQ-Setup-x64.exe', 'public/downloads/XeroxQ-Setup-x64.exe'); require('fs').copyFileSync('release_build/XeroxQ-Setup-ia32.exe', 'public/downloads/XeroxQ-Setup-ia32.exe');\""
+    "desktop:build": "node scripts/build-desktop.js"
   },
   "build": {
     "appId": "com.xeroxq.desktop",
     "productName": "XeroxQ",
+    "copyright": "Copyright © 2026 Arkio",
     "directories": {
       "output": "release_build"
     },
@@ -34,13 +42,22 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
           ]
         }
       ],
       "icon": "build/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false,
+      "signtoolOptions": {
+        "publisherName": "Arkio"
+      }
     },
     "nsis": {
       "oneClick": false,
@@ -51,7 +68,12 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
-      "artifactName": "XeroxQ-Setup-${arch}.${ext}"
+      "artifactName": "XeroxQ-Setup-x64.${ext}",
+      "buildUniversalInstaller": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "XeroxQ-Portable-x64.${ext}"
     }
   },
   "dependencies": {

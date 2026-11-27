@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { supabase } from "@/lib/supabase";
 import { 
   Send, 
   CheckCircle2, 
@@ -14,6 +16,45 @@ import {
 } from "lucide-react";
 
 export default function DemoRequest() {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const fullName = String(formData.get("full_name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const organization = String(formData.get("organization") || "").trim();
+    const requirements = String(formData.get("requirements") || "").trim();
+
+    if (!fullName || !email || !organization || !requirements) {
+      setSubmitError("Please complete all required fields before submitting.");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("contact_submissions").insert({
+        shop_name: `${organization} (${fullName})`,
+        owner_email: email,
+        message: `[Demo Request]\n${requirements}`,
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      form.reset();
+    } catch (err) {
+      const e = err as Error;
+      setSubmitError(e.message || "Failed to send request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const benefits = [
     { title: "Custom Workflow Analysis", icon: Zap, color: "text-amber-500" },
     { title: "Network Capacity Audit", icon: Globe, color: "text-blue-500" },
@@ -108,28 +149,35 @@ export default function DemoRequest() {
                      </p>
                   </div>
 
-                  <form className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-5">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-2 text-left">
                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Identity</label>
-                           <input type="text" placeholder="FULL NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                           <input name="full_name" required type="text" placeholder="FULL NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                         </div>
                         <div className="space-y-2 text-left">
                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Protocol / Email</label>
-                           <input type="email" placeholder="OFFICE EMAIL" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                           <input name="email" required type="email" placeholder="OFFICE EMAIL" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                         </div>
                      </div>
                      <div className="space-y-2 text-left">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Infrastructure Node / Company</label>
-                        <input type="text" placeholder="ORGANIZATION NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                        <input name="organization" required type="text" placeholder="ORGANIZATION NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                      </div>
                      <div className="space-y-2 text-left">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Requirements Payload</label>
-                        <textarea rows={3} placeholder="DENSITY AND SECURITY SPECIFICATIONS" className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none resize-none" />
+                        <textarea name="requirements" required rows={3} placeholder="DENSITY AND SECURITY SPECIFICATIONS" className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none resize-none" />
                      </div>
 
-                     <button className="w-full h-12 bg-white hover:bg-white/90 text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] group">
-                        INITIATE ONBOARDING <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                     {submitError && (
+                        <p className="text-[11px] font-semibold text-red-400 text-left">{submitError}</p>
+                     )}
+                     {submitted && (
+                        <p className="text-[11px] font-semibold text-emerald-400 text-left">Onboarding request received. Our team will reach out shortly.</p>
+                     )}
+
+                     <button type="submit" disabled={submitting} className="w-full h-12 bg-white hover:bg-white/90 disabled:opacity-50 text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] group">
+                        {submitting ? "DISPATCHING..." : "INITIATE ONBOARDING"} <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                      </button>
                   </form>
 

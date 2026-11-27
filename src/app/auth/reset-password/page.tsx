@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ResetPasswordLegacy() {
+function ResetPasswordLegacyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -20,5 +20,19 @@ export default function ResetPasswordLegacy() {
         <p className="text-sm font-medium text-slate-500">Redirecting to password update form...</p>
       </div>
     </main>
+  );
+}
+
+export default function ResetPasswordLegacy() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
+          <div className="w-8 h-8 border-2 border-primary-blue border-t-transparent rounded-full animate-spin" />
+        </main>
+      }
+    >
+      <ResetPasswordLegacyContent />
+    </Suspense>
   );
 }

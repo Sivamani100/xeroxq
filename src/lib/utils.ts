@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Default export for components that use `import cn from "@/lib/utils"`
+export default cn;
+
 export function generateToken(): string {
   // Generates a 2-digit numeric token (00-99).
   // Uses crypto for security.

@@ -2,222 +2,136 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { isMaintenanceEnabled } from "@/lib/maintenance";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
-/**
- * XeroxQ — Edge Middleware
- * 
- * Protects the /admin route server-side BEFORE React renders.
- * This prevents any client-side bypass via direct URL navigation.
- * Also protects against open redirects from the auth callback.
- * 
- * NEW: Global Maintenance Protocol - Locks all customer routes when maintenance mode is active
- */
-
-// Create a Supabase client for server-side operations (maintenance mode)
-const supabaseService = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Routes that should remain accessible during maintenance
-const MAINTENANCE_ALLOWED_ROUTES = [
-  '/admin',
-  '/platform-admin',
-  '/login',
-  '/register',
-  '/api/health',
-  '/api/auth/callback',
-  '/api/maintenance',
-  '/auth/callback',
-  '/auth/reset-password',
-  '/_next',
-  '/favicon.ico',
-  '/robots.txt',
-  '/sitemap.xml'
+const MAINTENANCE_ALLOWED_PREFIXES = [
+  "/admin",
+  "/platform-admin",
+  "/login",
+  "/register",
+  "/maintenance",
+  "/api/health",
+  "/api/maintenance",
+  "/api/auth",
+  "/auth",
+  "/_next",
+  "/favicon",
+  "/robots.txt",
+  "/sitemap.xml",
 ];
 
-// Customer routes that should be blocked during maintenance
-const CUSTOMER_ROUTES = [
-  '/',
-  '/about',
-  '/contact',
-  '/help-center',
-  '/shops',
-  '/blog',
-  '/register',
-  '/demo-request',
-  '/enterprise',
-  '/for-shops',
-  '/integrations',
-  '/partners',
-  '/careers',
-  '/community',
-  '/news',
-  '/case-studies',
-  '/docs',
-  '/use-cases',
-  '/vision',
-  '/privacy',
-  '/terms',
-  '/security',
-  '/pricing',
-  '/mobile-app',
-  '/api',
-  '/status',
-  '/quality',
-  '/cookies',
-  '/data'
-];
+const apiLimiter = rateLimit({ windowMs: 60_000, max: 60 });
 
-const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
+function getServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
-function applyRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const windowMs = 60 * 1000; // 1 minute
-  const maxRequests = 60; // 60 requests per minute limit across proxy nodes
-
-  const record = rateLimitMap.get(ip) || { count: 0, lastReset: now };
-
-  if (now - record.lastReset > windowMs) {
-    record.count = 1;
-    record.lastReset = now;
-  } else {
-    record.count++;
-  }
-
-  rateLimitMap.set(ip, record);
-
-  // prevent memory leak
-  if (rateLimitMap.size > 2000) {
-    rateLimitMap.clear();
-  }
-
-  return record.count > maxRequests;
+function createMiddlewareSupabaseClient(request: NextRequest, response: NextResponse) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set({ name, value: "", ...options });
+        },
+      },
+    }
+  );
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
-  
-  // ── 0. Global Maintenance Protocol Check ───────────────────────────────────
-  // Check if current path is allowed during maintenance
-  const isAllowedRoute = MAINTENANCE_ALLOWED_ROUTES.some(route => 
-    pathname.startsWith(route)
-  ) || pathname.startsWith('/_next') || pathname.startsWith('/favicon');
 
-  // Check if it's a customer route that should be blocked
-  const isCustomerRoute = CUSTOMER_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(route + '/')
-  );
+  // ── 0. Global Maintenance Protocol Check (Covers ALL non-admin routes, including /{slug}) ──
+  const isMaintenanceExempt =
+    MAINTENANCE_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    /\.(?:svg|png|jpg|jpeg|webp|ico|json|xml|txt|css|js|woff2?)$/i.test(pathname);
 
-  // If it's a customer route and not allowed, check maintenance mode
-  if (isCustomerRoute && !isAllowedRoute) {
+  if (!isMaintenanceExempt) {
     try {
-      const { data, error } = await supabaseService
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'maintenance_mode')
-        .single();
+      const supabaseService = getServiceClient();
+      if (supabaseService) {
+        const { data, error } = await supabaseService
+          .from("platform_settings")
+          .select("value")
+          .eq("key", "maintenance_mode")
+          .single();
 
-      // If maintenance mode is active, redirect to maintenance page
-      if (!error && data?.value === true) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/maintenance';
-        return NextResponse.redirect(url);
+        if (!error && isMaintenanceEnabled(data?.value)) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/maintenance";
+          return NextResponse.redirect(url);
+        }
       }
     } catch (error) {
-      console.error('Maintenance check error:', error);
-      // If there's an error checking maintenance, allow access to prevent breaking the site
+      console.error("[Proxy] Maintenance check error:", error);
     }
   }
-  
-  // ── 1. API Rate Limiting protection ───────────────────────────────────────
+
+  // ── 1. API Rate Limiting Protection ────────────────────────────────────────
   if (pathname.startsWith("/api/")) {
-    const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
-    if (applyRateLimit(ip)) {
+    const ip = getClientIp(request);
+    const { success } = apiLimiter.check(`api:${ip}`);
+    if (!success) {
       return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
     }
   }
 
-  // ── 1. Protect /admin Route ───────────────────────────────────────────────
+  // ── 2. Protect /admin Route (Strictly via SSR cookie auth; no UA/query bypass) ──
   if (pathname.startsWith("/admin")) {
-    const userAgent = request.headers.get("user-agent") || "";
-    const isElectronReq = userAgent.includes("Electron") || request.nextUrl.searchParams.get("electron") === "1";
-
-    // Electron renderer uses localStorage for Supabase sessions (not SSR cookies).
-    // Admin page has its own client-side checkUser() hook for Electron.
-    if (!isElectronReq) {
-      // Build a Supabase server client to read the session from cookies
-      const response = NextResponse.next({
-        request: { headers: request.headers },
-      });
-
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return request.cookies.get(name)?.value;
-            },
-            set(name: string, value: string, options: CookieOptions) {
-              response.cookies.set({ name, value, ...options });
-            },
-            remove(name: string, options: CookieOptions) {
-              response.cookies.set({ name, value: "", ...options });
-            },
-          },
-        }
-      );
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        // Not authenticated — redirect to login with return URL
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-
-      return response;
-    }
-  }
-
-  // ── 2. Protect /platform-admin — CEO-only gate ─────────────────────────
-  if (pathname.startsWith("/platform-admin")) {
     const response = NextResponse.next({
       request: { headers: request.headers },
     });
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({ name, value: "", ...options });
-          },
-        },
-      }
-    );
+    const supabase = createMiddlewareSupabaseClient(request, response);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // 1. Not logged in -> Login
     if (!user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // 2. Logged in but NOT the CEO -> Redirect to their own shop admin
-    const ceoEmail = process.env.NEXT_PUBLIC_CEO_EMAIL?.trim().toLowerCase();
-    if (ceoEmail && user.email?.trim().toLowerCase() !== ceoEmail) {
+    return response;
+  }
+
+  // ── 3. Protect /platform-admin (Fail-Closed CEO Gate) ──────────────────────
+  if (pathname.startsWith("/platform-admin")) {
+    const response = NextResponse.next({
+      request: { headers: request.headers },
+    });
+
+    const supabase = createMiddlewareSupabaseClient(request, response);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const ceoEmail = (process.env.CEO_EMAIL || process.env.NEXT_PUBLIC_CEO_EMAIL)?.trim().toLowerCase();
+    const isAdminClaim = user.app_metadata?.role === "platform_admin";
+    const isCeoEmail = Boolean(ceoEmail && user.email?.trim().toLowerCase() === ceoEmail);
+
+    if (!isAdminClaim && !isCeoEmail) {
       console.warn(`[Security] Unauthorized access attempt to /platform-admin by ${user.email}`);
       return NextResponse.redirect(new URL("/admin", request.url));
     }
@@ -225,15 +139,16 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // ── 2. Prevent Open Redirect in Auth Callback ────────────────────────────
+  // ── 4. Prevent Open Redirect in Auth Callback ──────────────────────────────
   if (pathname === "/auth/callback") {
     const next = searchParams.get("next");
     if (next) {
-      // Only allow redirects to relative paths (no external URLs)
-      const isRelative = next.startsWith("/") && !next.startsWith("//") && !next.includes(":");
+      const isRelative =
+        next.startsWith("/") &&
+        !next.startsWith("//") &&
+        !next.includes("\\") &&
+        !next.includes(":");
       if (!isRelative) {
-        // Strip the dangerous `next` param and default to /admin,
-        // but preserve code and electron params for correct handling
         const safeUrl = new URL("/auth/callback", request.url);
         const code = searchParams.get("code");
         const electron = searchParams.get("electron");
@@ -245,25 +160,16 @@ export async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-
-  // Add a unique request ID for tracing/logging (DevOps standard)
-  const requestId = crypto.randomUUID();
-  response.headers.set('x-request-id', requestId);
-
+  response.headers.set("x-request-id", crypto.randomUUID());
   return response;
 }
 
 export const config = {
   matcher: [
-    // Match all routes except static files and images for maintenance mode
     "/((?!_next/static|_next/image|favicon.ico).*)",
-    // Rate limit all backend infrastructure endpoints
     "/api/:path*",
-    // Match /admin and all sub-routes
     "/admin/:path*",
-    // CEO-only command center
     "/platform-admin/:path*",
-    // Match the auth callback for open redirect protection
     "/auth/callback",
   ],
 };

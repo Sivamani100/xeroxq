@@ -138,7 +138,7 @@ export default function SupportPage() {
                 try {
                   const { error } = await supabase.from("contact_submissions").insert({
                     shop_name: formData.get("name"),
-                    email: formData.get("email"),
+                    owner_email: formData.get("email"),
                     message: formData.get("message")
                   });
                   if (error) throw error;

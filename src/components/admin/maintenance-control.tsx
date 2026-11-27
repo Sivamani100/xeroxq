@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, AlertTriangle, Power, Loader2, Globe, Lock, Unlock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isMaintenanceEnabled } from "@/lib/maintenance";
 
 export function MaintenanceControl() {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -18,10 +19,10 @@ export function MaintenanceControl() {
           .from('platform_settings')
           .select('value')
           .eq('key', 'maintenance_mode')
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
-          setIsMaintenance(!!data.value);
+          setIsMaintenance(isMaintenanceEnabled(data.value));
         }
       } catch (error) {
         console.error('Error fetching maintenance status:', error);
@@ -41,7 +42,7 @@ export function MaintenanceControl() {
         table: 'platform_settings',
         filter: 'key=eq.maintenance_mode'
       }, (payload) => {
-        setIsMaintenance(!!payload.new.value);
+        setIsMaintenance(isMaintenanceEnabled(payload.new?.value));
         setLastUpdate(new Date());
       })
       .subscribe();
@@ -55,16 +56,19 @@ export function MaintenanceControl() {
     setToggling(true);
     
     try {
-      const adminKey = process.env.NEXT_PUBLIC_ADMIN_MAINTENANCE_KEY || 'xeroxq-admin-2024';
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Authentication required to change maintenance mode');
+      }
       
       const response = await fetch('/api/maintenance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           maintenance_mode: !isMaintenance,
-          admin_key: adminKey
         })
       });
 

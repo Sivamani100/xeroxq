@@ -10,26 +10,33 @@ import { z } from "zod";
 // ── 1. Shop Schema ─────────────────────────────────────────────────────────
 export const ShopSchema = z.object({
   name: z.string()
+    .trim()
     .min(2, "Shop name must be at least 2 characters")
     .max(80, "Shop name is too long"),
   slug: z.string()
-    .min(3, "Shop link must be at least 3 characters")
+    .trim()
+    .toLowerCase()
+    .min(2, "Shop link must be at least 2 characters")
     .max(50, "Shop link is too long")
-    .regex(/^[a-z0-9-]+$/, "Shop link can only contain letters, numbers, and hyphens"),
-  phone: z.string()
-    .max(20, "Phone number is too long")
-    .optional()
-    .nullable(),
-  upi_id: z.string()
-    .regex(/^[\w.\-+]+@[\w.]+$/, "Invalid UPI ID format")
-    .max(50)
-    .optional()
-    .nullable(),
+    .regex(/^[a-z0-9-]+$/, "Shop link can only contain letters, numbers, and hyphens")
+    .optional(),
+  custom_slug: z.boolean().optional(),
+  phone: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() !== "" ? val.trim() : null),
+    z.string().max(30, "Phone number is too long").nullable().optional()
+  ),
+  upi_id: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() !== "" ? val.trim() : null),
+    z.string()
+      .regex(/^[\w.\-+]+@[\w.]+$/, "Invalid UPI ID format (e.g. name@upi)")
+      .max(50, "UPI ID is too long")
+      .nullable()
+      .optional()
+  ),
   shop_location: z.string()
-    .min(5, "Location must be at least 5 characters")
-    .max(200, "Location is too long")
-    .optional()
-    .nullable(),
+    .trim()
+    .min(2, "Shop location is required (at least 2 characters)")
+    .max(200, "Location is too long"),
   price_mono: z.number().min(0).max(100).optional(),
   price_color: z.number().min(0).max(200).optional(),
   is_open: z.boolean().optional(),

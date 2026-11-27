@@ -1,35 +1,32 @@
 /**
- * XeroxQ — Sliding Window Rate Limiter
- * In-memory, no external dependencies. Works on Vercel Edge and Node.js runtimes.
- * 
- * Usage:
- *   const limiter = rateLimit({ windowMs: 60_000, max: 20 });
- *   const { success } = await limiter.check(ip);
- *   if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+ * XeroxQ — Bounded Sliding Window Rate Limiter
+ * Note: In multi-instance serverless deployments, replace with Redis/Upstash for global coordination.
  */
 
-interface RateLimitStore {
-  [key: string]: number[];
-}
-
 interface RateLimitConfig {
-  /** Time window in milliseconds */
   windowMs: number;
-  /** Maximum requests allowed within the window */
   max: number;
 }
 
-// Module-level store (persists across requests in the same serverless instance)
-const store: RateLimitStore = {};
+const MAX_TRACKED_KEYS = 5000;
+const store = new Map<string, number[]>();
 
-// Cleanup old entries every 5 minutes to prevent memory bloat
-setInterval(() => {
+// Periodically evict stale keys without clearing active buckets
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
-  for (const key in store) {
-    store[key] = store[key].filter((timestamp) => now - timestamp < 300_000);
-    if (store[key].length === 0) delete store[key];
+  for (const [key, timestamps] of store.entries()) {
+    const fresh = timestamps.filter((ts) => now - ts < 300_000);
+    if (fresh.length === 0) {
+      store.delete(key);
+    } else {
+      store.set(key, fresh);
+    }
   }
 }, 5 * 60 * 1000);
+
+if (typeof cleanupTimer === "object" && "unref" in cleanupTimer) {
+  cleanupTimer.unref();
+}
 
 export function rateLimit(config: RateLimitConfig) {
   const { windowMs, max } = config;
@@ -38,35 +35,54 @@ export function rateLimit(config: RateLimitConfig) {
     check(identifier: string): { success: boolean; remaining: number; resetAt: number } {
       const now = Date.now();
       const windowStart = now - windowMs;
+      const existing = store.get(identifier) || [];
+      const active = existing.filter((ts) => ts > windowStart);
 
-      if (!store[identifier]) {
-        store[identifier] = [];
+      if (active.length >= max) {
+        // Refresh insertion order cleanly and reject
+        store.delete(identifier);
+        store.set(identifier, active);
+        return {
+          success: false,
+          remaining: 0,
+          resetAt: active[0] + windowMs,
+        };
       }
 
-      // Evict timestamps outside the window
-      store[identifier] = store[identifier].filter((ts) => ts > windowStart);
+      active.push(now);
 
-      const count = store[identifier].length;
-      const remaining = Math.max(0, max - count - 1);
-      const resetAt = store[identifier][0] ? store[identifier][0] + windowMs : now + windowMs;
-
-      if (count >= max) {
-        return { success: false, remaining: 0, resetAt };
+      // Evict oldest single key if bounded capacity is exceeded (never clear whole map)
+      if (!store.has(identifier) && store.size >= MAX_TRACKED_KEYS) {
+        const oldestKey = store.keys().next().value;
+        if (oldestKey !== undefined) {
+          store.delete(oldestKey);
+        }
       }
 
-      store[identifier].push(now);
-      return { success: true, remaining, resetAt };
+      store.delete(identifier);
+      store.set(identifier, active);
+
+      return {
+        success: true,
+        remaining: Math.max(0, max - active.length),
+        resetAt: active[0] + windowMs,
+      };
     },
   };
 }
 
 /**
- * Extracts the real IP from a Next.js request, handling proxies and Vercel's CDN.
+ * Extracts client IP preferring trusted proxy headers over raw spoofable chains.
  */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.headers.get("x-real-ip") || "127.0.0.1";
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  const vercelIp = req.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+  if (vercelIp) return vercelIp;
+
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) return forwarded;
+
+  return "unknown-ip";
 }

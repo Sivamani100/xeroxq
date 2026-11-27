@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getPublicOrigin } from "@/lib/site-url";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Mail, 
@@ -150,9 +151,7 @@ export default function Login() {
       if (isElectron) {
         // ── Desktop: get OAuth URL, open in system browser ──────────────────
         // We use signInWithOAuth with skipBrowserRedirect=true to just get the URL
-        const oauthBase = typeof window !== "undefined" && window.location.origin.includes("localhost")
-          ? "http://127.0.0.1:3000"
-          : "https://xeroxq.arkio.in";
+        const oauthBase = getPublicOrigin();
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider,
@@ -191,12 +190,8 @@ export default function Login() {
 
     try {
       const isElectron = !!(window.electron);
-      // In Electron: don't pass redirectTo — let Supabase use the configured Site URL
-      // (https://xeroxq.arkio.in/auth/reset-password). Passing 127.0.0.1 would be
-      // rejected as an unauthorized redirect URL by Supabase.
-      // In web: use the current origin so it works both in dev and production.
       const redirectTo = isElectron
-        ? `https://xeroxq.arkio.in/auth/callback?next=/auth/reset-password`
+        ? `${getPublicOrigin()}/auth/callback?next=/auth/reset-password`
         : `${window.location.origin}/auth/callback?next=/auth/reset-password`;
 
       // Wrap in a timeout so it never hangs forever if Supabase is unreachable

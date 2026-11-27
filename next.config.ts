@@ -43,9 +43,10 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com",
+      `script-src 'self' ${isDev ? "'unsafe-eval' " : ""}'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com`,
       "style-src 'self' 'unsafe-inline' 'unsafe-hashes' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
+      "object-src 'none'",
       "img-src 'self' data: blob: https://vxittblwbyusehsrgffd.supabase.co https://api.qrserver.com https://i.pravatar.cc https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com",
       `connect-src 'self' ${isDev ? "ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:* ws: wss:" : ""} https://vxittblwbyusehsrgffd.supabase.co wss://vxittblwbyusehsrgffd.supabase.co https://www.ilovepdf.com https://www.google-analytics.com https://analytics.google.com https://va.vercel-scripts.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com`,
       "frame-ancestors 'none'",
@@ -60,6 +61,14 @@ const isDesktopBuild = process.env.BUILD_DESKTOP === "true";
 
 const nextConfig: NextConfig = {
   ...(isDesktopBuild ? { output: "export" } : {}),
+
+  // ── Desktop-build: skip Next.js's own generated type-validator ──────────────
+  // When api/ routes are stashed for the static export, Next.js re-generates
+  // .next/dev/types/validator.ts referencing only the remaining routes, which
+  // then fails to find ./routes.js for the stashed paths.  We already enforce
+  // types via `tsc --noEmit` and `npm run build` (the full web build) so it is
+  // safe to bypass the generated check for the Electron static export only.
+  ...(isDesktopBuild ? { typescript: { ignoreBuildErrors: true } } : {}),
   // ── Allowed Dev Origins for Electron / local cross-origin HMR ───────────────
   allowedDevOrigins: ["127.0.0.1", "localhost", "127.0.0.1:3000", "localhost:3000"],
 

@@ -4,6 +4,7 @@ const pdfToPrinter = require('pdf-to-printer');
 const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
+const { pathToFileURL } = require('url');
 
 // Register 'app://' as a privileged scheme before app ready
 protocol.registerSchemesAsPrivileged([
@@ -26,7 +27,7 @@ if (!app.isPackaged) {
 
 // Set Windows App User Model ID so Windows taskbar uses XeroxQ name & custom icon
 if (process.platform === 'win32') {
-  app.setAppUserModelId('XeroxQ');
+  app.setAppUserModelId('com.xeroxq.desktop');
 }
 
 // ── Single Instance Lock (required for deep-link on Windows) ─────────────────
@@ -37,6 +38,7 @@ if (process.platform === 'win32') {
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
+  process.exit(0);
 }
 
 // ── Deep Link / OAuth Protocol ───────────────────────────────────────────────
@@ -102,13 +104,16 @@ app.on('open-url', (event, url) => {
 });
 
 function handleDeepLink(rawUrl) {
-  console.log('[XeroxQ OAuth] Deep link received (raw):', rawUrl);
   try {
-    // Decode any URL-encoded characters Windows may have applied
     const url = decodeURIComponent(rawUrl);
-    console.log('[XeroxQ OAuth] Deep link decoded:', url);
-
     const parsed = new URL(url);
+
+    if (parsed.protocol !== 'xeroxq:' || (parsed.hostname !== 'auth' && !parsed.pathname.startsWith('/auth'))) {
+      console.warn('[XeroxQ OAuth] Ignored untrusted deep-link target:', parsed.protocol, parsed.hostname);
+      return;
+    }
+
+    console.log('[XeroxQ OAuth] Deep link received:', `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`);
 
     // Case 1: Server forwarded the raw PKCE code for client-side exchange
     const code = parsed.searchParams.get('code');
@@ -186,37 +191,65 @@ if (process.platform === 'win32') {
 
 let mainWindow;
 
-// Returns the correct icon based on platform, system theme, and availability
+// Returns the correct desktop app icon based on logo_color.png and build/icon.ico
 function getIcon() {
-  const isDark = nativeTheme.shouldUseDarkColors;
   const icoPath = path.join(__dirname, '../build/icon.ico');
-  const whiteSvgPath = path.join(__dirname, '../public/xeroxq_logo_white.svg');
-  const darkSvgPath = path.join(__dirname, '../public/xeroxq_logo_dark.svg');
-
-  const themeSvg = isDark ? whiteSvgPath : darkSvgPath;
-  if (fs.existsSync(themeSvg)) {
-    const img = nativeImage.createFromPath(themeSvg);
-    if (!img.isEmpty()) return img;
-  }
+  const logoColorPath = path.join(__dirname, '../public/logo_color.png');
+  const pngPath = path.join(__dirname, '../public/icon.png');
 
   if (process.platform === 'win32' && fs.existsSync(icoPath)) {
     return icoPath;
   }
-  return path.join(__dirname, '../public/icon.png');
+  if (fs.existsSync(logoColorPath)) return logoColorPath;
+  if (fs.existsSync(pngPath)) return pngPath;
+  if (fs.existsSync(icoPath)) return icoPath;
+
+  return logoColorPath;
 }
 
 // Update icon dynamically when system theme changes
 nativeTheme.on('updated', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    const icon = getIcon();
-    mainWindow.setIcon(icon);
+    const iconPath = getIcon();
+    const icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      mainWindow.setIcon(icon);
+    }
   }
 });
 
+function isAllowedAppNavigation(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+    if (!app.isPackaged) {
+      return (
+        (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+        (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')
+      );
+    }
+    return parsed.protocol === 'app:' && parsed.hostname === 'local';
+  } catch {
+    return false;
+  }
+}
+
+function attachNavigationGuards(win) {
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (event, targetUrl) => {
+    if (!isAllowedAppNavigation(targetUrl)) {
+      console.warn('[XeroxQ Security] Blocked unexpected navigation:', targetUrl);
+      event.preventDefault();
+    }
+  });
+}
+
 function createWindow() {
+  const iconPath = getIcon();
+  const appIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null;
+
   mainWindow = new BrowserWindow({
     title: 'XeroxQ',
-    icon: getIcon(),
+    icon: (appIcon && !appIcon.isEmpty()) ? appIcon : iconPath,
     width: 1200,
     height: 800,
     titleBarStyle: 'hidden',
@@ -233,10 +266,19 @@ function createWindow() {
     },
   });
 
+  if (appIcon && !appIcon.isEmpty()) {
+    mainWindow.setIcon(appIcon);
+  }
+  if (process.platform === 'darwin' && app.dock && appIcon && !appIcon.isEmpty()) {
+    app.dock.setIcon(appIcon);
+  }
+
   // Prevent Next.js page title (SEO metadata) from overwriting the clean app title bar
   mainWindow.on('page-title-updated', (event) => {
     event.preventDefault();
   });
+
+  attachNavigationGuards(mainWindow);
 
   // Explicitly remove the default application menu completely
   Menu.setApplicationMenu(null);
@@ -316,9 +358,19 @@ ipcMain.handle('open-reset-password-url', async (_event, url) => {
 // ── IPC: Open dedicated XeroxQ Studio window ──────────────────────────────
 ipcMain.handle('open-studio-window', async (_event, params) => {
   try {
+    const docPath = typeof params?.documentPath === 'string' ? params.documentPath.trim() : '';
+    const allowedRemote = docPath.startsWith('http://') || docPath.startsWith('https://')
+      ? isTrustedRemotePrintUrl(docPath)
+      : docPath.startsWith('blob:') || docPath.startsWith('data:image/') || docPath.startsWith('data:application/pdf') || (docPath.startsWith('/') && !docPath.startsWith('//'));
+    if (!docPath || !allowedRemote) {
+      return { success: false, error: 'Untrusted document source blocked' };
+    }
+
+    const iconPath = getIcon();
+    const studioIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null;
     const studioWin = new BrowserWindow({
       title: 'XeroxQ Studio',
-      icon: getIcon(),
+      icon: studioIcon || iconPath,
       width: 1280,
       height: 900,
       minWidth: 1000,
@@ -338,10 +390,18 @@ ipcMain.handle('open-studio-window', async (_event, params) => {
       },
     });
 
+    if (studioIcon && !studioIcon.isEmpty()) {
+      studioWin.setIcon(studioIcon);
+    }
+    if (process.platform === 'darwin' && app.dock && studioIcon && !studioIcon.isEmpty()) {
+      app.dock.setIcon(studioIcon);
+    }
+
     studioWin.maximize();
     studioWin.show();
 
     studioWin.on('page-title-updated', (event) => event.preventDefault());
+    attachNavigationGuards(studioWin);
 
     const isDev = !app.isPackaged;
     const query = new URLSearchParams(params).toString();
@@ -392,7 +452,7 @@ app.whenReady().then(async () => {
       const outDir = path.resolve(__dirname, '../out');
       let targetPath = path.normalize(path.join(outDir, relativePath));
 
-      if (!targetPath.startsWith(outDir)) {
+      if (targetPath !== outDir && !targetPath.startsWith(outDir + path.sep)) {
         console.error('[XeroxQ Security] Path traversal blocked:', targetPath);
         return new Response('Access Denied', { status: 403 });
       }
@@ -406,7 +466,11 @@ app.whenReady().then(async () => {
         }
       }
 
-      return net.fetch(`file://${targetPath}`);
+      if (!fs.existsSync(targetPath)) {
+        return new Response('File not found', { status: 404 });
+      }
+
+      return net.fetch(pathToFileURL(targetPath).href);
     } catch (e) {
       console.error('[XeroxQ Protocol Error]:', e);
       return new Response('File not found', { status: 404 });
@@ -449,12 +513,19 @@ app.on('activate', () => {
 // Helper for macOS/Linux CUPS-based lp printing
 function printUnix(filePath, options) {
   return new Promise((resolve, reject) => {
+    const safeToken = /^[a-zA-Z0-9._\-]{1,48}$/;
+    const safePrinter = /^[a-zA-Z0-9._\- @]{1,128}$/;
     const args = [];
     if (options.printer) {
-      args.push('-d', options.printer);
+      const printer = String(options.printer).trim();
+      if (!safePrinter.test(printer) || printer.startsWith('-')) {
+        return reject(new Error('Invalid printer name'));
+      }
+      args.push('-d', printer);
     }
     if (options.copies) {
-      args.push('-n', String(options.copies));
+      const copies = Math.max(1, Math.min(999, Math.trunc(Number(options.copies) || 1)));
+      args.push('-n', String(copies));
     }
     if (options.monochrome) {
       // standard CUPS color management options for grayscale
@@ -469,14 +540,22 @@ function printUnix(filePath, options) {
       args.push('-o', 'landscape');
     }
     if (options.paperSize && options.paperSize !== 'Automatically Select') {
-      args.push('-o', `media=${options.paperSize}`);
+      const media = String(options.paperSize).trim();
+      if (!safeToken.test(media)) {
+        return reject(new Error('Invalid paperSize parameter'));
+      }
+      args.push('-o', `media=${media}`);
     }
     if (options.bin) {
-      args.push('-o', `InputSlot=${options.bin}`);
+      const bin = String(options.bin).trim();
+      if (!safeToken.test(bin)) {
+        return reject(new Error('Invalid paper tray bin parameter'));
+      }
+      args.push('-o', `InputSlot=${bin}`);
     }
     
-    // filePath is appended as the last parameter to print
-    args.push(filePath);
+    // End CUPS options before passing filePath
+    args.push('--', filePath);
     
     console.log(`[XeroxQ Unix Spooler] Spawning lp with arguments:`, args);
     execFile('lp', args, (error, stdout, stderr) => {
@@ -522,48 +601,162 @@ function getPrintersUnix() {
   });
 }
 
-// IPC handler for printing natively
-ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) => {
-  const isTempFile = !!(base64Data || (filePath && filePath.startsWith('http')));
-  let targetPath = filePath;
-
+function isTrustedRemotePrintUrl(rawUrl) {
   try {
-    // Handle incoming Base64 payload or Remote URL
-    if (base64Data) {
-      const base64Content = base64Data.split(';base64,').pop();
-      let ext = '.pdf';
-      if (base64Data.includes('data:image/png')) ext = '.png';
-      else if (base64Data.includes('data:image/jpeg') || base64Data.includes('data:image/jpg')) ext = '.jpg';
-      else if (base64Data.includes('data:application/pdf')) ext = '.pdf';
-      else if (filePath) ext = path.extname(filePath.split('?')[0]) || '.pdf';
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    let configuredHost = '';
+    if (configuredSiteUrl) {
+      try {
+        configuredHost = new URL(configuredSiteUrl).hostname.toLowerCase();
+      } catch {
+        configuredHost = '';
+      }
+    }
+    if (parsed.protocol === 'https:') {
+      return (
+        host.endsWith('.supabase.co') ||
+        host.endsWith('.supabase.in') ||
+        (configuredHost && host === configuredHost) ||
+        host === 'localhost' ||
+        host === '127.0.0.1'
+      );
+    }
+    if (parsed.protocol === 'http:' && !app.isPackaged) {
+      return host === 'localhost' || host === '127.0.0.1';
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
-      targetPath = path.join(printJobsDir, `xeroxq-print-${Date.now()}${ext}`);
-      fs.writeFileSync(targetPath, base64Content, { encoding: 'base64' });
-    } else if (filePath && filePath.startsWith('http')) {
-      const https = require('https');
-      const ext = filePath.split('?')[0].endsWith('.png') ? '.png' : '.pdf';
-      targetPath = path.join(printJobsDir, `xeroxq-remote-${Date.now()}${ext}`);
-      
-      console.log(`[XeroxQ] Fetching remote mesh: ${filePath}`);
-      
-      const file = fs.createWriteStream(targetPath);
-      await new Promise((resolve, reject) => {
-        https.get(filePath, (response) => {
-          if (response.statusCode !== 200) {
-            reject(new Error(`Server returned status code ${response.statusCode}`));
-            return;
-          }
-          response.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            resolve();
+function downloadTrustedRemoteFile(rawUrl, destPath, redirectsLeft = 3) {
+  const MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    if (!isTrustedRemotePrintUrl(rawUrl)) {
+      return reject(new Error('Untrusted remote print URL rejected'));
+    }
+    const parsed = new URL(rawUrl);
+    const transport = parsed.protocol === 'https:' ? require('https') : require('http');
+    const req = transport.get(parsed, (response) => {
+      if (
+        response.statusCode &&
+        response.statusCode >= 300 &&
+        response.statusCode < 400 &&
+        response.headers.location
+      ) {
+        response.resume();
+        if (redirectsLeft <= 0) {
+          return reject(new Error('Too many redirects while fetching document'));
+        }
+        const redirectTarget = new URL(response.headers.location, parsed).toString();
+        return downloadTrustedRemoteFile(redirectTarget, destPath, redirectsLeft - 1)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (response.statusCode !== 200) {
+        response.resume();
+        return reject(new Error(`Server returned status code ${response.statusCode}`));
+      }
+
+      const contentLength = Number(response.headers['content-length'] || 0);
+      if (contentLength > MAX_DOWNLOAD_BYTES) {
+        response.destroy();
+        return reject(new Error('Document exceeds 50MB download limit'));
+      }
+
+      const file = fs.createWriteStream(destPath);
+      let received = 0;
+      response.on('data', (chunk) => {
+        received += chunk.length;
+        if (received > MAX_DOWNLOAD_BYTES) {
+          response.destroy();
+          file.close(() => {
+            fs.unlink(destPath, () => {});
+            reject(new Error('Document exceeds 50MB download limit'));
           });
-        }).on('error', (err) => {
-          fs.unlink(targetPath, () => {});
+        }
+      });
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(() => resolve());
+      });
+      file.on('error', (err) => {
+        file.close(() => {
+          fs.unlink(destPath, () => {});
           reject(err);
         });
       });
+    });
+    req.setTimeout(30000, () => {
+      req.destroy(new Error('Document download timed out'));
+    });
+    req.on('error', (err) => {
+      fs.unlink(destPath, () => {});
+      reject(err);
+    });
+  });
+}
+
+// IPC handler for printing natively
+ipcMain.handle('print-native', async (_event, { filePath, base64Data, options = {} }) => {
+  const resolvedJobsDir = path.resolve(printJobsDir);
+  const isTempFile = !!(base64Data || (filePath && (filePath.startsWith('http://') || filePath.startsWith('https://'))));
+  let targetPath = '';
+
+  try {
+    // Handle incoming Base64 payload, trusted remote signed URL, or isolated printJobsDir file only
+    if (base64Data) {
+      if (typeof base64Data !== 'string') {
+        throw new Error('Invalid base64 print payload');
+      }
+      const base64Content = base64Data.split(';base64,').pop() || '';
+      if (!base64Content || base64Content.length > 70 * 1024 * 1024) {
+        throw new Error('Base64 print payload empty or exceeds size limit');
+      }
+      let ext = '.pdf';
+      if (base64Data.includes('data:image/png')) ext = '.png';
+      else if (base64Data.includes('data:image/jpeg') || base64Data.includes('data:image/jpg')) ext = '.jpg';
+      else if (base64Data.includes('data:image/webp')) ext = '.webp';
+      else if (base64Data.includes('data:application/pdf')) ext = '.pdf';
+
+      targetPath = path.join(resolvedJobsDir, `xeroxq-print-${Date.now()}${ext}`);
+      fs.writeFileSync(targetPath, base64Content, { encoding: 'base64' });
+    } else if (filePath && (filePath.startsWith('https://') || filePath.startsWith('http://'))) {
+      if (!isTrustedRemotePrintUrl(filePath)) {
+        throw new Error('Blocked untrusted remote document URL');
+      }
+      const pathname = new URL(filePath).pathname.toLowerCase();
+      let ext = '.pdf';
+      if (pathname.endsWith('.png')) ext = '.png';
+      else if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg')) ext = '.jpg';
+      else if (pathname.endsWith('.webp')) ext = '.webp';
+
+      targetPath = path.join(resolvedJobsDir, `xeroxq-remote-${Date.now()}${ext}`);
+      await downloadTrustedRemoteFile(filePath, targetPath);
+    } else if (typeof filePath === 'string' && filePath.trim()) {
+      const candidatePath = path.resolve(filePath.trim());
+      if (!candidatePath.startsWith(resolvedJobsDir + path.sep) || !fs.existsSync(candidatePath)) {
+        throw new Error('Blocked arbitrary local or network file print path');
+      }
+      targetPath = candidatePath;
+    } else {
+      throw new Error('Missing print document source');
     }
+
+    const sanitizedCopies = Math.max(1, Math.min(999, Math.trunc(Number(options.copies) || 1)));
+    const sanitizedPrinter =
+      typeof options.printer === 'string' && /^[a-zA-Z0-9._\- @]{1,128}$/.test(options.printer.trim()) && !options.printer.trim().startsWith('-')
+        ? options.printer.trim()
+        : undefined;
+    const sanitizedPaperSize =
+      typeof options.paperSize === 'string' && /^[a-zA-Z0-9._\-]{1,48}$/.test(options.paperSize.trim())
+        ? options.paperSize.trim()
+        : undefined;
+    const sanitizedOrientation = options.orientation === 'landscape' ? 'landscape' : 'portrait';
 
     // ── Map UI options → pdf-to-printer API (Windows) ────────────────────────
     // IMPORTANT: pdf-to-printer uses:
@@ -573,17 +766,17 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
     //   - `monochrome: true`  for black & white
     //   - `copies: number`  for number of copies
     const printOptions = {
-      printer: options.printer,
-      copies: options.copies || 1,
+      ...(sanitizedPrinter ? { printer: sanitizedPrinter } : {}),
+      copies: sanitizedCopies,
       monochrome: options.monochrome === true,                       // B&W toggle
       side: options.side === 'duplex' ? 'duplex' : 'simplex',       // Duplex string
-      orientation: options.orientation || 'portrait',
+      orientation: sanitizedOrientation,
       scale: 'fit',                                                  // Fit content to page
     };
 
     // Paper size (only pass if explicitly set, not the default A4 fallback)
-    if (options.paperSize && options.paperSize !== 'A4') {
-      printOptions.paperSize = options.paperSize;
+    if (sanitizedPaperSize && sanitizedPaperSize !== 'A4') {
+      printOptions.paperSize = sanitizedPaperSize;
     }
 
     // ── Page Range mapping ───────────────────────────────────────────────────
@@ -592,10 +785,11 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
       printOptions.subset = 'odd';                                   // Print only odd pages
     } else if (pageRange === 'even') {
       printOptions.subset = 'even';                                  // Print only even pages
-    } else if (pageRange && pageRange !== 'all' && pageRange.trim()) {
-      // Custom input: user typed "1,3,5" or "1-3,5" — pass directly as `pages`
-      // Normalize: remove spaces so "1, 3, 5" becomes "1,3,5"
-      printOptions.pages = pageRange.replace(/\s+/g, '');
+    } else if (typeof pageRange === 'string' && pageRange !== 'all' && pageRange.trim()) {
+      const cleanedPages = pageRange.replace(/\s+/g, '');
+      if (/^[0-9,\-]+$/.test(cleanedPages)) {
+        printOptions.pages = cleanedPages;
+      }
     }
     // If 'all', don't set pages or subset — SumatraPDF prints everything by default
 
@@ -605,12 +799,12 @@ ipcMain.handle('print-native', async (event, { filePath, base64Data, options }) 
       await pdfToPrinter.print(targetPath, printOptions);
     } else {
       await printUnix(targetPath, {
-        printer: options.printer,
-        copies: options.copies || 1,
+        printer: sanitizedPrinter,
+        copies: sanitizedCopies,
         monochrome: options.monochrome === true,
         side: options.side === 'duplex' ? 'duplex' : 'simplex',
-        orientation: options.orientation || 'portrait',
-        paperSize: options.paperSize,
+        orientation: sanitizedOrientation,
+        paperSize: sanitizedPaperSize,
       });
     }
 

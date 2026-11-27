@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin, timingSafeSecretMatch } from "@/lib/server-supabase";
 import { logger } from "@/lib/logger";
 
 // ── QA: E2E Sanity Flight Test ──────────────────────────────────────────
 // This professional diagnostic endpoint performs a "Full Circuit" test
 // of the platform's core dependency chain (DB Auth -> RLS -> Data Flow).
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (process.env.BUILD_DESKTOP === "true") {
-    return NextResponse.json({ success: true });
-  }
-  const authHeader = req.headers.get("Authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const cronSecret = process.env.CRON_SECRET ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
   // 1. Authorization: Only allow authorized monitoring tools
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !timingSafeSecretMatch(token, cronSecret)) {
     logger.security("Rejected unauthorized Sanity Audit request");
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -28,10 +26,7 @@ export async function GET(req: Request) {
   };
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getSupabaseAdmin();
 
     // Step 1: Database Reachability & Write Verification
     results.steps.push({ name: "DB Connectivity", status: "checking" });

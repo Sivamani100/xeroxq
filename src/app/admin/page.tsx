@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { getPublicOrigin, formatDisplayUrl } from "@/lib/site-url";
 import {
   Printer,
   Trash2,
@@ -36,13 +37,26 @@ import {
   BellOff,
   Smartphone,
   MapPin,
-  ShieldAlert
+  ShieldAlert,
+  AlertCircle,
+  Link2
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { TableVirtuoso } from "react-virtuoso";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import {
+  buildSlugCandidates,
+  fetchTakenShopSlugs,
+  finalizeSlugInput,
+  generateBaseShopSlugs,
+  insertWithUniqueSlug,
+  isReservedShopSlug,
+  MIN_SHOP_SLUG_LENGTH,
+  normalizeSlugTyping,
+  resolveAvailableSlug,
+} from "@/lib/shop-slug";
 import { extractPhoneFromUpi, generateWhatsAppLink } from "@/lib/whatsapp";
 
 import * as mammoth from "mammoth";
@@ -138,7 +152,21 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showQR, setShowQR] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
+  const [createShopError, setCreateShopError] = useState<string | null>(null);
   const [newShopData, setNewShopData] = useState({ name: "", phone: "", upi_id: "", shop_location: "", shop_lat: null as number | null, shop_lng: null as number | null });
+  const [shopSlugInput, setShopSlugInput] = useState("");
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const [slugAvailability, setSlugAvailability] = useState<{
+    checking: boolean;
+    resolvedSlug: string;
+    wasTaken: boolean;
+    isReserved: boolean;
+  }>({
+    checking: false,
+    resolvedSlug: "",
+    wasTaken: false,
+    isReserved: false,
+  });
   const [printingJobId, setPrintingJobId] = useState<string | null>(null);
   const [showingSettings, setShowingSettings] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -415,98 +443,66 @@ export default function AdminDashboard() {
     active: jobs.filter(j => j.status !== "printed").length
   };
 
-  // Get current location using browser geolocation API
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser");
-      return;
-    }
-
+  // Get current location using browser geolocation API with IP fallback
+  const getCurrentLocation = async () => {
     setIsGettingLocation(true);
     setLocationError(null);
     
-    console.log("[getCurrentLocation] Requesting location permission...");
+    console.log("[getCurrentLocation] Requesting location...");
 
-    // First check permission status
-    if ("permissions" in navigator) {
-      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        console.log("[getCurrentLocation] Permission state:", result.state);
-        if (result.state === 'denied') {
-          setLocationError("Location access previously denied. Please enable location permissions in your browser settings and refresh.");
-          setIsGettingLocation(false);
-          // Show center of India as display-only fallback (NOT saved to DB)
-          setTempLocation({ lat: 20.5937, lng: 78.9629 });
-          return;
+    const applyCoords = async (latitude: number, longitude: number) => {
+      console.log("[getCurrentLocation] Applying coordinates:", latitude, longitude);
+      setTempLocation({ lat: latitude, lng: longitude });
+      setShop(prev => prev ? { ...prev, shop_lat: latitude, shop_lng: longitude } : null);
+      setIsGettingLocation(false);
+      
+      if (shop?.id) {
+        const { error } = await supabase
+          .from("shops")
+          .update({ shop_lat: latitude, shop_lng: longitude })
+          .eq("id", shop.id);
+        if (error) console.error("[getCurrentLocation] Failed to save coordinates:", error);
+      }
+    };
+
+    const tryIpFallback = async () => {
+      try {
+        const res = await fetch("https://ipapi.co/json/", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.latitude && data.longitude) {
+            await applyCoords(Number(data.latitude), Number(data.longitude));
+            return true;
+          }
         }
-        
-        // If not denied, proceed with location request
-        requestLocation();
-      }).catch((error) => {
-        console.error("[getCurrentLocation] Permission query error:", error);
-        // If permission API fails, still try to get location
-        requestLocation();
-      });
-    } else {
-      // Fallback for browsers without permissions API
-      requestLocation();
-    }
+      } catch (e) {
+        console.warn("[getCurrentLocation] IP fallback error:", e);
+      }
+      return false;
+    };
 
-    function requestLocation() {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log("[getCurrentLocation] Location received:", position.coords);
-          const { latitude, longitude } = position.coords;
-          setTempLocation({ lat: latitude, lng: longitude });
-          // Update shop state with coordinates
-          setShop(prev => prev ? { ...prev, shop_lat: latitude, shop_lng: longitude } : null);
-          setIsGettingLocation(false);
-          
-          // Auto-save the coordinates to database
-          if (shop?.id) {
-            supabase
-              .from("shops")
-              .update({ shop_lat: latitude, shop_lng: longitude })
-              .eq("id", shop.id)
-              .then(({ error }) => {
-                if (error) {
-                  console.error("[getCurrentLocation] Failed to save coordinates:", error);
-                } else {
-                  console.log("[getCurrentLocation] Coordinates saved successfully");
-                }
-              });
+          applyCoords(position.coords.latitude, position.coords.longitude);
+        },
+        async (error) => {
+          console.warn("[getCurrentLocation] Browser geolocation error, attempting IP fallback:", error.message);
+          const ipOk = await tryIpFallback();
+          if (!ipOk) {
+            setLocationError("Unable to retrieve location automatically. Please search for your shop address.");
+            setIsGettingLocation(false);
+            setTempLocation({ lat: 20.5937, lng: 78.9629 });
           }
         },
-        (error) => {
-          console.error("[getCurrentLocation] Error:", {
-            code: error.code,
-            message: error.message,
-            PERMISSION_DENIED: error.PERMISSION_DENIED,
-            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-            TIMEOUT: error.TIMEOUT
-          });
-          
-          let errorMsg = "Unable to retrieve your location";
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMsg = "Location access denied. Please enable location permissions in your browser and refresh the page.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMsg = "Location information unavailable.";
-              break;
-            case error.TIMEOUT:
-              errorMsg = "Location request timed out.";
-              break;
-            default:
-              errorMsg = `Location error: ${error.message || 'Unknown error'}`;
-          }
-          setLocationError(errorMsg);
-          setIsGettingLocation(false);
-          
-          // Show center of India as display-only fallback (NOT saved to DB)
-          setTempLocation({ lat: 20.5937, lng: 78.9629 });
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
       );
+    } else {
+      const ipOk = await tryIpFallback();
+      if (!ipOk) {
+        setLocationError("Geolocation unavailable. Please search for your shop address.");
+        setIsGettingLocation(false);
+      }
     }
   };
 
@@ -826,15 +822,25 @@ export default function AdminDashboard() {
       const newJobs = data || [];
       const nowMs = Date.now();
 
-      // Trigger storage bucket cleanup for files older than 5 minutes that still have storage paths
-      const hasStaleStorageFiles = newJobs.some(j => {
+      // Delete expired files (>5 minutes old) via authenticated shopkeeper session
+      const staleJobs = newJobs.filter(j => {
         if (!j.file_path) return false;
         const createdMs = new Date(j.created_at).getTime();
         return nowMs - createdMs >= 5 * 60 * 1000;
       });
 
-      if (hasStaleStorageFiles) {
-        fetch("/api/cron/cleanup", { method: "POST" }).catch(() => {});
+      if (staleJobs.length > 0) {
+        const stalePaths = staleJobs.map(j => j.file_path).filter((p): p is string => Boolean(p));
+        const staleIds = staleJobs.map(j => j.id);
+        if (stalePaths.length > 0) {
+          Promise.resolve(supabase.storage.from("documents").remove(stalePaths)).catch(() => {});
+        }
+        Promise.resolve(
+          supabase
+            .from("jobs")
+            .update({ is_auto_deleted: true, file_path: null, deleted_at: new Date().toISOString() })
+            .in("id", staleIds)
+        ).catch(() => {});
       }
 
       // Auto-detect new files added by customers (Real-time polling sync)
@@ -859,35 +865,198 @@ export default function AdminDashboard() {
     }
   };
 
+  // Only track `shopSlugInput` as a dependency when the user is manually editing it
+  // so auto-updating the input from `newShopData.name` never triggers a redundant re-fetch.
+  const customSlugQuery = isSlugEdited ? shopSlugInput : "";
+
+  // Live preview & availability resolution for the Setup Your Shop URL field
+  useEffect(() => {
+    if (shop) return;
+
+    const trimmedName = newShopData.name.trim();
+    const cleanedCustom = finalizeSlugInput(customSlugQuery);
+
+    if (!isSlugEdited && trimmedName.length < 2) {
+      setShopSlugInput("");
+      setSlugAvailability({
+        checking: false,
+        resolvedSlug: "",
+        wasTaken: false,
+        isReserved: false,
+      });
+      return;
+    }
+
+    if (isSlugEdited && cleanedCustom.length < MIN_SHOP_SLUG_LENGTH) {
+      setSlugAvailability({
+        checking: false,
+        resolvedSlug: "",
+        wasTaken: false,
+        isReserved: false,
+      });
+      return;
+    }
+
+    const primaryTarget = isSlugEdited
+      ? cleanedCustom
+      : generateBaseShopSlugs(trimmedName).compact;
+
+    const candidates = buildSlugCandidates({
+      shopName: trimmedName || "shop",
+      preferredSlug: isSlugEdited ? cleanedCustom : undefined,
+      isCustomSlug: isSlugEdited,
+    });
+
+    const primaryReserved = isReservedShopSlug(primaryTarget);
+    const optimisticSlug = candidates[0] || primaryTarget;
+
+    if (!isSlugEdited) {
+      setShopSlugInput(optimisticSlug);
+    }
+
+    setSlugAvailability({
+      checking: true,
+      resolvedSlug: optimisticSlug,
+      wasTaken: false,
+      isReserved: primaryReserved,
+    });
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        let primaryTaken = false;
+        const resolved = await resolveAvailableSlug(candidates, async (batch) => {
+          const takenSet = await fetchTakenShopSlugs(
+            supabase as unknown as Parameters<typeof fetchTakenShopSlugs>[0],
+            batch
+          );
+          if (takenSet.has(primaryTarget)) {
+            primaryTaken = true;
+          }
+          return takenSet;
+        });
+
+        if (cancelled) return;
+
+        if (!isSlugEdited) {
+          setShopSlugInput(resolved);
+        }
+
+        setSlugAvailability({
+          checking: false,
+          resolvedSlug: resolved,
+          wasTaken: !primaryReserved && primaryTaken,
+          isReserved: primaryReserved,
+        });
+      } catch {
+        if (!cancelled) {
+          setSlugAvailability({
+            checking: false,
+            resolvedSlug: optimisticSlug,
+            wasTaken: false,
+            isReserved: primaryReserved,
+          });
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [shop, newShopData.name, customSlugQuery, isSlugEdited]);
+
   const handleCreateShop = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingShop(true);
+    setCreateShopError(null);
 
-    // Get the current session JWT — this is used for server-side auth, not owner_id from body
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("You must be logged in to create a shop.");
+      setCreateShopError("You must be logged in to create a shop.");
       setCreatingShop(false);
       return;
     }
 
     try {
-      // Auto-generate a unique slug from the shop name
-      const slug = newShopData.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 30) + "-" + Date.now().toString(36);
+      const name = newShopData.name.trim();
+      if (name.length < 2) {
+        throw new Error("Shop name must be at least 2 characters long.");
+      }
+
+      const location = newShopData.shop_location.trim();
+      if (!location || location.length < 2) {
+        throw new Error("Shop location is required. Please search and select or type your shop's address.");
+      }
+
+      const cleanedCustomSlug = finalizeSlugInput(shopSlugInput);
+      if (isSlugEdited && cleanedCustomSlug.length < MIN_SHOP_SLUG_LENGTH) {
+        throw new Error(`Shop link must be at least ${MIN_SHOP_SLUG_LENGTH} characters (letters, numbers, or hyphens).`);
+      }
+
+      const preferredSlug = isSlugEdited
+        ? cleanedCustomSlug
+        : generateBaseShopSlugs(name).compact;
+
+      // Packaged Electron uses static `app://` protocol where Next API routes don't run
+      if (typeof window !== "undefined" && window.location.protocol === "app:") {
+        const candidates = buildSlugCandidates({
+          shopName: name,
+          preferredSlug: isSlugEdited ? cleanedCustomSlug : undefined,
+          isCustomSlug: isSlugEdited,
+        });
+
+        const { data: createdShop, error } = await insertWithUniqueSlug<Shop>(
+          candidates,
+          supabase as unknown as Parameters<typeof insertWithUniqueSlug>[1],
+          async (finalSlug) =>
+            supabase
+              .from("shops")
+              .insert({
+                owner_id: session.user.id,
+                name,
+                slug: finalSlug,
+                contact_number: newShopData.phone.trim() || null,
+                upi_id: newShopData.upi_id.trim() || null,
+                shop_location: location,
+                shop_lat: newShopData.shop_lat,
+                shop_lng: newShopData.shop_lng,
+                price_mono: 3,
+                price_color: 10,
+                is_open: true,
+                require_customer_name: false,
+                generate_token: false,
+                show_copies: false,
+                show_color_mode: false,
+                accept_preorders: false,
+                approval_status: "pending",
+              })
+              .select()
+              .single()
+        );
+
+        if (error || !createdShop) {
+          throw new Error(error?.message || "Shop creation failed");
+        }
+
+        setShop(createdShop);
+        fetchJobs(createdShop.id);
+        return;
+      }
 
       const res = await fetch("/api/create-shop", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // JWT goes in header — server extracts owner_id from it, never from body
           "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          name: newShopData.name,
-          slug,
-          phone: newShopData.phone,
-          upi_id: newShopData.upi_id,
-          shop_location: newShopData.shop_location,
+          name: name,
+          slug: preferredSlug,
+          custom_slug: isSlugEdited,
+          phone: newShopData.phone.trim(),
+          upi_id: newShopData.upi_id.trim(),
+          shop_location: location,
           shop_lat: newShopData.shop_lat,
           shop_lng: newShopData.shop_lng,
         }),
@@ -900,7 +1069,7 @@ export default function AdminDashboard() {
       if (body.shop) fetchJobs(body.shop.id);
     } catch (error) {
       const e = error as Error;
-      alert("Error creating shop: " + e.message);
+      setCreateShopError(e.message || "Failed to create shop. Please check details and try again.");
     } finally {
       setCreatingShop(false);
     }
@@ -969,21 +1138,73 @@ export default function AdminDashboard() {
     const job = jobs.find(j => j.id === verifyingJobId);
     if (!job) return;
 
-    if (tokenChallengeInput === job.token) {
-      if (verificationMode === 'complete') {
-        await updateStatus(job.id, "printed");
-        setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
-      } else if (verificationMode === 'reprint') {
-        // Trigger the actual print logic for an already printed job
-        handlePrint(job);
-      }
+      if (tokenChallengeInput === job.token) {
+        if (verificationMode === 'complete') {
+          await updateStatus(job.id, "printed");
+          setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
+        } else if (verificationMode === 'reprint') {
+          // Trigger the actual print logic for an already printed job
+          handlePrint(job);
+        }
 
-      setVerifyingJobId(null);
-      setVerificationMode(null);
-      setTokenChallengeInput("");
-    } else {
-      alert("Verification Failed: Invalid Token Credentials");
+        setVerifyingJobId(null);
+        setVerificationMode(null);
+        setTokenChallengeInput("");
+      } else {
+        alert("Verification Failed: Invalid Token Credentials");
+      }
+    };
+
+  const escapeHtmlText = (value: string): string =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const sanitizeCanvasHtml = (rawHtml: string): string => {
+    if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+      return escapeHtmlText(rawHtml);
     }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(rawHtml, "text/html");
+    const blockedTags = ["script", "iframe", "object", "embed", "svg", "style", "meta", "link", "base", "form", "input", "button"];
+    for (const tag of blockedTags) {
+      doc.querySelectorAll(tag).forEach((el) => el.remove());
+    }
+    doc.querySelectorAll("*").forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        const val = attr.value.trim().toLowerCase();
+        if (name.startsWith("on") || name === "srcdoc") {
+          el.removeAttribute(attr.name);
+        } else if (["href", "src", "xlink:href", "action", "formaction"].includes(name)) {
+          const allowed =
+            val.startsWith("https://") ||
+            val.startsWith("http://") ||
+            val.startsWith("blob:") ||
+            val.startsWith("data:image/") ||
+            val.startsWith("/");
+          if (!allowed) el.removeAttribute(attr.name);
+        }
+      }
+    });
+    return doc.body.innerHTML;
+  };
+
+  const sanitizeMediaSrc = (src: string): string => {
+    const trimmed = (src || "").trim();
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.startsWith("https://") ||
+      lower.startsWith("http://") ||
+      lower.startsWith("blob:") ||
+      lower.startsWith("data:image/")
+    ) {
+      return escapeHtmlText(trimmed);
+    }
+    return "";
   };
 
   const handlePrint = async (job: Job) => {
@@ -1019,28 +1240,36 @@ export default function AdminDashboard() {
     setActivePrintJob(job);
     setIsDecrypting(true);
     setPrintPreviewUrl(null);
-    
-    // Optimistically update local state immediately for instant feedback
-    setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
 
     try {
-      // Fire status update and Storage signed URL concurrently for instant dialog opening
-      const [_, storageRes] = await Promise.all([
-        updateStatus(job.id, "printed").catch(e => console.error("Status update error:", e)),
-        supabase.storage.from("documents").createSignedUrl(job.file_path, 60 * 5)
-      ]);
+      // Optional server-side expiration & deletion guard before decrypting
+      const { data: actionAllowed } = await supabase.rpc("check_file_action_allowed", {
+        job_uuid: job.id,
+        action_type: "print",
+      });
+      if (actionAllowed === false) {
+        alert("Print blocked: file has expired or was deleted by the customer.");
+        setActivePrintJob(null);
+        return;
+      }
+
+      const storageRes = await supabase.storage.from("documents").createSignedUrl(job.file_path, 60 * 5);
 
       if (storageRes.error) {
         if (storageRes.error.message?.includes("Object not found") || (storageRes.error as { status?: number }).status === 404) {
           if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Delete stale database record too?")) {
             handleDeleteJob(job);
           }
+          setActivePrintJob(null);
           return;
         }
         throw storageRes.error;
       }
 
       if (storageRes.data?.signedUrl) {
+        await updateStatus(job.id, "printed");
+        setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
+
         const params = {
           documentPath: storageRes.data.signedUrl,
           jobId: job.id,
@@ -1148,14 +1377,13 @@ export default function AdminDashboard() {
           const zIndexCss = `z-index: ${item.zIndex || 0};`;
 
           if (item.rawHtml) {
-            // Basic XSS Sanitize: strip script tags and event handlers before document.write
-            const safeHtml = item.rawHtml
-              .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-              .replace(/on[a-z]+=/gi, "data-removed=");
+            const safeHtml = sanitizeCanvasHtml(item.rawHtml);
             imagesHtml += `<div style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; ${filterCss} ${zIndexCss}">${safeHtml}</div>`;
           } else {
-            const src = item.payloadUrl || "";
-            imagesHtml += `<img src="${src}" style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; object-fit: contain; ${filterCss} ${zIndexCss}" />`;
+            const safeSrc = sanitizeMediaSrc(item.payloadUrl || "");
+            if (safeSrc) {
+              imagesHtml += `<img src="${safeSrc}" style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; object-fit: contain; ${filterCss} ${zIndexCss}" />`;
+            }
           }
         });
 
@@ -1163,11 +1391,12 @@ export default function AdminDashboard() {
         pagesHtml += `<div class="print-page-container" style="width: 210mm; height: 297mm; position: relative; background: white; overflow: hidden; margin: 0; box-sizing: border-box;">${imagesHtml}</div>`;
       }
 
+      const safeTitleName = escapeHtmlText(activePrintJob.file_name || "Document");
       imgWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>XeroxQ Protocol | ${activePrintJob.file_name}</title>
+            <title>XeroxQ Protocol | ${safeTitleName}</title>
             <style>
               * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               @page { margin: 0; size: A4; }
@@ -1413,6 +1642,18 @@ export default function AdminDashboard() {
     e.preventDefault();
     setUpdatingSettings(true);
 
+    if (!shop?.shop_location || shop.shop_location.trim().length < 2) {
+      setNotifications(prev => [{
+        id: `sync-err-${Date.now()}`,
+        type: 'error',
+        message: "Location Required",
+        subMessage: "Shop location address cannot be empty. Please set your location.",
+        timestamp: new Date()
+      }, ...prev]);
+      setUpdatingSettings(false);
+      return;
+    }
+
     // Server/Client bound limits to prevent DB errors or logical abuse
     const monoPrice = Math.max(0, Math.min(1000, shop?.price_mono || 0));
     const colorPrice = Math.max(0, Math.min(1000, shop?.price_color || 0));
@@ -1652,10 +1893,9 @@ export default function AdminDashboard() {
     (job.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const publicWebUrl = "https://xeroxq.arkio.in";
+  const publicWebUrl = getPublicOrigin();
+  const publicDisplayHost = formatDisplayUrl(publicWebUrl) || "xeroxq.app";
   const qrUrl = shop?.slug ? `${publicWebUrl}/${shop.slug}` : "";
-
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}&color=0-0-0&bgcolor=255-255-255&margin=10`;
 
   if (loading) {
     return (
@@ -1717,12 +1957,16 @@ export default function AdminDashboard() {
 
   // --- STATE 1: INITIALIZE SHOP (Split-Screen) ---
   if (!shop) {
+    const cleanedCustomForDisplay = finalizeSlugInput(shopSlugInput);
+    const previewSlug = slugAvailability.resolvedSlug || cleanedCustomForDisplay;
+    const hasValidShopName = newShopData.name.trim().length >= 2;
+
     return (
-      <div className="flex w-full h-screen bg-white overflow-x-hidden relative">
+      <div className="flex w-full min-h-screen bg-white overflow-x-hidden relative">
         {/* Left Side (Form) */}
-        <div className="w-full lg:w-[630px] h-full flex flex-col justify-center px-6 lg:px-[40px] lg:pl-[100px] shrink-0 relative z-10 bg-white items-center lg:items-start">
-          <form onSubmit={handleCreateShop} className="flex flex-col gap-[31.54px] w-full max-w-[378px]">
-            <div className="flex flex-col gap-[1.75px] mb-4 text-center lg:text-left">
+        <div className="w-full lg:w-[630px] min-h-screen flex flex-col justify-center px-6 py-8 lg:px-[40px] lg:pl-[100px] shrink-0 relative z-10 bg-white items-center lg:items-start">
+          <form onSubmit={handleCreateShop} className="flex flex-col gap-5 w-full max-w-[378px]">
+            <div className="flex flex-col gap-[1.75px] mb-1 text-center lg:text-left">
               <h1 className="text-[40px] lg:text-[42.06px] leading-[1.2] font-bold text-black whitespace-nowrap">
                 Setup Your Shop
               </h1>
@@ -1731,7 +1975,7 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-[16.72px]">
+            <div className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-[5.57px]">
                 <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Name</label>
                 <input
@@ -1743,6 +1987,77 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewShopData({ ...newShopData, name: e.target.value })}
                 />
               </div>
+
+              {/* Shop URL Preview & Editor */}
+              <div className="flex flex-col gap-[5.57px]">
+                <div className="flex items-center justify-between">
+                  <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90 flex items-center gap-1.5" htmlFor="shop-slug-input">
+                    <Link2 className="w-3.5 h-3.5 text-auth-slate-50" />
+                    Shop Link
+                  </label>
+                  {isSlugEdited && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSlugEdited(false)}
+                      className="text-[11px] font-semibold text-primary-blue hover:underline cursor-pointer"
+                    >
+                      Auto-generate
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center w-full h-[46.79px] rounded-[5.57px] border border-[#E2E8F0] bg-[#F8FAFC] focus-within:bg-white focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all overflow-hidden">
+                  <span className="pl-3 pr-0.5 text-[12px] font-mono font-semibold text-auth-slate-50 select-none shrink-0">
+                    {publicDisplayHost}/
+                  </span>
+                  <input
+                    id="shop-slug-input"
+                    type="text"
+                    required
+                    placeholder="shopname"
+                    value={shopSlugInput}
+                    onChange={(e) => {
+                      setIsSlugEdited(true);
+                      setShopSlugInput(normalizeSlugTyping(e.target.value));
+                    }}
+                    onBlur={() => {
+                      if (isSlugEdited) {
+                        setShopSlugInput((prev) => finalizeSlugInput(prev));
+                      }
+                    }}
+                    className="flex-1 min-w-0 h-full pr-3 bg-transparent border-none outline-none font-mono text-[13px] font-bold text-black placeholder:text-auth-slate-20"
+                  />
+                </div>
+                <div className="min-h-[16px]">
+                  {!hasValidShopName && !isSlugEdited ? (
+                    <p className="text-[11px] text-auth-slate-50 font-medium">
+                      Your simple customer link will appear here.
+                    </p>
+                  ) : slugAvailability.checking ? (
+                    <p className="text-[11px] text-auth-slate-50 font-medium">
+                      Checking link availability...
+                    </p>
+                  ) : isSlugEdited && cleanedCustomForDisplay.length < MIN_SHOP_SLUG_LENGTH ? (
+                    <p className="text-[11px] text-amber-600 font-medium">
+                      Enter at least {MIN_SHOP_SLUG_LENGTH} characters (letters, numbers, or hyphens).
+                    </p>
+                  ) : slugAvailability.isReserved ? (
+                    <p className="text-[11px] text-amber-600 font-medium">
+                      That name is a system page — your shop will use{" "}
+                      <span className="font-mono font-bold">{publicDisplayHost}/{previewSlug}</span>
+                    </p>
+                  ) : slugAvailability.wasTaken ? (
+                    <p className="text-[11px] text-amber-600 font-medium">
+                      Already taken — your shop will use{" "}
+                      <span className="font-mono font-bold">{publicDisplayHost}/{previewSlug}</span>
+                    </p>
+                  ) : previewSlug ? (
+                    <p className="text-[11px] text-emerald-600 font-semibold">
+                      Available: <span className="font-mono">{publicDisplayHost}/{previewSlug}</span>
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-[5.57px]">
                 <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Phone Number</label>
                 <input
@@ -1766,7 +2081,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Location <span className="text-auth-slate-50 font-medium">(Required)</span></label>
+                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Location <span className="text-red-500 font-bold">*</span></label>
                 <LocationAutocomplete
                   value={newShopData.shop_location}
                   onChange={(value, lat, lng) => setNewShopData({ 
@@ -1776,15 +2091,23 @@ export default function AdminDashboard() {
                     shop_lng: lng ?? null 
                   })}
                   placeholder="e.g., Rajamundry, Andhra Pradesh"
+                  required
                   className="h-[46.79px]"
                 />
                 <p className="text-[11px] text-auth-slate-50 font-medium">This helps customers find your physical shop.</p>
               </div>
             </div>
 
+            {createShopError && (
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-[8px] flex items-start gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                <span>{createShopError}</span>
+              </div>
+            )}
+
             <button
               disabled={creatingShop}
-              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-2"
+              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-1"
             >
               {creatingShop ? "Connecting..." : "Create Shop"}
             </button>
@@ -1792,7 +2115,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-6 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors"
+              className="mt-2 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors"
             >
               Signing Out? <span className="text-black ml-1">Logout</span>
             </button>
@@ -1800,7 +2123,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Right Side (Image Gradient overlay) */}
-        <div className="hidden lg:block flex-1 relative h-full">
+        <div className="hidden lg:block flex-1 relative min-h-screen">
           <div className="absolute w-[265px] h-full left-[-135px] top-0 bg-gradient-to-l from-white/0 to-white z-10" />
           <div className="absolute w-[265px] h-full left-[-135px] top-0 bg-gradient-to-l from-white/0 to-white z-20" />
           <div className="absolute w-[265px] h-full left-[-151px] top-0 bg-gradient-to-l from-white/0 via-white/40 to-white z-30" />
@@ -1929,8 +2252,8 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between gap-3">
             {/* Left: logo + shop name */}
             <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-              <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md p-1.5 overflow-hidden">
-                <img src="/favicon.ico" alt="XeroxQ Logo" className="w-full h-full object-contain filter brightness-0 invert" />
+              <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-sm p-0.5 overflow-hidden">
+                <img src="/logo_color.png" alt="XeroxQ Logo" className="w-full h-full object-contain" />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>
@@ -2027,7 +2350,7 @@ export default function AdminDashboard() {
                             />
                           </div>
                           <div className="flex flex-col gap-1.5 md:col-span-2">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Location <span className="text-primary-blue">*</span></label>
+                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Location <span className="text-red-500 font-bold">*</span></label>
                             <LocationAutocomplete
                               value={shop?.shop_location || ""}
                               onChange={(value, lat, lng) => setShop({ 
@@ -2037,6 +2360,7 @@ export default function AdminDashboard() {
                                 shop_lng: lng ?? undefined 
                               })}
                               placeholder="e.g., Rajamundry, Andhra Pradesh"
+                              required
                             />
                             
                             <div className="flex items-center justify-between gap-2 mt-1">

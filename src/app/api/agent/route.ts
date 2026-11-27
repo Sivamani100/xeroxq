@@ -1,16 +1,14 @@
-export const dynamic = "force-static";
-
 import { NextRequest, NextResponse } from "next/server";
-import puppeteerCore from "puppeteer-core";
+import puppeteerCore, { type Browser } from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { writeFile, readFile, unlink, mkdir } from "fs/promises";
+import { writeFile, readFile, mkdir, rm, readdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
-export const maxDuration = 60; // Vercel Hobby = 60s max.
+export const maxDuration = 60;
 
-// Allowed file types for conversion
 const ALLOWED_EXTENSIONS = new Set(["docx", "doc", "xlsx", "xls", "pptx", "ppt", "csv"]);
 const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -20,17 +18,36 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-powerpoint",
   "text/csv",
+  "text/plain",
   "application/octet-stream",
 ]);
 
-// 25MB limit
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
-
-// Rate limiter: 10 conversions per minute per IP (Puppeteer is heavy)
 const limiter = rateLimit({ windowMs: 60_000, max: 10 });
 
+function validateFileSignature(ext: string, buf: Buffer): boolean {
+  if (buf.length === 0) return false;
+  if (ext === "docx" || ext === "xlsx" || ext === "pptx") {
+    // OOXML files are ZIP containers (`PK`)
+    return buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b;
+  }
+  if (ext === "doc" || ext === "xls" || ext === "ppt") {
+    // Legacy Office OLE2 binary container (`D0 CF 11 E0`)
+    return (
+      buf.length >= 4 &&
+      buf[0] === 0xd0 &&
+      buf[1] === 0xcf &&
+      buf[2] === 0x11 &&
+      buf[3] === 0xe0
+    );
+  }
+  if (ext === "csv") {
+    return !buf.subarray(0, Math.min(buf.length, 512)).includes(0);
+  }
+  return false;
+}
+
 export async function POST(req: NextRequest) {
-  // ── 1. Rate Limiting ──────────────────────────────────────────────────────
   const ip = getClientIp(req);
   const { success } = limiter.check(`agent:${ip}`);
   if (!success) {
@@ -40,71 +57,77 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let browser: Browser | null = null;
+  let tempDir = "";
+
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // ── 2. File Size Validation ────────────────────────────────────────────
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File too large. Maximum allowed size is 25MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.` },
+        { error: `File too large. Maximum allowed size is 25MB.` },
         { status: 413 }
       );
     }
 
-    // ── 3. File Extension & Type Validation ────────────────────────────────
     const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
     if (!ALLOWED_EXTENSIONS.has(fileExt)) {
       return NextResponse.json(
-        { error: `Unsupported file type ".${fileExt}". Only Word, PowerPoint, and Excel files can be converted.` },
+        { error: `Unsupported file type ".${fileExt}".` },
         { status: 400 }
       );
     }
 
-    // Sanitize filename to prevent path traversal
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+    if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: "Unsupported file MIME type." },
+        { status: 400 }
+      );
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!validateFileSignature(fileExt, buffer)) {
+      return NextResponse.json(
+        { error: "File contents do not match the declared Office document format." },
+        { status: 400 }
+      );
+    }
 
-    // Create temp directory for conversion
-    const tempDir = join(tmpdir(), `xeroxq-conv-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+    tempDir = join(tmpdir(), `xeroxq-conv-${randomUUID()}`);
     await mkdir(tempDir, { recursive: true });
 
     const inputPath = join(tempDir, safeFileName);
     await writeFile(inputPath, buffer);
 
-    // --- Serverless-safe Chromium launch ---
     let executablePath: string;
-    
     if (process.env.VERCEL || process.env.NODE_ENV === "production") {
       try {
         executablePath = await chromium.executablePath();
-      } catch (e) {
+      } catch {
         const chromiumModule = chromium as { executablePath: (url?: string) => Promise<string> };
         executablePath = await chromiumModule.executablePath(
-          `https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar`
+          "https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar"
         );
       }
+    } else if (process.platform === "win32") {
+      executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    } else if (process.platform === "darwin") {
+      executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     } else {
-      const platform = process.platform;
-      if (platform === "win32") {
-        executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-      } else if (platform === "darwin") {
-        executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-      } else {
-        executablePath = "/usr/bin/google-chrome";
-      }
+      executablePath = "/usr/bin/google-chrome";
     }
 
     if (!executablePath) {
       throw new Error("Chromium path not found.");
     }
 
-    const browser = await puppeteerCore.launch({
+    browser = await puppeteerCore.launch({
       executablePath,
       headless: true,
       args: [
@@ -124,7 +147,6 @@ export async function POST(req: NextRequest) {
     });
 
     const page = await browser.newPage();
-
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     );
@@ -152,7 +174,7 @@ export async function POST(req: NextRequest) {
       const input = await page.$("input[type='file']");
       if (!input) throw new Error("Upload input not found");
       await input.uploadFile(inputPath);
-    } catch (e) {
+    } catch {
       const [fileChooser] = await Promise.all([
         page.waitForFileChooser({ timeout: 15000 }),
         page.click("a#pickfiles"),
@@ -170,7 +192,6 @@ export async function POST(req: NextRequest) {
     });
 
     await page.click("#processTask");
-
     await page.waitForSelector("a#pickfiles", { visible: true, timeout: 120000 });
     await page.click("a#pickfiles");
 
@@ -179,10 +200,8 @@ export async function POST(req: NextRequest) {
     const pollingTimeout = 45000;
 
     while (Date.now() - startTime < pollingTimeout) {
-      const files = await require("fs").promises.readdir(tempDir);
-      const pdfFile = files.find(
-        (f: string) => f.endsWith(".pdf") && !f.endsWith(".crdownload")
-      );
+      const dirFiles = await readdir(tempDir);
+      const pdfFile = dirFiles.find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"));
       if (pdfFile) {
         pdfPath = join(tempDir, pdfFile);
         break;
@@ -195,26 +214,14 @@ export async function POST(req: NextRequest) {
     }
 
     const pdfBuffer = await readFile(pdfPath);
-
-    await browser.close();
-    try {
-      await unlink(inputPath);
-      await unlink(pdfPath);
-      await require("fs").promises.rm(tempDir, { recursive: true, force: true });
-    } catch (e) {
-      console.warn("[Agent] Cleanup warning:", e);
-    }
-
-    // Sanitize output filename
     const safeOutputName = safeFileName.replace(/\.[^/.]+$/, "") + ".pdf";
 
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${safeOutputName}"`,
-        // Prevent caching of potentially sensitive documents
         "Cache-Control": "no-store, no-cache, must-revalidate",
-        "Pragma": "no-cache",
+        Pragma: "no-cache",
       },
     });
   } catch (error) {
@@ -224,5 +231,12 @@ export async function POST(req: NextRequest) {
       { error: e.message || "Document conversion failed. Please try again." },
       { status: 500 }
     );
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }

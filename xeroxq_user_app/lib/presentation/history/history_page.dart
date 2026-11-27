@@ -88,9 +88,11 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _loadHistory() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     final jobRepo = context.read<JobRepository>();
     final cachedList = await jobRepo.getCachedHistory();
+    if (!mounted) return;
     setState(() {
       _historyJobs = cachedList;
       _loading = false;
@@ -105,32 +107,58 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> _reorderJob(PrintJob job) async {
-    final shopRepo = context.read<ShopRepository>();
-    final allShops = await shopRepo.fetchShops();
+  Future<Shop?> _resolveShopById(String shopId) async {
+    try {
+      final shopRepo = context.read<ShopRepository>();
+      final allShops = await shopRepo.fetchShops();
+      for (final s in allShops) {
+        if (s.id == shopId) return s;
+      }
+    } catch (e) {
+      debugPrint('Failed to resolve shop $shopId: $e');
+    }
+    return null;
+  }
 
-    final shop = allShops.firstWhere(
-      (s) => s.id == job.shopId,
-      orElse: () => Shop(
-        id: job.shopId,
-        name: 'XeroxQ Shop',
-        slug: 'partner',
-        priceMono: 1.0,
-        priceColor: 5.0,
-        isOpen: true,
+  Future<void> _reorderJob(PrintJob job) async {
+    final shop = await _resolveShopById(job.shopId);
+    if (!mounted) return;
+    if (shop == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Shop is no longer available. Please choose an active shop.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PrintWizardPage(
+          initialShop: shop,
+        ),
       ),
     );
+  }
 
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PrintWizardPage(
-            initialShop: shop,
-          ),
-        ),
+  Future<void> _trackJob(PrintJob job) async {
+    final shop = await _resolveShopById(job.shopId);
+    if (!mounted) return;
+    if (shop == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to load shop details for tracking right now.')),
       );
+      return;
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => JobTrackingPage(
+          jobId: job.id,
+          shop: shop,
+        ),
+      ),
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -290,24 +318,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                         job.status.toLowerCase() != 'cancelled' &&
                                         job.status.toLowerCase() != 'failed')
                                       TextButton.icon(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => JobTrackingPage(
-                                                jobId: job.id,
-                                                shop: Shop(
-                                                  id: job.shopId,
-                                                  name: 'XeroxQ Shop',
-                                                  slug: 'partner',
-                                                  priceMono: 1.0,
-                                                  priceColor: 5.0,
-                                                  isOpen: true,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
+                                        onPressed: () => _trackJob(job),
                                         icon: const Icon(Iconsax.radar_2, size: 16),
                                         label: const Text('Track', style: TextStyle(fontWeight: FontWeight.w700)),
                                         style: TextButton.styleFrom(

@@ -38,19 +38,42 @@ class VaultRepository {
     return result;
   }
 
-  // Helper to read bytes for any vault document (both web and mobile)
+  // Helper to read bytes for any vault document (AES-256 decrypted from Hive, with legacy file fallback)
   Future<Uint8List> getDocumentBytes(VaultDocument doc) async {
-    if (kIsWeb) {
-      final bytes = LocalStorageService.getBytes(doc.id);
-      if (bytes != null) return bytes;
-      throw Exception('Bytes not found in local vault.');
-    } else {
-      final file = File(doc.localPath);
-      if (await file.exists()) {
-        return await file.readAsBytes();
-      }
-      throw Exception('Local file not found at ${doc.localPath}');
+    final encryptedBytes = LocalStorageService.getBytes(doc.id);
+    if (encryptedBytes != null) {
+      return encryptedBytes;
     }
+
+    if (!kIsWeb && !doc.localPath.startsWith('vault_box://') && !doc.localPath.startsWith('web_vault://')) {
+      final legacyFile = File(doc.localPath);
+      if (await legacyFile.exists()) {
+        final bytes = await legacyFile.readAsBytes();
+        // Migrate legacy plaintext file into AES-256 encrypted box and delete plaintext copy
+        await LocalStorageService.saveBytes(doc.id, bytes);
+        try {
+          await legacyFile.delete();
+        } catch (e) {
+          debugPrint('Failed to clean legacy plaintext vault file: $e');
+        }
+        return bytes;
+      }
+    }
+    throw Exception('Encrypted document bytes not found in vault.');
+  }
+
+  /// Writes a short-lived temporary file strictly when native OS viewer/share API requires a file path.
+  Future<File> materializeTempFile(VaultDocument doc) async {
+    final bytes = await getDocumentBytes(doc);
+    final tempDir = await getTemporaryDirectory();
+    final previewDir = Directory(p.join(tempDir.path, 'xeroxq_vault_preview'));
+    if (!await previewDir.exists()) {
+      await previewDir.create(recursive: true);
+    }
+    final safeName = doc.name.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '_');
+    final tempFile = File(p.join(previewDir.path, '${doc.id}_$safeName'));
+    await tempFile.writeAsBytes(bytes, flush: true);
+    return tempFile;
   }
 
   // ── Write ───────────────────────────────────────────────────────
@@ -63,38 +86,24 @@ class VaultRepository {
     List<String> tags = const [],
   }) async {
     final id = const Uuid().v4();
-    String destPath = '';
-    int sizeBytes = 0;
+    Uint8List bytes;
 
-    if (kIsWeb) {
-      if (sourceBytes == null) {
-        throw Exception('Bytes required for web upload');
-      }
-      sizeBytes = sourceBytes.length;
-      destPath = 'web_vault://$id/$name';
-      await LocalStorageService.saveBytes(id, sourceBytes);
+    if (sourceBytes != null) {
+      bytes = sourceBytes;
+    } else if (!kIsWeb && sourceFile != null) {
+      bytes = await sourceFile.readAsBytes();
     } else {
-      if (sourceFile == null) {
-        throw Exception('Source file required for mobile/desktop upload');
-      }
-      final appDir = await getApplicationDocumentsDirectory();
-      final vaultDir = Directory(p.join(appDir.path, 'xeroxq_vault'));
-      if (!await vaultDir.exists()) {
-        await vaultDir.create(recursive: true);
-      }
-
-      final fileExt = p.extension(sourceFile.path);
-      destPath = p.join(vaultDir.path, '$id$fileExt');
-
-      final File localCopy = await sourceFile.copy(destPath);
-      sizeBytes = await localCopy.length();
+      throw Exception('Document bytes or source file required');
     }
+
+    await LocalStorageService.saveBytes(id, bytes);
+    final destPath = kIsWeb ? 'web_vault://$id/$name' : 'vault_box://$id/${p.basename(name)}';
 
     final doc = VaultDocument(
       id: id,
       name: name,
       localPath: destPath,
-      sizeBytes: sizeBytes,
+      sizeBytes: bytes.length,
       category: category,
       dateAdded: DateTime.now(),
       tags: tags,
@@ -137,11 +146,13 @@ class VaultRepository {
     final raw = LocalStorageService.getDocument(id);
     if (raw != null) {
       try {
-        if (kIsWeb) {
-          await LocalStorageService.deleteBytes(id);
-        } else {
-          final file = File(raw['localPath'] as String);
-          if (await file.exists()) await file.delete();
+        await LocalStorageService.deleteBytes(id);
+        if (!kIsWeb) {
+          final localPath = raw['localPath'] as String? ?? '';
+          if (localPath.isNotEmpty && !localPath.startsWith('vault_box://')) {
+            final file = File(localPath);
+            if (await file.exists()) await file.delete();
+          }
           final thumb = raw['thumbnailPath'] as String?;
           if (thumb != null) {
             final thumbFile = File(thumb);

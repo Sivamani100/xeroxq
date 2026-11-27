@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -61,7 +62,8 @@ class _JobTrackingPageState extends State<JobTrackingPage> {
         final job = await jobRepo.getJobStatus(id);
         loadedJobs.add(job);
       }
-      
+
+      if (!mounted) return;
       setState(() {
         _currentJobs = loadedJobs;
         _loading = false;
@@ -70,6 +72,7 @@ class _JobTrackingPageState extends State<JobTrackingPage> {
       _subscribeToJobs();
     } catch (e) {
       debugPrint('Error fetching initial jobs status: $e');
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _loading = false;
@@ -222,9 +225,9 @@ class _JobTrackingPageState extends State<JobTrackingPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('UPI Payment Confirmation', style: TextStyle(fontWeight: FontWeight.w900)),
         content: Text(
-          'Did you successfully pay ₹${amount.toStringAsFixed(2)} via the UPI app?\n\nSelecting "Yes" will update your ticket status to alert the shop owner.',
+          'Did you complete the transfer of ₹${amount.toStringAsFixed(2)} via your UPI app?\n\nPlease show the UPI transaction confirmation at the shop counter when picking up your prints.',
         ),
         actions: [
           TextButton(
@@ -246,7 +249,7 @@ class _JobTrackingPageState extends State<JobTrackingPage> {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Payment status saved! Shopkeeper is verifying.'),
+                  content: Text('Marked paid on this device. Shopkeeper verifies UPI receipt at counter.'),
                   backgroundColor: AppColors.success,
                 ),
               );
@@ -288,10 +291,11 @@ class _JobTrackingPageState extends State<JobTrackingPage> {
                   ),
                   IconButton(
                     icon: const Icon(Iconsax.copy, size: 20),
-                    onPressed: () {
-                      // Simulated copy
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: upiId));
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('UPI ID copied!')),
+                        const SnackBar(content: Text('UPI ID copied to clipboard!')),
                       );
                     },
                   ),

@@ -23,9 +23,16 @@ export default function UpdatePassword() {
     setMessage(null);
     setIsError(false);
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setIsError(true);
-      setMessage("Password must be at least 6 characters long.");
+      setMessage("Password must be at least 8 characters long.");
+      setLoading(false);
+      return;
+    }
+
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setIsError(true);
+      setMessage("Password must include at least one letter and one number.");
       setLoading(false);
       return;
     }
