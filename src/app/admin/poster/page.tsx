@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { getPublicOrigin, formatDisplayUrl } from "@/lib/site-url";
+import { ThemeToggle } from "@/lib/theme";
 
 // Helper to parse the SVG path of standard QRCodeSVG into a matrix
 function parsePathToMatrix(d: string, numCells: number): boolean[][] {
@@ -175,6 +176,7 @@ function PosterContent() {
 
   const [isDownloadingPNG, setIsDownloadingPNG] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [rawPath, setRawPath] = useState<string>("");
   const publicWebUrl = getPublicOrigin();
   const qrUrl = slug ? `${publicWebUrl}/${slug}` : "";
@@ -192,6 +194,7 @@ function PosterContent() {
     if (!posterElement) return;
 
     setIsDownloadingPNG(true);
+    setDownloadError(null);
     try {
       const html2canvas = (await import("html2canvas-pro")).default;
       const canvas = await html2canvas(posterElement, {
@@ -210,7 +213,7 @@ function PosterContent() {
       link.click();
     } catch (error) {
       console.error("Error generating PNG:", error);
-      alert("Failed to download poster as PNG. Please try printing to PDF instead.");
+      setDownloadError("Could not export PNG. Try printing directly instead.");
     } finally {
       setIsDownloadingPNG(false);
     }
@@ -221,6 +224,7 @@ function PosterContent() {
     if (!posterElement) return;
 
     setIsDownloadingPDF(true);
+    setDownloadError(null);
     try {
       const html2canvas = (await import("html2canvas-pro")).default;
       const canvas = await html2canvas(posterElement, {
@@ -242,14 +246,14 @@ function PosterContent() {
       pdf.save(`Poster_${name.replace(/\s+/g, "_")}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to download poster as PDF. Please try printing instead.");
+      setDownloadError("Could not export PDF. Try printing directly instead.");
     } finally {
       setIsDownloadingPDF(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-0 sm:p-12 flex justify-center items-start print:p-0 print:m-0 print:bg-white selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] p-0 sm:p-10 flex justify-center items-start print:p-0 print:m-0 print:bg-white selection:bg-[#171717] selection:text-white">
       {/* Strict A4 Print Formatting and Smooth QR Styles */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
@@ -262,7 +266,6 @@ function PosterContent() {
             padding: 0 !important;
             -webkit-print-color-adjust: exact;
           }
-          /* Ensure header/footer are visible in print */
           header, footer {
             display: flex !important;
           }
@@ -303,129 +306,148 @@ function PosterContent() {
       </div>
 
       {/* Action Bar (Hidden on Print) */}
-      <div className="fixed top-8 right-8 z-50 print:hidden flex gap-4 bg-white/80 backdrop-blur-md p-3 rounded-2xl border border-gray-200/50 shadow-2xl">
-        <button 
-          onClick={handleDownloadPNG}
-          disabled={isDownloadingPNG}
-          className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:opacity-75 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-md hover:scale-102 active:scale-98 transition-all cursor-pointer"
-        >
-          {isDownloadingPNG ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4" />
-          )}
-          Download PNG
-        </button>
+      <div className="fixed top-6 right-6 z-50 print:hidden flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2 bg-white dark:bg-[#19191B] p-1.5 rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-sm">
+          <ThemeToggle compact />
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-9 px-3.5 bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C30] text-[#171717] dark:text-[#EDEDED] rounded-lg font-medium text-[13px] flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            <Printer className="w-4 h-4" strokeWidth={1.75} />
+            Print A4
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={isDownloadingPDF}
+            className="h-9 px-3.5 bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C30] disabled:opacity-60 text-[#171717] dark:text-[#EDEDED] rounded-lg font-medium text-[13px] flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            {isDownloadingPDF ? (
+              <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.75} />
+            ) : (
+              <Download className="w-4 h-4" strokeWidth={1.75} />
+            )}
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPNG}
+            disabled={isDownloadingPNG}
+            className="h-9 px-4 bg-[#171717] dark:bg-[#EDEDED] hover:bg-[#262626] dark:hover:bg-white disabled:opacity-60 text-white dark:text-[#111113] rounded-lg font-medium text-[13px] flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            {isDownloadingPNG ? (
+              <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.75} />
+            ) : (
+              <Download className="w-4 h-4" strokeWidth={1.75} />
+            )}
+            Download PNG
+          </button>
+        </div>
+        {downloadError && (
+          <p className="text-[12px] font-medium text-[#DC2626] dark:text-[#E5484D] bg-white dark:bg-[#19191B] px-3 py-1.5 rounded-lg border border-[#DC2626]/20 dark:border-[#E5484D]/25 shadow-sm">
+            {downloadError}
+          </p>
+        )}
       </div>
 
       {/* A4 Page Container - Precisely Calibrated */}
-      <motion.div 
+      <motion.div
         id="poster-container"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-[794px] h-[1123px] max-w-full print:w-[210mm] print:h-[297mm] print:min-h-[297mm] print:shadow-none flex flex-col relative overflow-hidden box-border pt-[12mm] px-[12mm] pb-[30px] bg-white shadow-[0_0_80px_rgba(0,0,0,0.06)] text-black"
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        className="w-[794px] h-[1123px] max-w-full print:w-[210mm] print:h-[297mm] print:min-h-[297mm] print:shadow-none print:border-0 flex flex-col relative overflow-hidden box-border pt-[14mm] px-[14mm] pb-[12mm] bg-white border border-[#171717]/[0.08] text-[#171717]"
       >
-        {/* Decorative Background Elements */}
-        {/* SVG Plus Pattern Mesh */}
-        <div className="absolute inset-0 z-0 opacity-[0.03]"
-             style={{ 
-               backgroundImage: `radial-gradient(circle at 2px 2px, black 1px, transparent 0)`,
-               backgroundSize: '24px 24px'
-             }} 
-        />
-
-        {/* Subtle Decorative Blobs */}
-        <div className="absolute -top-[10%] -right-[10%] w-[300px] h-[300px] bg-black/[0.01] rounded-full blur-[80px]" />
-        <div className="absolute top-[20%] -left-[5%] w-[250px] h-[250px] bg-black/[0.008] rounded-full blur-[60px]" />
-        <div className="absolute -bottom-[5%] right-[20%] w-[400px] h-[400px] bg-black/[0.01] rounded-full blur-[100px]" />
-        
-        {/* Security Watermark */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-[0.015] pointer-events-none">
-           <ShieldCheck className="w-[500px] h-[500px] text-black" />
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-              <span className="text-[40px] font-black tracking-[0.5em] text-black uppercase leading-none">SECURE</span>
-              <span className="text-[40px] font-black tracking-[0.5em] text-black uppercase leading-none">MESH</span>
-           </div>
-        </div>
-
-        {/* Corner Viewfinders */}
-        <div className="absolute top-[5mm] left-[5mm] w-8 h-8 border-t border-l border-black/10" />
-        <div className="absolute top-[5mm] right-[5mm] w-8 h-8 border-t border-r border-black/10" />
-        <div className="absolute bottom-[5mm] left-[5mm] w-8 h-8 border-b border-l border-black/10" />
-        <div className="absolute bottom-[5mm] right-[5mm] w-8 h-8 border-b border-r border-black/10" />
-
         {/* Top Header */}
-        <header className="flex justify-between items-start mb-8 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center shadow-2xl shadow-black/20">
-              <Printer className="w-8 h-8" />
+        <header className="flex justify-between items-center pb-6 border-b border-[#171717]/[0.08]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 bg-[#171717] text-white rounded-xl flex items-center justify-center">
+              <Printer className="w-6 h-6" strokeWidth={1.75} />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-[28px] font-black tracking-tighter leading-none mb-1 text-black">{name}</h1>
-              <span className="text-[10px] font-black tracking-[0.3em] uppercase text-black/40">xerox shop</span>
+              <h1 className="text-[24px] font-semibold tracking-tight leading-tight text-[#171717]">
+                {name}
+              </h1>
+              <span className="text-[13px] font-medium text-[#737373]">
+                Instant print station
+              </span>
             </div>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black tracking-[0.2em] uppercase text-black/20 mb-2">Version: v2024.04</span>
-            <div className="h-[1px] w-10 bg-black/10" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F4F4F5] border border-[#171717]/[0.08]">
+            <span className="w-2 h-2 rounded-full bg-[#FB432C]" />
+            <span className="text-[12px] font-medium text-[#171717]">
+              No app needed
+            </span>
           </div>
         </header>
 
         {/* Main Body */}
-        <main className="flex-1 flex flex-col items-center justify-center text-center relative z-10 py-2">
+        <main className="flex-1 flex flex-col items-center justify-center text-center py-4">
           <div className="mb-6">
-            <h2 className="text-[54px] font-black tracking-tight leading-[0.9] mb-4 text-black">
-              Scan to<br />
-              <span className="text-black/30">Securely Print</span>
+            <h2 className="text-[48px] font-semibold tracking-tight leading-[1.05] mb-3 text-[#171717]">
+              Scan to print
             </h2>
-            <p className="text-[16px] font-bold max-w-[400px] mx-auto leading-relaxed text-black/60">
-              Upload your documents instantly from any device. No cables, no logins, total privacy.
+            <p className="text-[16px] font-normal max-w-[420px] mx-auto leading-relaxed text-[#525252]">
+              Send PDFs, photos, and documents straight from your phone camera. No cables, no login, no waiting.
             </p>
           </div>
 
-          {/* QR Frame - Clean, borderless and optimized layout */}
-          <div className="relative p-4 bg-white mb-2 group flex flex-col items-center">
-              <div className="bg-white p-2 flex items-center justify-center">
-                 {rawPath ? (
-                   <SmoothQRCode rawPath={rawPath} />
-                 ) : (
-                   <div className="w-[420px] h-[420px] sm:w-[460px] sm:h-[460px] flex items-center justify-center text-slate-400">
-                     Generating...
-                   </div>
-                 )}
-              </div>
-             
-             <div className="mt-6 flex flex-col items-center">
-                <span className="text-[11px] font-black tracking-[0.25em] uppercase text-black/40 mb-2">Shop Link</span>
-                <div className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full shadow-lg shadow-black/10">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <code className="text-[16px] font-mono font-black tracking-tight">{qrUrl.replace('http://', '').replace('https://', '')}</code>
+          {/* QR Frame */}
+          <div className="p-6 bg-white rounded-2xl border border-[#171717]/[0.10] flex flex-col items-center">
+            <div className="bg-white p-1 flex items-center justify-center">
+              {rawPath ? (
+                <SmoothQRCode rawPath={rawPath} />
+              ) : (
+                <div className="w-[420px] h-[420px] sm:w-[460px] sm:h-[460px] flex items-center justify-center text-[#737373] text-[14px]">
+                  Generating QR code...
                 </div>
-             </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-col items-center">
+              <span className="text-[12px] font-medium text-[#737373] mb-1.5">
+                Direct upload link
+              </span>
+              <div className="flex items-center gap-2.5 px-5 py-2.5 bg-[#171717] text-white rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
+                <code className="text-[15px] font-mono font-medium tracking-tight">
+                  {qrUrl.replace("http://", "").replace("https://", "")}
+                </code>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2 mb-1">
-            <div className="flex flex-col items-center">
-              <h3 className="text-[36px] font-black tracking-tight text-black">{name}</h3>
-            </div>
+          <div className="mt-6">
+            <p className="text-[22px] font-semibold tracking-tight text-[#171717]">
+              {name}
+            </p>
           </div>
         </main>
 
-        {/* Footer Policy - Restored and Pinned Bottom */}
-        <footer className="mt-auto pt-6 border-t-2 border-black/5 flex justify-between items-end relative z-10">
-          <div className="flex flex-col gap-2">
-             <div className="flex items-center gap-2">
-               <ShieldCheck className="w-4 h-4 text-black" />
-               <span className="text-[11px] font-bold text-black">Files are auto-deleted from memory.</span>
-             </div>
-             <div className="flex items-center gap-2">
-               <Zap className="w-4 h-4 text-black" />
-               <span className="text-[11px] font-bold text-black">Instant upload to shop queue.</span>
-             </div>
+        {/* Footer Policy */}
+        <footer className="mt-auto pt-5 border-t border-[#171717]/[0.08] flex justify-between items-end">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-[#525252]">
+              <ShieldCheck className="w-4 h-4 text-[#171717]" strokeWidth={1.75} />
+              <span className="text-[12px] font-medium">
+                Files are automatically deleted after printing.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[#525252]">
+              <Zap className="w-4 h-4 text-[#171717]" strokeWidth={1.75} />
+              <span className="text-[12px] font-medium">
+                Instant upload straight to the counter queue.
+              </span>
+            </div>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1 text-black/20">Powered by</p>
-            <p className="text-[16px] font-black tracking-tighter text-black">{formatDisplayUrl(publicWebUrl) || "XeroxQ"}</p>
+            <p className="text-[11px] font-medium text-[#737373] mb-0.5">
+              Powered by
+            </p>
+            <p className="text-[15px] font-semibold tracking-tight text-[#171717]">
+              {formatDisplayUrl(publicWebUrl) || "XeroxQ"}
+            </p>
           </div>
         </footer>
       </motion.div>
@@ -435,49 +457,46 @@ function PosterContent() {
 
 function PosterSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-100 p-0 sm:p-12 flex justify-center items-start">
-      <div className="w-[794px] h-[1123px] max-w-full bg-white shadow-xl pt-[10mm] px-[10mm] pb-[30px] flex flex-col relative overflow-hidden box-border">
-         <header className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-4">
-               <Skeleton className="w-14 h-14 rounded-2xl" />
-               <div className="flex flex-col gap-2">
-                  <Skeleton className="w-48 h-8" />
-                  <Skeleton className="w-32 h-3" />
-               </div>
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] p-0 sm:p-10 flex justify-center items-start">
+      <div className="w-[794px] h-[1123px] max-w-full bg-white border border-[#171717]/[0.08] pt-[14mm] px-[14mm] pb-[12mm] flex flex-col box-border">
+        <header className="flex justify-between items-center pb-6 border-b border-[#171717]/[0.08]">
+          <div className="flex items-center gap-3.5">
+            <Skeleton className="w-12 h-12 rounded-xl" />
+            <div className="flex flex-col gap-2">
+              <Skeleton className="w-44 h-6" />
+              <Skeleton className="w-28 h-3.5" />
             </div>
-            <Skeleton className="w-24 h-4" />
-         </header>
+          </div>
+          <Skeleton className="w-28 h-8 rounded-lg" />
+        </header>
 
-         <main className="flex-1 flex flex-col items-center justify-center space-y-6">
-            <div className="space-y-4 flex flex-col items-center">
-               <Skeleton className="w-[300px] h-14" />
-               <Skeleton className="w-[200px] h-14" />
-               <Skeleton className="w-[400px] h-6" />
-            </div>
+        <main className="flex-1 flex flex-col items-center justify-center space-y-6">
+          <div className="space-y-3 flex flex-col items-center">
+            <Skeleton className="w-64 h-12" />
+            <Skeleton className="w-96 h-5" />
+          </div>
 
-            <div className="p-4 bg-white flex flex-col items-center">
-               <Skeleton className="w-[420px] h-[420px] rounded-[24px]" />
-               <div className="mt-8 flex flex-col items-center gap-3">
-                  <Skeleton className="w-32 h-3" />
-                  <Skeleton className="w-64 h-10 rounded-full" />
-               </div>
+          <div className="p-6 rounded-2xl border border-[#171717]/[0.08] flex flex-col items-center">
+            <Skeleton className="w-[420px] h-[420px] rounded-xl" />
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <Skeleton className="w-28 h-3" />
+              <Skeleton className="w-64 h-10 rounded-lg" />
             </div>
+          </div>
 
-            <div className="space-y-4 flex flex-col items-center">
-               <Skeleton className="w-64 h-10" />
-            </div>
-         </main>
+          <Skeleton className="w-48 h-7" />
+        </main>
 
-         <footer className="mt-4 pt-6 border-t-2 border-black/5 flex justify-between items-end">
-            <div className="space-y-3">
-               <Skeleton className="w-48 h-4" />
-               <Skeleton className="w-40 h-4" />
-            </div>
-            <div className="flex flex-col items-end gap-2">
-               <Skeleton className="w-20 h-2" />
-               <Skeleton className="w-32 h-6" />
-            </div>
-         </footer>
+        <footer className="mt-4 pt-5 border-t border-[#171717]/[0.08] flex justify-between items-end">
+          <div className="space-y-2">
+            <Skeleton className="w-52 h-4" />
+            <Skeleton className="w-44 h-4" />
+          </div>
+          <div className="flex flex-col items-end gap-1.5">
+            <Skeleton className="w-16 h-3" />
+            <Skeleton className="w-28 h-5" />
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { DocumentInspection } from "@/lib/papers/ooxml";
 import { getPublicOrigin } from "@/lib/site-url";
+import { ThemeToggle } from "@/lib/theme";
 import cn from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -539,14 +540,14 @@ export function PapersClient() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-dvh bg-[#F2F2F7] text-[#111827] flex flex-col">
-      {/* ── Sticky Frosted Apple-Style Header ── */}
-      <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-2xl border-b border-black/[0.06]">
+    <div className="min-h-dvh bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col">
+      {/* ── Sticky Toolbar Header ── */}
+      <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-[#19191B]/90 backdrop-blur-2xl border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="max-w-2xl mx-auto px-4 h-[62px] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/"
-              className="shrink-0 w-10 h-10 rounded-[13px] bg-white p-1.5 border border-black/[0.07] shadow-[0_2px_10px_rgba(0,0,0,0.06)] flex items-center justify-center"
+              className="shrink-0 w-10 h-10 rounded-[12px] bg-[#F4F4F5] dark:bg-[#232325] p-1.5 border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center"
               aria-label="XeroxQ Home"
             >
               <img
@@ -557,14 +558,14 @@ export function PapersClient() {
             </Link>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-[15px] text-[#111827] leading-tight truncate">
+                <h1 className="font-semibold text-[15px] text-[#171717] dark:text-[#EDEDED] leading-tight truncate">
                   XeroxQ Papers
                 </h1>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-[#007AFF] border border-blue-200/70">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FB432C]/10 text-[#FB432C] border border-[#FB432C]/20">
                   Word Studio
                 </span>
               </div>
-              <p className="text-[11px] font-medium text-[#6B7280] leading-none mt-1 truncate">
+              <p className="text-[11px] font-medium text-[#737373] dark:text-[#85858B] leading-none mt-1 truncate">
                 {stage === "upload"
                   ? "Upgrade drafts & match professor templates"
                   : mainFile?.name || "Editing workspace"}
@@ -573,19 +574,20 @@ export function PapersClient() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle compact showLabel={false} />
             {stage === "workspace" && (
               <button
                 type="button"
                 onClick={handleResetAll}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] text-xs font-semibold transition-colors"
               >
-                <ArrowLeft className="w-3.5 h-3.5 text-[#6B7280]" />
+                <ArrowLeft className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B]" />
                 <span>Start Over</span>
               </button>
             )}
             <Link
               href="/upload"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FB432C] hover:bg-[#E03923] text-white text-xs font-semibold transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Print at Shop</span>
@@ -599,14 +601,14 @@ export function PapersClient() {
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6 sm:py-8">
         {/* Missing API Key Setup Notice */}
         {!aiConfigured && (
-          <div className="mb-5 rounded-[20px] bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-xs sm:text-sm text-amber-900 leading-relaxed">
-              <p className="font-bold">Free AI Key Setup Required</p>
-              <p className="mt-0.5 text-amber-800">
+          <div className="mb-5 rounded-[16px] bg-amber-500/15 border border-amber-500/25 p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+              <p className="font-semibold">Free AI Key Setup Required</p>
+              <p className="mt-0.5 opacity-90">
                 Add your free OpenRouter API key (from{" "}
                 <span className="font-semibold">openrouter.ai/keys</span>) to{" "}
-                <code className="px-1.5 py-0.5 rounded bg-amber-100 font-mono text-[11px]">
+                <code className="px-1.5 py-0.5 rounded bg-amber-500/20 font-mono text-[11px]">
                   OPENROUTER_API_KEY
                 </code>{" "}
                 in <code className="font-mono text-[11px]">.env.local</code> and restart the
@@ -628,10 +630,10 @@ export function PapersClient() {
             >
               {/* Clean Headline */}
               <div className="text-center px-2 pb-1">
-                <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#111827] tracking-tight leading-tight">
+                <h2 className="text-2xl sm:text-[28px] font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-tight">
                   Turn your rough draft into a finished paper
                 </h2>
-                <p className="text-sm sm:text-[15px] text-[#6B7280] mt-2 leading-relaxed max-w-lg mx-auto">
+                <p className="text-sm sm:text-[15px] text-[#525252] dark:text-[#A1A1A6] mt-2 leading-relaxed max-w-lg mx-auto">
                   Upload your Word file below, chat with us about everything you need, and
                   download a clean, complete document ready to submit or print.
                 </p>
@@ -660,52 +662,47 @@ export function PapersClient() {
                   }
                 }}
                 className={cn(
-                  "rounded-[28px] bg-white border transition-all duration-200 cursor-pointer select-none",
+                  "rounded-[20px] bg-white dark:bg-[#19191B] border transition-colors duration-200 cursor-pointer select-none",
                   "p-7 sm:p-9 text-center",
                   isDragging
-                    ? "border-[#007AFF] bg-blue-50/40 shadow-[0_0_0_4px_rgba(0,122,255,0.14)]"
+                    ? "border-[#FB432C] bg-[#FB432C]/5"
                     : uploadError
-                    ? "border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.10)]"
-                    : "border-black/[0.06] shadow-[0_12px_36px_-8px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] hover:border-black/[0.12]"
+                    ? "border-[#DC2626] dark:border-[#E5484D]"
+                    : "border-[#171717]/[0.08] dark:border-white/[0.08] hover:border-[#FB432C]/50"
                 )}
               >
                 {/* Clean Fanned Document Icon Composition */}
                 <div className="relative w-24 h-20 mx-auto mb-4 flex items-center justify-center">
-                  <div className="absolute -translate-x-5 -rotate-12 w-12 h-14 rounded-xl bg-[#F2F2F7] border border-black/[0.06] shadow-sm flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-[#6B7280]" />
+                  <div className="absolute -translate-x-5 -rotate-12 w-12 h-14 rounded-xl bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-[#737373] dark:text-[#85858B]" />
                   </div>
-                  <div className="absolute translate-x-5 rotate-12 w-12 h-14 rounded-xl bg-blue-50 border border-blue-200/70 shadow-sm flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-[#007AFF]" />
+                  <div className="absolute translate-x-5 rotate-12 w-12 h-14 rounded-xl bg-[#FB432C]/10 border border-[#FB432C]/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-[#FB432C]" />
                   </div>
-                  <div className="relative z-10 w-14 h-16 rounded-2xl bg-white border border-black/[0.08] shadow-[0_6px_20px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center gap-1">
+                  <div className="relative z-10 w-14 h-16 rounded-2xl bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.12] flex flex-col items-center justify-center gap-1">
                     {isInspectingMain ? (
-                      <Loader2 className="w-6 h-6 text-[#007AFF] animate-spin" />
+                      <Loader2 className="w-6 h-6 text-[#FB432C] animate-spin" />
                     ) : (
-                      <Upload className="w-6 h-6 text-[#007AFF]" strokeWidth={2.2} />
+                      <Upload className="w-6 h-6 text-[#FB432C]" strokeWidth={2} />
                     )}
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-[#007AFF]">
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#FB432C]">
                       DOCX / DOC
                     </span>
                   </div>
                 </div>
 
-                <h3 className="text-[17px] font-bold text-[#111827]">
+                <h3 className="text-[17px] font-semibold text-[#171717] dark:text-[#EDEDED]">
                   {isInspectingMain
                     ? "Reading your document…"
                     : "Drop your project or assignment here"}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#6B7280] mt-1">
-                  Word files only (<span className="font-semibold text-[#111827]">.docx</span>{" "}
-                  or <span className="font-semibold text-[#111827]">.doc</span>) · Up to 25 MB
+                <p className="text-xs sm:text-sm text-[#525252] dark:text-[#A1A1A6] mt-1">
+                  Word files only (<span className="font-semibold text-[#171717] dark:text-[#EDEDED]">.docx</span>{" "}
+                  or <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">.doc</span>) · Up to 25 MB
                 </p>
 
                 <div className="mt-5 flex justify-center">
-                  <span
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white shadow-[0_6px_20px_rgba(251,67,44,0.28)]"
-                    style={{
-                      background: "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
-                    }}
-                  >
+                  <span className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#FB432C] hover:bg-[#E03923] text-sm font-semibold text-white transition-colors">
                     <FilePlus2 className="w-4 h-4" />
                     <span>Pick Word Document</span>
                   </span>
@@ -713,22 +710,22 @@ export function PapersClient() {
               </div>
 
               {uploadError && (
-                <div className="rounded-[16px] bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-2.5 text-xs sm:text-sm text-red-700 font-medium">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                <div className="rounded-[14px] bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border border-[#DC2626]/20 dark:border-[#E5484D]/25 px-4 py-3 flex items-start gap-2.5 text-xs sm:text-sm text-[#DC2626] dark:text-[#E5484D] font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{uploadError}</span>
                 </div>
               )}
 
               {/* Card 2: Optional Professor Official Template (Attach First or Later) */}
-              <div className="rounded-[22px] bg-white border border-black/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-4 sm:p-5">
+              <div className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3.5 min-w-0">
                     <div
                       className={cn(
-                        "w-10 h-10 rounded-[13px] flex items-center justify-center shrink-0",
+                        "w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 border",
                         templateInspection
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                          : "bg-blue-50 text-[#007AFF] border border-blue-100"
+                          ? "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A] border-[#16A34A]/20 dark:border-[#4CC38A]/25"
+                          : "bg-[#F4F4F5] dark:bg-[#232325] text-[#FB432C] border-[#171717]/[0.06] dark:border-white/[0.08]"
                       )}
                     >
                       {isInspectingTemplate ? (
@@ -742,20 +739,20 @@ export function PapersClient() {
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-[#111827]">
+                        <p className="text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">
                           Have an official template from your professor?
                         </p>
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F2F2F7] text-[#6B7280]">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F4F4F5] dark:bg-[#232325] text-[#737373] dark:text-[#85858B]">
                           Optional
                         </span>
                       </div>
                       {templateInspection ? (
-                        <p className="text-xs text-emerald-700 font-medium mt-1 truncate">
+                        <p className="text-xs text-[#16A34A] dark:text-[#4CC38A] font-medium mt-1 truncate">
                           Attached: {templateInspection.fileName} (
                           {templateInspection.headings.length} sections)
                         </p>
                       ) : (
-                        <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+                        <p className="text-xs text-[#525252] dark:text-[#A1A1A6] mt-1 leading-relaxed">
                           Send their official project format file first if you have one — we&apos;ll
                           keep its cover page, borders, headers, and exact structure.
                         </p>
@@ -767,7 +764,7 @@ export function PapersClient() {
                     <button
                       type="button"
                       onClick={handleRemoveTemplate}
-                      className="shrink-0 p-2 rounded-full hover:bg-[#F2F2F7] text-[#6B7280] hover:text-red-600 transition-colors"
+                      className="shrink-0 p-2 rounded-full hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#737373] dark:text-[#85858B] hover:text-[#DC2626] dark:hover:text-[#E5484D] transition-colors"
                       aria-label="Remove template"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -777,7 +774,7 @@ export function PapersClient() {
                       type="button"
                       onClick={() => templateInputRef.current?.click()}
                       disabled={isInspectingTemplate}
-                      className="shrink-0 px-3.5 py-2 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] text-xs font-bold transition-colors"
+                      className="shrink-0 px-3.5 py-2 rounded-full bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] text-xs font-semibold transition-colors"
                     >
                       + Attach
                     </button>
@@ -785,28 +782,28 @@ export function PapersClient() {
                 </div>
 
                 {templateError && (
-                  <p className="mt-2.5 text-xs text-red-600 font-medium">{templateError}</p>
+                  <p className="mt-2.5 text-xs text-[#DC2626] dark:text-[#E5484D] font-medium">{templateError}</p>
                 )}
               </div>
 
-              {/* Card 3: Grouped iOS Feature Summary */}
-              <div className="rounded-[22px] bg-white border border-black/[0.06] overflow-hidden divide-y divide-black/[0.05]">
+              {/* Card 3: Grouped Feature Summary */}
+              <div className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] overflow-hidden divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                 {[
                   {
                     icon: MessageSquare,
-                    color: "text-[#007AFF] bg-blue-50",
+                    color: "text-[#007AFF] dark:text-[#60A5FA] bg-[#007AFF]/10 dark:bg-[#60A5FA]/15",
                     title: "Chat what you want",
                     desc: "Ask us to fix grammar, expand sections, fill cover details, or write whole missing chapters.",
                   },
                   {
                     icon: BookOpen,
-                    color: "text-[#FB432C] bg-orange-50",
+                    color: "text-[#FB432C] bg-[#FB432C]/10",
                     title: "Keeps your real formatting",
                     desc: "Preserves your photos, tables, page borders, headers, and fonts instead of wrecking your layout.",
                   },
                   {
                     icon: CheckCircle2,
-                    color: "text-emerald-600 bg-emerald-50",
+                    color: "text-[#16A34A] dark:text-[#4CC38A] bg-[#16A34A]/10 dark:bg-[#4CC38A]/15",
                     title: "Ready to submit or print",
                     desc: "Download your updated .docx right away and tweak anything in chat until it feels perfect.",
                   },
@@ -816,15 +813,15 @@ export function PapersClient() {
                     <div key={idx} className="flex items-start gap-3.5 px-4 py-3.5">
                       <div
                         className={cn(
-                          "w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0 mt-0.5",
+                          "w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 mt-0.5",
                           item.color
                         )}
                       >
-                        <Icon className="w-4 h-4" strokeWidth={2.2} />
+                        <Icon className="w-4 h-4" strokeWidth={2} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-[#111827]">{item.title}</p>
-                        <p className="text-xs text-[#6B7280] mt-0.5 leading-relaxed">
+                        <p className="text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">{item.title}</p>
+                        <p className="text-xs text-[#525252] dark:text-[#A1A1A6] mt-0.5 leading-relaxed">
                           {item.desc}
                         </p>
                       </div>
@@ -843,19 +840,19 @@ export function PapersClient() {
               className="space-y-3.5"
             >
               {/* ── 1. Compact Attached Files Strip ── */}
-              <div className="rounded-[20px] bg-white border border-black/[0.06] shadow-[0_4px_18px_rgba(0,0,0,0.03)] divide-y divide-black/[0.05]">
+              <div className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                 {/* Main file */}
                 {mainFile && mainInspection && (
                   <div className="px-4 py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-[11px] bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-[10px] bg-[#FB432C]/10 text-[#FB432C] flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-[#111827] truncate">
+                        <p className="text-sm font-semibold text-[#171717] dark:text-[#EDEDED] truncate">
                           {mainFile.name}
                         </p>
-                        <p className="text-[11px] text-[#6B7280] mt-0.5">
+                        <p className="text-[11px] text-[#737373] dark:text-[#85858B] mt-0.5">
                           {formatBytes(mainFile.size)} · {mainInspection.wordCount.toLocaleString()}{" "}
                           words · ~{mainInspection.estimatedPages}{" "}
                           {mainInspection.estimatedPages === 1 ? "page" : "pages"}
@@ -866,7 +863,7 @@ export function PapersClient() {
                       type="button"
                       onClick={() => mainInputRef.current?.click()}
                       disabled={isBuilding || isInspectingMain}
-                      className="shrink-0 text-xs font-semibold text-[#007AFF] hover:underline px-2 py-1 disabled:opacity-40"
+                      className="shrink-0 text-xs font-semibold text-[#FB432C] hover:underline px-2 py-1 disabled:opacity-40"
                     >
                       {isInspectingMain ? "Loading…" : "Replace"}
                     </button>
@@ -878,10 +875,10 @@ export function PapersClient() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={cn(
-                        "w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0",
+                        "w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0",
                         templateInspection
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-[#F2F2F7] text-[#6B7280]"
+                          ? "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A]"
+                          : "bg-[#F4F4F5] dark:bg-[#232325] text-[#737373] dark:text-[#85858B]"
                       )}
                     >
                       {isInspectingTemplate ? (
@@ -893,21 +890,21 @@ export function PapersClient() {
                     <div className="min-w-0">
                       {templateInspection ? (
                         <>
-                          <p className="text-sm font-bold text-[#111827] truncate">
+                          <p className="text-sm font-semibold text-[#171717] dark:text-[#EDEDED] truncate">
                             Template: {templateInspection.fileName}
                           </p>
-                          <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
-                            Format & cover styles active · {templateInspection.headings.length}{" "}
+                          <p className="text-[11px] text-[#16A34A] dark:text-[#4CC38A] font-medium mt-0.5">
+                            Format &amp; cover styles active · {templateInspection.headings.length}{" "}
                             sections
                           </p>
                         </>
                       ) : (
                         <>
-                          <p className="text-xs sm:text-sm font-semibold text-[#111827]">
+                          <p className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">
                             Professor&apos;s official template{" "}
-                            <span className="font-normal text-[#6B7280]">(optional)</span>
+                            <span className="font-normal text-[#737373] dark:text-[#85858B]">(optional)</span>
                           </p>
-                          <p className="text-[11px] text-[#6B7280] mt-0.5">
+                          <p className="text-[11px] text-[#525252] dark:text-[#A1A1A6] mt-0.5">
                             Add their template so we match the college layout
                           </p>
                         </>
@@ -921,7 +918,7 @@ export function PapersClient() {
                         type="button"
                         onClick={() => templateInputRef.current?.click()}
                         disabled={isBuilding || isInspectingTemplate}
-                        className="text-xs font-semibold text-[#007AFF] hover:underline px-2 py-1"
+                        className="text-xs font-semibold text-[#FB432C] hover:underline px-2 py-1"
                       >
                         Change
                       </button>
@@ -929,7 +926,7 @@ export function PapersClient() {
                         type="button"
                         onClick={handleRemoveTemplate}
                         disabled={isBuilding}
-                        className="p-1.5 rounded-full hover:bg-[#F2F2F7] text-[#6B7280] hover:text-red-600"
+                        className="p-1.5 rounded-full hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#737373] dark:text-[#85858B] hover:text-[#DC2626] dark:hover:text-[#E5484D]"
                         aria-label="Remove template"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -940,7 +937,7 @@ export function PapersClient() {
                       type="button"
                       onClick={() => templateInputRef.current?.click()}
                       disabled={isBuilding || isInspectingTemplate}
-                      className="shrink-0 px-3 py-1.5 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] text-xs font-bold transition-colors"
+                      className="shrink-0 px-3 py-1.5 rounded-full bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] text-xs font-semibold transition-colors"
                     >
                       + Attach Template
                     </button>
@@ -949,7 +946,7 @@ export function PapersClient() {
               </div>
 
               {templateError && (
-                <div className="rounded-[14px] bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs text-red-700 font-medium">
+                <div className="rounded-[14px] bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border border-[#DC2626]/20 dark:border-[#E5484D]/25 px-3.5 py-2.5 text-xs text-[#DC2626] dark:text-[#E5484D] font-medium">
                   {templateError}
                 </div>
               )}
@@ -962,21 +959,21 @@ export function PapersClient() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={SPRING}
-                    className="rounded-[24px] bg-white border border-emerald-200/80 shadow-[0_10px_30px_rgba(16,185,129,0.10)] p-5 space-y-4"
+                    className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#16A34A]/30 dark:border-[#4CC38A]/30 p-5 space-y-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-[13px] bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="w-5 h-5" strokeWidth={2.3} />
+                        <div className="w-10 h-10 rounded-[12px] bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A] flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5" strokeWidth={2} />
                         </div>
                         <div>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#16A34A] dark:text-[#4CC38A]">
                             Ready to Submit
                           </span>
-                          <h3 className="text-base font-extrabold text-[#111827] leading-snug">
+                          <h3 className="text-base font-semibold text-[#171717] dark:text-[#EDEDED] leading-snug">
                             {builtArtifact.filename}
                           </h3>
-                          <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+                          <p className="text-xs text-[#525252] dark:text-[#A1A1A6] mt-1 leading-relaxed">
                             {builtArtifact.summary}
                           </p>
                         </div>
@@ -985,7 +982,7 @@ export function PapersClient() {
 
                     {/* Word & section metrics */}
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="px-2.5 py-1 rounded-full bg-[#F2F2F7] font-semibold text-[#111827]">
+                      <span className="px-2.5 py-1 rounded-full bg-[#F4F4F5] dark:bg-[#232325] font-semibold text-[#171717] dark:text-[#EDEDED]">
                         {builtArtifact.originalWordCount.toLocaleString()} →{" "}
                         {builtArtifact.newWordCount.toLocaleString()} words
                       </span>
@@ -993,7 +990,7 @@ export function PapersClient() {
                         <button
                           type="button"
                           onClick={() => setShowOutlinePreview((v) => !v)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-[#007AFF] font-semibold hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FB432C]/10 text-[#FB432C] font-semibold hover:bg-[#FB432C]/20 transition-colors"
                         >
                           <span>{builtArtifact.sections.length} sections</span>
                           {showOutlinePreview ? (
@@ -1006,17 +1003,17 @@ export function PapersClient() {
                     </div>
 
                     {showOutlinePreview && builtArtifact.sections.length > 0 && (
-                      <div className="rounded-[14px] bg-[#F7F7FA] border border-black/[0.05] p-3 space-y-1.5">
-                        <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                      <div className="rounded-[12px] bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] p-3 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider">
                           Sections in your document
                         </p>
                         <ul className="space-y-1">
                           {builtArtifact.sections.map((sec, idx) => (
                             <li
                               key={idx}
-                              className="text-xs text-[#111827] font-medium flex items-center gap-2"
+                              className="text-xs text-[#171717] dark:text-[#EDEDED] font-medium flex items-center gap-2"
                             >
-                              <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <Check className="w-3 h-3 text-[#16A34A] dark:text-[#4CC38A] shrink-0" />
                               <span className="truncate">{sec}</span>
                             </li>
                           ))}
@@ -1028,19 +1025,16 @@ export function PapersClient() {
                       <a
                         href={builtArtifact.url}
                         download={builtArtifact.filename}
-                        className="flex-1 h-12 rounded-[15px] font-bold text-white text-sm flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(0,122,255,0.28)] hover:opacity-95 transition-opacity"
-                        style={{
-                          background: "linear-gradient(135deg, #007AFF 0%, #2563EB 100%)",
-                        }}
+                        className="flex-1 h-11 rounded-[12px] bg-[#FB432C] hover:bg-[#E03923] font-semibold text-white text-sm flex items-center justify-center gap-2 transition-colors"
                       >
                         <Download className="w-4 h-4" />
                         <span>Download Word Document (.docx)</span>
                       </a>
                       <Link
                         href="/shops"
-                        className="h-12 px-4 rounded-[15px] bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors"
+                        className="h-11 px-4 rounded-[12px] bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        <Printer className="w-4 h-4 text-[#6B7280]" />
+                        <Printer className="w-4 h-4 text-[#737373] dark:text-[#85858B]" />
                         <span>Find Print Shop</span>
                       </Link>
                     </div>
@@ -1056,23 +1050,23 @@ export function PapersClient() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={SPRING}
-                    className="rounded-[24px] bg-white border border-black/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.06)] p-5 space-y-4"
+                    className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] p-5 space-y-4"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-[13px] bg-blue-50 text-[#007AFF] flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-[12px] bg-[#FB432C]/10 text-[#FB432C] flex items-center justify-center">
                         <Loader2 className="w-5 h-5 animate-spin" />
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-[#111827]">
+                        <h3 className="text-base font-semibold text-[#171717] dark:text-[#EDEDED]">
                           Creating your Word document…
                         </h3>
-                        <p className="text-xs text-[#6B7280]">
+                        <p className="text-xs text-[#525252] dark:text-[#A1A1A6]">
                           Usually takes 15–35 seconds depending on paper length
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-[16px] bg-[#F7F7FA] border border-black/[0.04] divide-y divide-black/[0.04]">
+                    <div className="rounded-[12px] bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.06] divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                       {[
                         "Reading every section & formatting style",
                         "Planning improvements & template layout",
@@ -1090,10 +1084,10 @@ export function PapersClient() {
                               className={cn(
                                 "w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
                                 done
-                                  ? "bg-[#34C759] text-white"
+                                  ? "bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113]"
                                   : active
-                                  ? "bg-[#007AFF] text-white"
-                                  : "bg-[#E5E5EA] text-[#8E8E93]"
+                                  ? "bg-[#FB432C] text-white"
+                                  : "bg-[#E4E4E7] dark:bg-[#2C2C2E] text-[#737373] dark:text-[#85858B]"
                               )}
                             >
                               {done ? (
@@ -1107,7 +1101,7 @@ export function PapersClient() {
                             <span
                               className={cn(
                                 "font-medium transition-colors",
-                                done || active ? "text-[#111827]" : "text-[#8E8E93]"
+                                done || active ? "text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B]"
                               )}
                             >
                               {label}
@@ -1121,15 +1115,15 @@ export function PapersClient() {
               </AnimatePresence>
 
               {/* ── 4. Conversational Message Thread ── */}
-              <div className="rounded-[24px] bg-white border border-black/[0.06] shadow-[0_6px_24px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
-                <div className="px-4 py-3 border-b border-black/[0.05] flex items-center justify-between">
+              <div className="rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] overflow-hidden flex flex-col">
+                <div className="px-4 py-3 border-b border-[#171717]/[0.06] dark:border-white/[0.06] flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#007AFF]" />
-                    <span className="text-xs font-bold text-[#111827]">
+                    <Sparkles className="w-4 h-4 text-[#FB432C]" />
+                    <span className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">
                       Chat with Papers AI
                     </span>
                   </div>
-                  <span className="text-[11px] font-medium text-[#6B7280]">
+                  <span className="text-[11px] font-medium text-[#737373] dark:text-[#85858B]">
                     Describe everything you want first, then create
                   </span>
                 </div>
@@ -1148,17 +1142,17 @@ export function PapersClient() {
                         className={cn(
                           "max-w-[88%] px-4 py-3 text-[13.5px] sm:text-sm leading-relaxed whitespace-pre-wrap",
                           msg.role === "ai"
-                            ? "bg-[#F2F2F7] text-[#111827] rounded-[6px_18px_18px_18px]"
-                            : "bg-[#007AFF] text-white rounded-[18px_6px_18px_18px]"
+                            ? "bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] rounded-[6px_16px_16px_16px]"
+                            : "bg-[#FB432C] text-white rounded-[16px_6px_16px_16px]"
                         )}
                       >
                         <RichInlineText text={msg.text} />
 
                         {msg.planBullets && msg.planBullets.length > 0 && (
-                          <ul className="mt-2.5 pt-2.5 border-t border-black/[0.08] space-y-1 text-xs text-[#374151]">
+                          <ul className="mt-2.5 pt-2.5 border-t border-[#171717]/[0.08] dark:border-white/[0.10] space-y-1 text-xs text-[#525252] dark:text-[#A1A1A6]">
                             {msg.planBullets.map((b, i) => (
                               <li key={i} className="flex items-start gap-1.5">
-                                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <Check className="w-3.5 h-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0 mt-0.5" />
                                 <span>{b}</span>
                               </li>
                             ))}
@@ -1170,8 +1164,8 @@ export function PapersClient() {
 
                   {isChatLoading && (
                     <div className="flex items-start">
-                      <div className="bg-[#F2F2F7] text-[#6B7280] rounded-[6px_18px_18px_18px] px-4 py-2.5 text-xs font-medium inline-flex items-center gap-2">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007AFF]" />
+                      <div className="bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] rounded-[6px_16px_16px_16px] px-4 py-2.5 text-xs font-medium inline-flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FB432C]" />
                         <span>Thinking…</span>
                       </div>
                     </div>
@@ -1189,7 +1183,7 @@ export function PapersClient() {
                         type="button"
                         onClick={() => sendChatMessage(chip)}
                         disabled={isChatLoading}
-                        className="text-left text-[11.5px] font-medium px-3 py-1.5 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#111827] transition-colors disabled:opacity-50"
+                        className="text-left text-[11.5px] font-medium px-3 py-1.5 rounded-full bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] transition-colors disabled:opacity-50"
                       >
                         {chip}
                       </button>
@@ -1199,15 +1193,15 @@ export function PapersClient() {
 
                 {/* Errors inside chat */}
                 {(chatError || buildError) && (
-                  <div className="mx-4 mb-3 rounded-[14px] bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs text-red-700 font-medium flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                  <div className="mx-4 mb-3 rounded-[12px] bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border border-[#DC2626]/20 dark:border-[#E5484D]/25 px-3.5 py-2.5 text-xs text-[#DC2626] dark:text-[#E5484D] font-medium flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{buildError || chatError}</span>
                   </div>
                 )}
 
                 {/* Composer + Create Document Action Bar */}
-                <div className="p-3 bg-[#F9F9FB] border-t border-black/[0.06] space-y-2.5">
-                  <div className="rounded-[18px] bg-white border border-black/[0.08] focus-within:border-[#007AFF]/50 focus-within:shadow-[0_0_0_3px_rgba(0,122,255,0.10)] px-3.5 py-2 flex items-end gap-2 transition-all">
+                <div className="p-3 bg-[#F4F4F5]/70 dark:bg-[#141416] border-t border-[#171717]/[0.06] dark:border-white/[0.06] space-y-2.5">
+                  <div className="rounded-[14px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] focus-within:border-[#FB432C] px-3.5 py-2 flex items-end gap-2 transition-colors">
                     <textarea
                       ref={textareaRef}
                       value={inputText}
@@ -1225,7 +1219,7 @@ export function PapersClient() {
                           : "Tell me everything you want improved, added, or filled in…"
                       }
                       rows={1}
-                      className="flex-1 bg-transparent outline-none resize-none text-sm text-[#111827] placeholder:text-[#9CA3AF] leading-relaxed py-1 max-h-[130px]"
+                      className="flex-1 bg-transparent outline-none resize-none text-sm text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] leading-relaxed py-1 max-h-[130px]"
                     />
                     <button
                       type="button"
@@ -1235,11 +1229,11 @@ export function PapersClient() {
                       className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
                         inputText.trim() && !isChatLoading && !isBuilding
-                          ? "bg-[#007AFF] text-white hover:bg-blue-600"
-                          : "bg-[#E5E5EA] text-[#9CA3AF] cursor-default"
+                          ? "bg-[#FB432C] text-white hover:bg-[#E03923]"
+                          : "bg-[#E4E4E7] dark:bg-[#232325] text-[#737373] dark:text-[#85858B] cursor-default"
                       )}
                     >
-                      <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
+                      <ArrowUp className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
 
@@ -1249,13 +1243,7 @@ export function PapersClient() {
                       type="button"
                       onClick={handleBuildDocument}
                       disabled={isBuilding || isChatLoading}
-                      className={cn(
-                        "w-full h-11 rounded-[14px] font-bold text-white text-sm flex items-center justify-center gap-2 transition-opacity",
-                        "shadow-[0_6px_18px_rgba(251,67,44,0.25)] hover:opacity-95 disabled:opacity-50"
-                      )}
-                      style={{
-                        background: "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
-                      }}
+                      className="w-full h-11 rounded-[12px] bg-[#FB432C] hover:bg-[#E03923] font-semibold text-white text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                     >
                       {isBuilding ? (
                         <>

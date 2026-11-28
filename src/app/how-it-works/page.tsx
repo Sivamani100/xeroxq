@@ -45,7 +45,7 @@ export default function HowItWorksPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-[#FB432C] selection:text-white overflow-x-hidden font-sans flex flex-col">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white overflow-x-hidden font-sans flex flex-col">
       <SiteHeader />
       
       <main className="flex-1 pt-32 pb-0">
@@ -62,14 +62,14 @@ export default function HowItWorksPage() {
               animate="visible"
               className="mx-auto mb-16 max-w-2xl text-center"
             >
-              <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
-                <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
-                <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">The XeroxQ Protocol</span>
+              <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-8 mx-auto">
+                <div className="w-2 h-2 rounded-full bg-[#FB432C]" />
+                <span className="text-[10px] font-bold text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] leading-none">The XeroxQ Protocol</span>
               </div>
-              <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
+              <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] leading-[0.95] mb-6 uppercase">
                 Privacy-First Printing <br/> In 4 Steps
               </h2>
-              <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+              <p className="text-lg font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed italic max-w-2xl mx-auto">
                 We re-engineered how printing works from the ground up. Protect your personal documents without sacrificing convenience.
               </p>
             </motion.div>
@@ -86,13 +86,13 @@ export default function HowItWorksPage() {
             >
               <div
                 aria-hidden="true"
-                className="absolute left-[12.5%] top-1/2 h-[1px] w-[75%] -translate-y-1/2 bg-gray-100"
+                className="absolute left-[12.5%] top-1/2 h-[1px] w-[75%] -translate-y-1/2 bg-[#171717]/[0.08] dark:bg-white/[0.08]"
               ></div>
               <div className="relative grid grid-cols-4">
                 {customSteps.map((_, index) => (
                   <div
                     key={index}
-                    className="flex h-10 w-10 items-center justify-center justify-self-center rounded-full bg-white border border-gray-100 font-bold text-black text-sm shadow-sm ring-8 ring-white transition-all duration-300 hover:border-[#FB432C] hover:text-[#FB432C] hover:scale-110"
+                    className="flex h-10 w-10 items-center justify-center justify-self-center rounded-full bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] font-bold text-[#171717] dark:text-[#EDEDED] text-sm shadow-sm ring-8 ring-[#FAFAFA] dark:ring-[#111113] transition-all duration-300 hover:border-[#FB432C] hover:text-[#FB432C] hover:scale-110"
                   >
                     0{index + 1}
                   </div>
@@ -110,25 +110,25 @@ export default function HowItWorksPage() {
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ delay: index * 0.15, duration: 0.8, type: 'spring', bounce: 0.3 }}
                   className={cn(
-                    "relative rounded-2xl border bg-white p-6 lg:p-8 text-black transition-all duration-500 ease-in-out group text-left",
-                    "hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/5 hover:border-[#FB432C]/30"
+                    "relative rounded-2xl border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] p-6 lg:p-8 text-[#171717] dark:text-[#EDEDED] transition-all duration-500 ease-in-out group text-left",
+                    "hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-black/40 hover:border-[#FB432C]/30"
                   )}
                 >
                   {/* Icon */}
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-lg shadow-black/20 group-hover:bg-[#FB432C] group-hover:scale-110 transition-all duration-500">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#171717] dark:bg-[#232325] text-white shadow-lg shadow-black/20 group-hover:bg-[#FB432C] group-hover:scale-110 transition-all duration-500">
                     {step.icon}
                   </div>
                   {/* Title and Description */}
                   <h3 className="mb-3 text-lg font-bold tracking-tight uppercase">{step.title}</h3>
-                  <p className="mb-8 text-xs font-medium text-gray-500 leading-relaxed">{step.description}</p>
+                  <p className="mb-8 text-xs font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed">{step.description}</p>
                   {/* Benefits List */}
                   <ul className="space-y-4">
                     {step.benefits.map((benefit, bIndex) => (
                       <li key={bIndex} className="flex items-center gap-3">
-                        <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-black/5 group-hover:bg-[#FB432C]/10 transition-colors">
-                          <div className="h-1.5 w-1.5 rounded-full bg-black group-hover:bg-[#FB432C] transition-colors"></div>
+                        <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#171717]/5 dark:bg-white/10 group-hover:bg-[#FB432C]/15 transition-colors">
+                          <div className="h-1.5 w-1.5 rounded-full bg-[#171717] dark:bg-[#EDEDED] group-hover:bg-[#FB432C] transition-colors"></div>
                         </div>
-                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{benefit}</span>
+                        <span className="text-[11px] font-bold text-[#525252] dark:text-[#A1A1A6] uppercase tracking-tight">{benefit}</span>
                       </li>
                     ))}
                   </ul>
@@ -147,24 +147,21 @@ export default function HowItWorksPage() {
           transition={{ duration: 0.8 }}
           className="pb-32 px-6"
         >
-           <div className="max-w-[1280px] mx-auto p-12 lg:p-20 bg-black rounded-[32px] relative overflow-hidden text-center group shadow-2xl">
-              <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" 
-                   style={{ backgroundImage: 'radial-gradient(circle_at_100%_100%, #FB432C 0%, transparent 40%)' }} />
-              
+           <div className="max-w-[1280px] mx-auto p-12 lg:p-20 bg-[#171717] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-[32px] relative overflow-hidden text-center group shadow-2xl">
               <div className="relative z-10 flex flex-col items-center gap-8">
                  
                  <div className="space-y-4">
                     <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tighter uppercase leading-none">
                        Ready to Print Securely?
                     </h2>
-                    <p className="text-white/60 font-medium max-w-lg mx-auto leading-relaxed">
+                    <p className="text-white/70 font-medium max-w-lg mx-auto leading-relaxed">
                        Find a XeroxQ enabled shop near you and experience true privacy. Free for users. Free for shops.
                     </p>
                  </div>
 
                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                     <Link href="/shops">
-                       <button className="h-14 px-10 bg-[#FB432C] hover:bg-white hover:text-black text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all shadow-xl shadow-[#FB432C]/20 flex items-center gap-2">
+                       <button className="h-14 px-10 bg-[#FB432C] hover:bg-[#E03923] text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all shadow-xl shadow-[#FB432C]/20 flex items-center gap-2">
                           Find A Shop <ArrowRight className="w-4 h-4" />
                        </button>
                     </Link>

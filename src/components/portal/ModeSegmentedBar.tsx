@@ -30,7 +30,7 @@ export default function ModeSegmentedBar({ mode, onChange, show }: Props) {
           className="w-full"
         >
           <div
-            className="relative flex items-center bg-[#E5E5EA]/85 rounded-full p-1 w-full border border-black/[0.04]"
+            className="relative flex items-center bg-[#F4F4F5] dark:bg-[#232325] rounded-xl p-1 w-full border border-[#171717]/[0.08] dark:border-white/[0.08]"
             role="tablist"
             aria-label="Order mode"
           >
@@ -47,17 +47,19 @@ export default function ModeSegmentedBar({ mode, onChange, show }: Props) {
                   }}
                   className={cn(
                     "relative flex-1 flex items-center justify-center gap-1.5",
-                    "py-2 px-3 rounded-full z-10",
-                    "text-[13px] font-semibold select-none transition-colors duration-150",
+                    "py-2 px-3 rounded-lg z-10 cursor-pointer",
+                    "text-[13px] font-medium select-none transition-colors duration-150",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FB432C]/50",
-                    isActive ? "text-[#111827]" : "text-[#6B7280] hover:text-[#111827]"
+                    isActive
+                      ? "text-[#171717] dark:text-[#EDEDED]"
+                      : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                   )}
                 >
                   {isActive && (
                     <motion.span
                       layoutId="seg-pill"
                       transition={SPRING}
-                      className="absolute inset-0 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] -z-10"
+                      className="absolute inset-0 rounded-lg bg-white dark:bg-[#19191B] border border-[#171717]/[0.06] dark:border-white/[0.08] -z-10"
                     />
                   )}
                   {seg.icon}

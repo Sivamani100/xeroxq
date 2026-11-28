@@ -87,15 +87,15 @@ export default function CommunityPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
       <SiteHeader />
       
       <main className="flex-1 pt-32 pb-0">
         
         {/* Community Hero */}
         <section className="relative pt-12 pb-16 text-center overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
-               style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
+          <div className="absolute inset-0 z-0 opacity-[0.04] dark:opacity-[0.06] text-[#171717] dark:text-white pointer-events-none" 
+               style={{ backgroundImage: 'radial-gradient(currentColor 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
                
           <div className="max-w-[1280px] mx-auto px-6 relative z-10">
              <motion.div 
@@ -107,15 +107,15 @@ export default function CommunityPage() {
                animate="visible"
                className="max-w-4xl mx-auto"
              >
-               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8">
-                 <Users2 className="w-3.5 h-3.5 text-black" />
-                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">The Community</span>
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] mb-8">
+                 <Users2 className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+                 <span className="text-[10px] font-bold text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] leading-none">The Community</span>
                </div>
                
-               <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
+               <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] leading-[0.95] mb-6 uppercase">
                  A Growing Mesh <br /> Of Trust.
                </h1>
-               <p className="text-lg md:text-xl font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+               <p className="text-lg md:text-xl font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed italic max-w-2xl mx-auto">
                  XeroxQ is more than a protocol. It's a movement of developers, shopkeepers, and privacy advocates physicalizing the digital world across Andhra Pradesh.
                </p>
              </motion.div>
@@ -123,7 +123,7 @@ export default function CommunityPage() {
         </section>
 
         {/* Live Stats Bar */}
-        <section className="py-12 border-y border-gray-100 bg-white">
+        <section className="py-12 border-y border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B]">
            <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               {stats.map((stat, i) => (
                  <motion.div 
@@ -132,24 +132,24 @@ export default function CommunityPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="p-6 border border-gray-100 rounded-[24px] flex items-center justify-between group hover:border-[#FB432C]/30 hover:shadow-lg transition-all duration-300"
+                    className="p-6 bg-[#F4F4F5]/60 dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-[24px] flex items-center justify-between group hover:border-[#FB432C]/30 hover:shadow-lg transition-all duration-300"
                  >
                     <div>
-                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1 group-hover:text-[#FB432C] transition-colors">{stat.label}</span>
-                       <span className="text-[11px] font-bold text-gray-400 italic">{stat.sub}</span>
+                       <span className="text-[10px] font-black uppercase tracking-widest text-[#737373] dark:text-[#85858B] block mb-1 group-hover:text-[#FB432C] transition-colors">{stat.label}</span>
+                       <span className="text-[11px] font-bold text-[#737373] dark:text-[#85858B] italic">{stat.sub}</span>
                     </div>
-                    <span className="text-3xl font-black text-black tracking-tight">{stat.value}</span>
+                    <span className="text-3xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight">{stat.value}</span>
                  </motion.div>
               ))}
            </div>
         </section>
 
         {/* Core Values */}
-        <section className="py-24 bg-white relative z-20">
+        <section className="py-24 bg-white dark:bg-[#19191B] relative z-20">
            <div className="max-w-[1280px] mx-auto px-6">
               <div className="text-center mb-16">
-                 <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">What We Stand For</h2>
-                 <p className="text-gray-500 font-medium">The principles that guide every line of code and every shop onboarded.</p>
+                 <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-[#171717] dark:text-[#EDEDED] mb-4">What We Stand For</h2>
+                 <p className="text-[#525252] dark:text-[#A1A1A6] font-medium">The principles that guide every line of code and every shop onboarded.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -160,15 +160,15 @@ export default function CommunityPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.15, duration: 0.5 }}
-                       className="p-10 bg-[#F8FAFC] rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 group text-center md:text-left"
+                       className="p-10 bg-[#F4F4F5] dark:bg-[#232325] rounded-[32px] border border-[#171717]/[0.10] dark:border-white/[0.10] hover:border-[#171717]/20 dark:hover:border-white/20 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 group text-center md:text-left"
                     >
-                       <div className="w-16 h-16 rounded-[20px] bg-white border border-gray-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-black transition-all duration-500 shadow-sm mx-auto md:mx-0 mb-8">
-                          <div className="group-hover:invert transition-all duration-500 text-black">
+                       <div className="w-16 h-16 rounded-[20px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center group-hover:scale-110 group-hover:bg-[#171717] dark:group-hover:bg-[#FB432C] group-hover:border-transparent transition-all duration-500 shadow-sm mx-auto md:mx-0 mb-8">
+                          <div className="text-[#171717] dark:text-[#EDEDED] group-hover:text-white transition-colors duration-500">
                              <value.icon className="w-7 h-7" />
                           </div>
                        </div>
-                       <h3 className="text-2xl font-black text-black tracking-tighter uppercase leading-none mb-3 group-hover:text-[#FB432C] transition-colors">{value.title}</h3>
-                       <p className="text-[15px] text-gray-600 font-medium leading-relaxed">
+                       <h3 className="text-2xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tighter uppercase leading-none mb-3 group-hover:text-[#FB432C] transition-colors">{value.title}</h3>
+                       <p className="text-[15px] text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed">
                           {value.desc}
                        </p>
                     </motion.div>
@@ -178,11 +178,11 @@ export default function CommunityPage() {
         </section>
 
         {/* Community Channels */}
-        <section className="py-32 bg-[#F8FAFC] border-y border-gray-100">
+        <section className="py-32 bg-[#FAFAFA] dark:bg-[#111113] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
            <div className="max-w-[1280px] mx-auto px-6">
               <div className="text-center mb-20">
-                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Join The Conversation</h2>
-                 <p className="text-gray-500 font-medium max-w-lg mx-auto">Connect with shopkeepers, developers, and affiliates building the secure printing future.</p>
+                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[#171717] dark:text-[#EDEDED] mb-4">Join The Conversation</h2>
+                 <p className="text-[#525252] dark:text-[#A1A1A6] font-medium max-w-lg mx-auto">Connect with shopkeepers, developers, and affiliates building the secure printing future.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -193,25 +193,25 @@ export default function CommunityPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.15, duration: 0.6 }}
-                       className="group bg-white p-10 rounded-[32px] border border-gray-200 hover:border-black hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between"
+                       className="group bg-white dark:bg-[#19191B] p-10 rounded-[32px] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:border-[#171717] dark:hover:border-white/20 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between"
                     >
                        <div>
                           <div className="flex items-center justify-between mb-8">
                              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-500", ch.color)}>
                                 <ch.icon className="w-6 h-6" />
                              </div>
-                             <span className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest rounded-full">
+                             <span className="px-3 py-1.5 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[10px] font-black text-[#525252] dark:text-[#A1A1A6] uppercase tracking-widest rounded-full">
                                 {ch.members} Members
                              </span>
                           </div>
-                          <h3 className="text-2xl font-black text-black tracking-tighter uppercase leading-none mb-4">{ch.title}</h3>
-                          <p className="text-[14px] font-medium text-gray-500 leading-relaxed">
+                          <h3 className="text-2xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tighter uppercase leading-none mb-4">{ch.title}</h3>
+                          <p className="text-[14px] font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed">
                              {ch.desc}
                           </p>
                        </div>
                        
-                       <div className="mt-8 pt-6 border-t border-gray-100">
-                          <button className="w-full h-14 bg-black hover:bg-[#FB432C] text-white font-bold text-[12px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-lg shadow-black/10 flex items-center justify-center gap-3">
+                       <div className="mt-8 pt-6 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+                          <button className="w-full h-14 bg-[#171717] dark:bg-[#FB432C] hover:bg-[#FB432C] dark:hover:bg-[#E03923] text-white font-bold text-[12px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-lg shadow-black/10 flex items-center justify-center gap-3">
                              {ch.cta} <ArrowRight className="w-4 h-4" />
                           </button>
                        </div>
@@ -222,11 +222,11 @@ export default function CommunityPage() {
         </section>
 
         {/* Community Voices */}
-        <section className="py-32 bg-white">
+        <section className="py-32 bg-white dark:bg-[#19191B]">
            <div className="max-w-[1280px] mx-auto px-6">
               <div className="text-center mb-20">
-                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black mb-4">Voices from the Mesh</h2>
-                 <p className="text-gray-500 font-medium">Real stories from the people making XeroxQ possible, every single day.</p>
+                 <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[#171717] dark:text-[#EDEDED] mb-4">Voices from the Mesh</h2>
+                 <p className="text-[#525252] dark:text-[#A1A1A6] font-medium">Real stories from the people making XeroxQ possible, every single day.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -237,18 +237,18 @@ export default function CommunityPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.1 }}
-                       className="group p-10 rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 transition-all duration-500 bg-white"
+                       className="group p-10 rounded-[32px] border border-[#171717]/[0.10] dark:border-white/[0.10] hover:border-[#171717]/20 dark:hover:border-white/20 hover:shadow-2xl hover:shadow-black/5 transition-all duration-500 bg-[#F4F4F5]/50 dark:bg-[#232325]"
                     >
-                       <p className="text-xl md:text-2xl font-bold text-black tracking-tight leading-snug mb-8 italic">
+                       <p className="text-xl md:text-2xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-snug mb-8 italic">
                           "{voice.quote}"
                        </p>
-                       <div className="flex items-center gap-4 pt-6 border-t border-gray-100">
-                          <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center font-black text-sm tracking-tighter shrink-0">
+                       <div className="flex items-center gap-4 pt-6 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+                          <div className="w-12 h-12 rounded-full bg-[#171717] dark:bg-[#FB432C] text-white flex items-center justify-center font-black text-sm tracking-tighter shrink-0">
                              {voice.initials}
                           </div>
                           <div>
-                             <span className="font-bold text-black block text-sm">{voice.name}</span>
-                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{voice.role}</span>
+                             <span className="font-bold text-[#171717] dark:text-[#EDEDED] block text-sm">{voice.name}</span>
+                             <span className="text-[11px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest">{voice.role}</span>
                           </div>
                        </div>
                     </motion.div>
@@ -258,8 +258,8 @@ export default function CommunityPage() {
         </section>
 
         {/* CTA Banner */}
-        <section className="py-24 px-6 bg-[#F8FAFC] border-t border-gray-100">
-           <div className="max-w-[1280px] mx-auto p-12 md:p-20 bg-black rounded-[40px] relative overflow-hidden group shadow-2xl text-center">
+        <section className="py-24 px-6 bg-[#FAFAFA] dark:bg-[#111113] border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+           <div className="max-w-[1280px] mx-auto p-12 md:p-20 bg-[#171717] dark:bg-[#19191B] border border-white/[0.08] text-white rounded-[40px] relative overflow-hidden group shadow-2xl text-center">
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FB432C] opacity-[0.05] blur-[100px] rounded-full mix-blend-overlay pointer-events-none" />
               
               <div className="relative z-10 space-y-8 max-w-2xl mx-auto">
@@ -269,11 +269,11 @@ export default function CommunityPage() {
                  <h2 className="text-4xl md:text-6xl font-extrabold text-white tracking-tighter leading-none uppercase">
                     Be Part of<br /> Something Real.
                  </h2>
-                 <p className="text-lg text-gray-400 font-medium italic leading-relaxed max-w-lg mx-auto">
+                 <p className="text-lg text-[#A1A1A6] font-medium italic leading-relaxed max-w-lg mx-auto">
                     Whether you're a developer, a shop owner, or simply someone who believes your documents should stay private—there's a place for you here.
                  </p>
                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                    <button className="h-16 px-10 bg-white text-black hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:-translate-y-1">
+                    <button className="h-16 px-10 bg-white text-[#171717] hover:bg-[#FB432C] hover:text-white font-black text-[14px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl hover:-translate-y-1">
                        Join the Community
                     </button>
                     <button className="h-16 px-10 bg-white/10 border border-white/20 text-white hover:bg-white/20 font-bold text-[12px] uppercase tracking-widest rounded-[16px] transition-all backdrop-blur-sm">

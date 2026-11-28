@@ -77,215 +77,170 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity"
+          className="fixed inset-0 bg-black/65 backdrop-blur-sm transition-opacity"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.98, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-          className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-gray-100 bg-white p-6 shadow-2xl sm:p-8 z-10 max-h-[90vh] flex flex-col justify-between"
+          exit={{ opacity: 0, scale: 0.98, y: 12 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-[#171717]/[0.10] dark:border-white/[0.10] bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED] p-6 shadow-xl sm:p-7 z-10 max-h-[90vh] flex flex-col justify-between"
         >
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-black transition-colors"
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-lg bg-[#F4F4F5] dark:bg-[#232325] text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" strokeWidth={1.75} />
           </button>
 
-          <div className="space-y-6 overflow-y-auto pr-1">
+          <div className="space-y-5 overflow-y-auto pr-1">
             {/* Header */}
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#FB432C]/20 bg-[#FB432C]/5 px-3 py-1 text-xs font-bold text-[#FB432C]">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Multi-Architecture Windows Installer</span>
-              </div>
-              <h2 className="mt-3 text-2xl sm:text-3xl font-extrabold text-black tracking-tight">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#FB432C]/25 bg-[#FB432C]/[0.08] px-2.5 py-1 text-[11px] font-medium text-[#FB432C]">
+                <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Windows Desktop Installer
+              </span>
+              <h2 className="mt-2.5 text-[22px] font-semibold tracking-tight">
                 Download XeroxQ Desktop
               </h2>
-              <p className="mt-1 text-sm sm:text-base text-gray-500 font-medium">
-                Choose the suitable edition for your Windows PC or Xerox printing machine.
+              <p className="mt-1 text-[13px] text-[#525252] dark:text-[#A1A1A6]">
+                Choose the edition that matches your Windows PC or shop print station.
               </p>
             </div>
 
             {/* Architecture Auto-Detect Banner */}
-            <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-emerald-900">
+            <div className="flex items-center justify-between rounded-xl border border-[#16A34A]/25 dark:border-[#4CC38A]/25 bg-[#16A34A]/[0.06] dark:bg-[#4CC38A]/10 p-3.5 text-[#171717] dark:text-[#EDEDED]">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
-                  <Monitor className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113]">
+                  <Monitor className="h-4 w-4" strokeWidth={1.75} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Auto-Detected System</span>
-                    <span className="inline-flex items-center rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
-                      {detectedArch === "x64" ? "64-Bit Windows" : "32-Bit Windows"}
+                    <span className="text-[12px] font-semibold text-[#16A34A] dark:text-[#4CC38A]">Detected system</span>
+                    <span className="inline-flex items-center rounded-md bg-[#16A34A]/15 dark:bg-[#4CC38A]/20 px-2 py-0.5 text-[11px] font-medium text-[#16A34A] dark:text-[#4CC38A]">
+                      {detectedArch === "x86" ? "32-Bit Windows" : "64-Bit Windows"}
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-emerald-800">
-                    {detectedArch === "x64"
-                      ? "Your system supports 64-Bit (x64) & Universal editions."
-                      : "Your system supports 32-Bit (x86 / ia32) Universal edition."}
+                  <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">
+                    {detectedArch === "x86"
+                      ? "XeroxQ Desktop requires 64-bit Windows 10 or Windows 11."
+                      : "Your PC is ready for both the Standard Installer and Portable editions."}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Download Options Grid */}
+            {/* Download Options Grid — aligned with actual x64 Installer & Portable artifacts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Option 1: 64-Bit (x64) & Universal Installer */}
-              <div className={`relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-200 ${
-                detectedArch === "x64"
-                  ? "border-[#FB432C] bg-gradient-to-b from-orange-50/50 to-white shadow-lg ring-1 ring-[#FB432C]/30"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}>
-                {detectedArch === "x64" && (
-                  <span className="absolute -top-2.5 right-4 rounded-full bg-[#FB432C] px-3 py-0.5 text-[10px] font-black uppercase text-white shadow-sm">
-                    Recommended for your PC
-                  </span>
-                )}
+              {/* Option 1: Windows Installer (NSIS x64) */}
+              <div className="relative flex flex-col justify-between rounded-xl border border-[#FB432C] bg-[#F4F4F5]/60 dark:bg-[#232325] p-5 transition-colors">
+                <span className="absolute -top-2.5 right-4 rounded-md bg-[#FB432C] px-2.5 py-0.5 text-[11px] font-medium text-white">
+                  Recommended
+                </span>
                 <div>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
-                      <Cpu className="h-5 w-5" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113]">
+                      <Cpu className="h-4 w-4" strokeWidth={1.75} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-black text-base">Windows 64-Bit (x64)</h3>
-                      <p className="text-xs text-gray-500 font-medium">Standard Setup Installer (.exe)</p>
+                      <h3 className="font-semibold text-[15px]">Windows Installer (x64)</h3>
+                      <p className="text-[12px] text-[#737373] dark:text-[#85858B]">Standard Setup (.exe)</p>
                     </div>
                   </div>
-                  <ul className="mt-4 space-y-2 text-xs text-gray-600 font-medium">
+                  <ul className="mt-4 space-y-2 text-[12px] text-[#525252] dark:text-[#A1A1A6]">
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Optimized for modern 64-Bit Windows 10/11</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Optimized for Windows 10 and Windows 11 (64-bit)</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Automatic background printer auto-discovery</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Automatic local &amp; USB printer discovery</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Includes Desktop & Start Menu shortcuts</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Includes Desktop &amp; Start Menu shortcuts</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-3 border-t border-gray-100">
+                <div className="mt-5 pt-3 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
                   <Button
                     asChild
-                    className="w-full h-11 rounded-xl bg-[#FB432C] hover:bg-black text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                    className="w-full h-10 rounded-lg bg-[#FB432C] hover:bg-[#E03923] text-white font-medium text-[13px] flex items-center justify-center gap-2"
                   >
-                    <a
-                      href={`${DOWNLOAD_BASE_URL}/XeroxQ-Setup-x64.exe`}
-                      download="XeroxQ-Setup-x64.exe"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Download 64-Bit Installer</span>
+                    <a href={`${DOWNLOAD_BASE_URL}/XeroxQ-Setup-x64.exe`} download="XeroxQ-Setup-x64.exe">
+                      <Download className="h-4 w-4" strokeWidth={1.75} />
+                      <span>Download Installer (.exe)</span>
                     </a>
                   </Button>
                 </div>
               </div>
-              {/* Option 2: 32-Bit (x86 / ia32) Installer */}
-              <div className={`relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-200 ${
-                detectedArch === "x86"
-                  ? "border-[#FB432C] bg-gradient-to-b from-orange-50/50 to-white shadow-lg ring-1 ring-[#FB432C]/30"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}>
-                {detectedArch === "x86" && (
-                  <span className="absolute -top-2.5 right-4 rounded-full bg-[#FB432C] px-3 py-0.5 text-[10px] font-black uppercase text-white shadow-sm">
-                    Recommended for your PC
-                  </span>
-                )}
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900 text-white">
-                      <Monitor className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-black text-base">Windows 32-Bit (x86 / ia32)</h3>
-                      <p className="text-xs text-gray-500 font-medium">Dedicated 32-Bit Setup Installer (.exe)</p>
-                    </div>
-                  </div>
-                  <ul className="mt-4 space-y-2 text-xs text-gray-600 font-medium">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Designed for 32-Bit legacy PCs & print servers</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Native ia32 NSIS setup for 32-Bit Windows</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                      <span>Full thermal/inkjet/laser driver hooks</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mt-5 pt-3 border-t border-gray-100">
-                  <Button
-                    asChild
-                    className="w-full h-11 rounded-xl bg-black hover:bg-[#FB432C] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    <a
-                      href={`${DOWNLOAD_BASE_URL}/XeroxQ-Setup-ia32.exe`}
-                      download="XeroxQ-Setup-ia32.exe"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Download 32-Bit Installer</span>
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
 
-            {/* Option 3: Portable Edition */}
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200 text-gray-800">
-                  <HardDrive className="h-5 w-5" />
-                </div>
+              {/* Option 2: Portable Edition (x64) */}
+              <div className="relative flex flex-col justify-between rounded-xl border border-[#171717]/[0.10] dark:border-white/[0.10] bg-white dark:bg-[#19191B] p-5 transition-colors">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-black text-sm">XeroxQ Portable Edition</h4>
-                    <span className="rounded-md bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-700">No Install Needed</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#232325] dark:bg-[#EDEDED] text-white dark:text-[#111113]">
+                      <HardDrive className="h-4 w-4" strokeWidth={1.75} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-[15px]">Portable Edition (x64)</h3>
+                        <span className="rounded-md bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] px-2 py-0.5 text-[10.5px] font-medium text-[#525252] dark:text-[#A1A1A6]">
+                          No install
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#737373] dark:text-[#85858B]">Standalone Executable (.exe)</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 font-medium">Single standalone executable for USB drives and instant testing.</p>
+                  <ul className="mt-4 space-y-2 text-[12px] text-[#525252] dark:text-[#A1A1A6]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Run directly without administrator rights</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Great for USB drives or multi-counter PCs</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A] dark:text-[#4CC38A] shrink-0" strokeWidth={1.75} />
+                      <span>Supports USB, network, thermal, and laser printers</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-5 pt-3 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+                  <Button
+                    asChild
+                    className="w-full h-10 rounded-lg bg-[#171717] dark:bg-[#EDEDED] hover:bg-[#262626] dark:hover:bg-white text-white dark:text-[#111113] font-medium text-[13px] flex items-center justify-center gap-2"
+                  >
+                    <a href={`${DOWNLOAD_BASE_URL}/XeroxQ-Portable-x64.exe`} download="XeroxQ-Portable-x64.exe">
+                      <Download className="h-4 w-4" strokeWidth={1.75} />
+                      <span>Download Portable (.exe)</span>
+                    </a>
+                  </Button>
                 </div>
               </div>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full sm:w-auto h-10 rounded-xl border-gray-300 font-bold text-xs hover:bg-black hover:text-white transition-all flex-shrink-0"
-              >
-                <a
-                  href={`${DOWNLOAD_BASE_URL}/XeroxQ-Portable-x64.exe`}
-                  download="XeroxQ-Portable-x64.exe"
-                  className="flex items-center gap-2"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download Portable (.exe)</span>
-                </a>
-              </Button>
             </div>
 
             {/* Windows SmartScreen Tip */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs text-amber-900">
-              <Info className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-              <p className="font-medium leading-relaxed">
-                If Windows SmartScreen shows <span className="font-bold">&ldquo;Windows protected your PC&rdquo;</span>, click{" "}
-                <span className="font-bold underline">More info</span> and then{" "}
-                <span className="font-bold">&ldquo;Run anyway&rdquo;</span> to launch the installer.
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3.5 py-2.5 text-[12px] text-[#525252] dark:text-[#A1A1A6]">
+              <Info className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" strokeWidth={1.75} />
+              <p className="leading-relaxed">
+                If Windows SmartScreen shows <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">&ldquo;Windows protected your PC&rdquo;</span>, click{" "}
+                <span className="font-semibold underline">More info</span> and choose{" "}
+                <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">&ldquo;Run anyway&rdquo;</span>.
               </p>
             </div>
 
-            {/* Verification Footer */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs text-gray-400 font-medium">
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#171717]/[0.08] dark:border-white/[0.08] text-[12px] text-[#737373] dark:text-[#85858B]">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <span>Verified Windows Installer (.exe) • Supports 64-Bit &amp; 32-Bit</span>
+                <ShieldCheck className="h-4 w-4 text-[#16A34A] dark:text-[#4CC38A]" strokeWidth={1.75} />
+                <span>Windows 10 &amp; 11 (64-bit) · Installer &amp; Portable (.exe)</span>
               </div>
-              <span>Works with all Windows Printers</span>
+              <span>Works with all Windows printers</span>
             </div>
           </div>
         </motion.div>

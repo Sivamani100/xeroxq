@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 export default function PartnersPage() {
   const [coreMembers, setCoreMembers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitFeedback, setSubmitFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     async function fetchLeaders() {
@@ -41,7 +42,7 @@ export default function PartnersPage() {
         setCoreMembers(data.map(m => ({
           ...m,
           initials: m.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2),
-          theme: m.type === 'leader' ? "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600" : "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600"
+          theme: m.type === 'leader' ? "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600 dark:text-blue-400" : "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
         })));
       } else {
         // Fallback to defaults if no approved partners yet
@@ -54,7 +55,7 @@ export default function PartnersPage() {
             contributions: "Built Core Protocol",
             stats: { commits: "400+", uptime: "99.9%" },
             tags: ["Next.js", "Cryptography", "Supabase"],
-            theme: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600"
+            theme: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-600 dark:text-blue-400"
           },
           {
             name: "Saini Koyya",
@@ -64,7 +65,7 @@ export default function PartnersPage() {
             contributions: "Network Scaling",
             stats: { commits: "350+", speed: "O(1)" },
             tags: ["React", "API Optimization", "Deployment"],
-            theme: "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600"
+            theme: "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
           }
         ]);
       }
@@ -75,7 +76,9 @@ export default function PartnersPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
-    const formData = new FormData(e.currentTarget);
+    setSubmitFeedback(null);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
     try {
       const { error } = await supabase.from("partners").insert({
@@ -87,11 +90,17 @@ export default function PartnersPage() {
       });
 
       if (error) throw error;
-      alert("XeroxQ: Partnership application dispatched. Our command center will review your credentials within 48H.");
-      (e.target as HTMLFormElement).reset();
+      setSubmitFeedback({
+        type: "success",
+        message: "XeroxQ: Partnership application dispatched. Our command center will review your credentials within 48H."
+      });
+      form.reset();
     } catch (err) {
       console.error("Partnership Error:", err);
-      alert("System Alert: Connection interrupted. Dispatch failed.");
+      setSubmitFeedback({
+        type: "error",
+        message: "System Alert: Connection interrupted. Dispatch failed."
+      });
     } finally {
       setSubmitting(false);
     }
@@ -101,17 +110,17 @@ export default function PartnersPage() {
     { 
       title: "Local Affiliates", 
       desc: "Help us onboard real xerox shops in your city in Andhra Pradesh. Earn recognition and become an official regional manager as we scale.", 
-      icon: <Users className="w-6 h-6 text-black" />
+      icon: <Users className="w-6 h-6" />
     },
     { 
       title: "Core Developers", 
       desc: "Passionate about security? Contribute to the XeroxQ protocol, help us build new encryption layers, and join our elite technical squad.", 
-      icon: <Code2 className="w-6 h-6 text-black" />
+      icon: <Code2 className="w-6 h-6" />
     },
     { 
       title: "Official Shop Partners", 
       desc: "Top-performing xerox shops who have processed over 500+ secure prints gain 'Core Partner' status and get featured platform-wide.", 
-      icon: <Store className="w-6 h-6 text-black" />
+      icon: <Store className="w-6 h-6" />
     }
   ];
 
@@ -134,15 +143,15 @@ export default function PartnersPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
       <SiteHeader />
       
       <main className="flex-1 pt-32 pb-0">
         
         {/* Partner Hero */}
         <section className="relative pt-12 pb-16 text-center overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
-               style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
+          <div className="absolute inset-0 z-0 opacity-[0.04] dark:opacity-[0.06] text-[#171717] dark:text-white pointer-events-none" 
+               style={{ backgroundImage: 'radial-gradient(currentColor 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
                
           <div className="max-w-[1280px] mx-auto px-6 relative z-10">
              <motion.div 
@@ -154,15 +163,15 @@ export default function PartnersPage() {
                animate="visible"
                className="mx-auto max-w-2xl text-center"
              >
-               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] mb-8 mx-auto">
                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Open Network</span>
+                 <span className="text-[10px] font-bold text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] leading-none">Open Network</span>
                </div>
                
-               <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6 uppercase">
+               <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] leading-none mb-6 uppercase">
                  Partner Program
                </h2>
-               <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+               <p className="text-lg font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed italic max-w-2xl mx-auto">
                  Join the movement. We are looking for passionate volunteers, local marketers, and developers to help us bring secure printing to every district in Andhra Pradesh.
                </p>
              </motion.div>
@@ -179,16 +188,16 @@ export default function PartnersPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ delay: i * 0.15, duration: 0.6 }}
-                  className="p-8 bg-white rounded-[32px] border border-black/5 group space-y-6 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500"
+                  className="p-8 bg-white dark:bg-[#19191B] rounded-[32px] border border-[#171717]/[0.08] dark:border-white/[0.08] group space-y-6 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500"
                 >
-                   <div className="w-16 h-16 rounded-[20px] bg-[#F8FAFC] border border-gray-100 flex items-center justify-center group-hover:scale-110 group-hover:bg-black transition-all duration-500 shadow-sm">
-                      <div className="group-hover:invert transition-all duration-500">
+                   <div className="w-16 h-16 rounded-[20px] bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center group-hover:scale-110 group-hover:bg-[#171717] dark:group-hover:bg-[#FB432C] group-hover:border-transparent transition-all duration-500 shadow-sm">
+                      <div className="text-[#171717] dark:text-[#EDEDED] group-hover:text-white transition-colors duration-500">
                          {role.icon}
                       </div>
                    </div>
                    <div className="space-y-3">
-                      <h3 className="text-xl font-bold text-black tracking-tight uppercase leading-none group-hover:text-[#FB432C] transition-colors">{role.title}</h3>
-                      <p className="text-sm text-[#64748B] font-medium leading-relaxed italic">"{role.desc}"</p>
+                      <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight uppercase leading-none group-hover:text-[#FB432C] transition-colors">{role.title}</h3>
+                      <p className="text-sm text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed italic">"{role.desc}"</p>
                    </div>
                 </motion.div>
               ))}
@@ -196,7 +205,7 @@ export default function PartnersPage() {
         </section>
 
         {/* Why Volunteer (Benefits) Section */}
-        <section className="py-24 bg-black relative z-20 overflow-hidden">
+        <section className="py-24 bg-[#171717] dark:bg-[#19191B] border-y border-white/[0.08] text-white relative z-20 overflow-hidden">
             {/* Dark mode background subtle pattern */}
            <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" 
                style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 0)', backgroundSize: '32px 32px' }} />
@@ -206,7 +215,7 @@ export default function PartnersPage() {
                  <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white uppercase mb-4">
                     Why Join XeroxQ?
                  </h2>
-                 <p className="text-gray-400 font-medium">It's not just volunteering; it's a career launchpad.</p>
+                 <p className="text-[#A1A1A6] font-medium">It's not just volunteering; it's a career launchpad.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -217,13 +226,13 @@ export default function PartnersPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.1 }}
-                       className="bg-[#111] p-8 rounded-[24px] border border-white/5 hover:border-white/20 hover:bg-[#151515] transition-all"
+                       className="bg-[#232325] p-8 rounded-[24px] border border-white/[0.08] hover:border-white/20 hover:bg-[#2A2A2E] transition-all"
                     >
                        <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-6">
                           {b.icon}
                        </div>
                        <h3 className="text-xl font-bold text-white uppercase tracking-tight mb-3">{b.title}</h3>
-                       <p className="text-gray-400 text-sm leading-relaxed">{b.desc}</p>
+                       <p className="text-[#A1A1A6] text-sm leading-relaxed">{b.desc}</p>
                     </motion.div>
                  ))}
               </div>
@@ -231,66 +240,80 @@ export default function PartnersPage() {
         </section>
 
         {/* Detailed Application Form Section - Custom layout instead of ContactCard */}
-        <section className="py-24 bg-[#F8FAFC] border-y border-gray-100 relative z-20">
+        <section id="partnership-form" className="py-24 bg-[#FAFAFA] dark:bg-[#111113] border-b border-[#171717]/[0.08] dark:border-white/[0.08] relative z-20">
           <div className="max-w-[900px] mx-auto px-6">
              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-black uppercase mb-4">
+                <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] uppercase mb-4">
                    Apply for Partnership
                 </h2>
-                <p className="text-gray-500 font-medium max-w-lg mx-auto">Tell us exactly what you bring to the table. Our review process typically takes 48 hours for Core roles.</p>
+                <p className="text-[#525252] dark:text-[#A1A1A6] font-medium max-w-lg mx-auto">Tell us exactly what you bring to the table. Our review process typically takes 48 hours for Core roles.</p>
              </div>
 
-             <div className="bg-white p-8 md:p-12 rounded-[32px] border border-gray-200 shadow-2xl shadow-black/[0.04]">
+             <div className="bg-white dark:bg-[#19191B] p-8 md:p-12 rounded-[32px] border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-2xl shadow-black/[0.04]">
                 <form onSubmit={handleSubmit} className="w-full space-y-6">
                   {/* Two Column Grid Everywhere */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Full Name *</Label>
-                      <Input name="name" type="text" placeholder="Your name" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Full Name *</Label>
+                      <Input name="name" type="text" placeholder="Your name" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl" required />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">WhatsApp No. *</Label>
-                      <Input name="whatsapp" type="tel" placeholder="+91" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">WhatsApp No. *</Label>
+                      <Input name="whatsapp" type="tel" placeholder="+91" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl" required />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Email Address *</Label>
-                      <Input name="email" type="email" placeholder="you@domain.com" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" required />
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Email Address *</Label>
+                      <Input name="email" type="email" placeholder="you@domain.com" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl" required />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Current City / District</Label>
-                      <Input name="location" type="text" placeholder="e.g. Vijayawada" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Current City / District</Label>
+                      <Input name="location" type="text" placeholder="e.g. Vijayawada" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Desired Pathway *</Label>
-                      <select name="pathway" className="h-14 bg-white border border-gray-200 focus:border-black transition-all rounded-xl px-4 text-sm outline-none cursor-pointer" required>
-                        <option value="">Select a path...</option>
-                        <option>Local Affiliate (Field Sales)</option>
-                        <option>Core Developer / Technical</option>
-                        <option>Marketing / Social Media</option>
-                        <option>UX/UI Design</option>
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Desired Pathway *</Label>
+                      <select name="pathway" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] border border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl px-4 text-sm outline-none cursor-pointer" required>
+                        <option value="" className="bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]">Select a path...</option>
+                        <option className="bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]">Local Affiliate (Field Sales)</option>
+                        <option className="bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]">Core Developer / Technical</option>
+                        <option className="bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]">Marketing / Social Media</option>
+                        <option className="bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]">UX/UI Design</option>
                       </select>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Portfolio / Link</Label>
-                      <Input name="link" type="url" placeholder="Github or LinkedIn URL" className="h-14 bg-white border-gray-200 focus:border-black transition-all rounded-xl" />
+                      <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Portfolio / Link</Label>
+                      <Input name="link" type="url" placeholder="Github or LinkedIn URL" className="h-14 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl" />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
-                    <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Why should we select you? *</Label>
-                    <Textarea name="bio" placeholder="Outline your experience and how you plan to contribute..." className="min-h-[140px] bg-white border-gray-200 focus:border-black transition-all rounded-xl p-5" required />
+                    <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Why should we select you? *</Label>
+                    <Textarea name="bio" placeholder="Outline your experience and how you plan to contribute..." className="min-h-[140px] bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/30 transition-all rounded-xl p-5" required />
                   </div>
+
+                  {submitFeedback && (
+                    <div
+                      role="status"
+                      className={cn(
+                        "p-4 rounded-xl border text-xs font-bold",
+                        submitFeedback.type === "success"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                          : "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20"
+                      )}
+                    >
+                      {submitFeedback.message}
+                    </div>
+                  )}
                   
                   <button 
                     type="submit" 
                     disabled={submitting}
-                    className="w-full h-16 bg-black hover:bg-[#FB432C] text-white font-bold text-[13px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl shadow-black/10 mt-6"
+                    className="w-full h-16 bg-[#171717] dark:bg-[#FB432C] hover:bg-[#FB432C] dark:hover:bg-[#E03923] text-white font-bold text-[13px] uppercase tracking-widest rounded-[16px] transition-all duration-300 shadow-xl shadow-black/10 mt-6 disabled:opacity-50"
                   >
                     {submitting ? "Dispatching Application..." : "Submit Official Application"}
                   </button>
@@ -300,13 +323,13 @@ export default function PartnersPage() {
         </section>
 
         {/* Enhanced Core Members Showcase */}
-        <section className="py-32 bg-white relative">
+        <section className="py-32 bg-white dark:bg-[#111113] relative">
            <div className="max-w-[1280px] mx-auto px-6">
               <div className="text-center mb-24">
-                 <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-black uppercase mb-4">
+                 <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] uppercase mb-4">
                     The Platform Leaders
                  </h2>
-                 <p className="text-gray-500 font-medium text-lg">Meet the core team and regional heads driving the mesh forward.</p>
+                 <p className="text-[#525252] dark:text-[#A1A1A6] font-medium text-lg">Meet the core team and regional heads driving the mesh forward.</p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -317,49 +340,49 @@ export default function PartnersPage() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.15, type: 'spring', bounce: 0.2 }}
-                       className="relative bg-white rounded-[32px] border border-gray-200 overflow-hidden group hover:shadow-2xl transition-all duration-500"
+                       className="relative bg-white dark:bg-[#19191B] rounded-[32px] border border-[#171717]/[0.08] dark:border-white/[0.08] overflow-hidden group hover:shadow-2xl transition-all duration-500"
                     >
                        {/* Background Gradient Splash */}
                        <div className={cn("absolute top-0 left-0 w-full h-32 bg-gradient-to-br opacity-50", member.theme)} />
                        
                        <div className="relative pt-16 px-8 pb-8">
                           {/* Rich Avatar */}
-                          <div className={cn("w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black mb-6 shadow-xl border-4 border-white mx-auto text-white", i === 0 ? 'bg-blue-600' : i === 1 ? 'bg-emerald-600' : 'bg-[#FB432C]')}>
+                          <div className={cn("w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black mb-6 shadow-xl border-4 border-white dark:border-[#19191B] mx-auto text-white", i === 0 ? 'bg-blue-600' : i === 1 ? 'bg-emerald-600' : 'bg-[#FB432C]')}>
                              {member.initials}
                           </div>
                           
                           <div className="text-center mb-8">
-                             <h4 className="text-2xl font-black uppercase tracking-tight text-black">{member.name}</h4>
-                             <span className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mt-1 block">{member.role}</span>
-                             <div className="flex items-center justify-center gap-1.5 mt-2 text-gray-400">
+                             <h4 className="text-2xl font-black uppercase tracking-tight text-[#171717] dark:text-[#EDEDED]">{member.name}</h4>
+                             <span className="text-[12px] font-bold text-[#525252] dark:text-[#A1A1A6] uppercase tracking-widest mt-1 block">{member.role}</span>
+                             <div className="flex items-center justify-center gap-1.5 mt-2 text-[#737373] dark:text-[#85858B]">
                                 <MapPinIcon className="w-3.5 h-3.5" />
                                 <span className="text-[11px] font-medium">{member.location || "Andhra Pradesh"}</span>
                              </div>
                           </div>
 
                           {/* Contributions & Stats */}
-                          <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-100">
+                          <div className="bg-[#F4F4F5] dark:bg-[#232325] rounded-2xl p-5 mb-6 border border-[#171717]/[0.10] dark:border-white/[0.10]">
                              <div className="flex items-center gap-2 mb-4">
-                                <Medal className="w-4 h-4 text-gray-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">Core Impact</span>
+                                <Medal className="w-4 h-4 text-[#737373] dark:text-[#85858B]" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-[#525252] dark:text-[#A1A1A6]">Core Impact</span>
                              </div>
-                             <p className="text-sm font-bold text-black mb-4">"{member.contributions || member.bio?.substring(0, 50) || "Driving Network Growth"}"</p>
+                             <p className="text-sm font-bold text-[#171717] dark:text-[#EDEDED] mb-4">"{member.contributions || member.bio?.substring(0, 50) || "Driving Network Growth"}"</p>
                              
-                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
                                 {member.stats ? Object.entries(member.stats).map(([k, v]: any) => (
                                    <div key={k}>
-                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{k}</span>
-                                      <span className="text-lg font-black text-black">{v}</span>
+                                      <span className="text-[10px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest block">{k}</span>
+                                      <span className="text-lg font-black text-[#171717] dark:text-[#EDEDED]">{v}</span>
                                    </div>
                                 )) : (
                                   <>
                                     <div>
-                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Uptime</span>
-                                      <span className="text-lg font-black text-black">99.9%</span>
+                                      <span className="text-[10px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest block">Uptime</span>
+                                      <span className="text-lg font-black text-[#171717] dark:text-[#EDEDED]">99.9%</span>
                                     </div>
                                     <div>
-                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Status</span>
-                                      <span className="text-lg font-black text-emerald-600">Active</span>
+                                      <span className="text-[10px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest block">Status</span>
+                                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">Active</span>
                                     </div>
                                   </>
                                 )}
@@ -369,7 +392,7 @@ export default function PartnersPage() {
                           {/* Skill Tags */}
                           <div className="flex flex-wrap gap-2 justify-center">
                              {(member.tags || ["Core Partner", "AP Operations"]).map((tag: any) => (
-                                <span key={tag} className="px-3 py-1 bg-black/5 text-black rounded-full text-[10px] font-black uppercase tracking-wider">
+                                <span key={tag} className="px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-full text-[10px] font-black uppercase tracking-wider">
                                    {tag}
                                 </span>
                              ))}
@@ -385,13 +408,13 @@ export default function PartnersPage() {
                     viewport={{ once: true }}
                     transition={{ delay: 0.4 }}
                     onClick={() => window.scrollTo({ top: document.getElementById('partnership-form')?.offsetTop || 1200, behavior: 'smooth' })}
-                    className="relative bg-gray-50/50 rounded-[32px] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-12 text-center group hover:bg-white hover:border-black hover:shadow-xl transition-all duration-500 cursor-pointer min-h-[400px]"
+                    className="relative bg-[#F4F4F5]/60 dark:bg-[#19191B]/60 rounded-[32px] border-2 border-dashed border-[#171717]/20 dark:border-white/15 flex flex-col items-center justify-center p-12 text-center group hover:bg-white dark:hover:bg-[#19191B] hover:border-[#171717] dark:hover:border-white/30 hover:shadow-xl transition-all duration-500 cursor-pointer min-h-[400px]"
                  >
-                    <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center text-4xl text-gray-400 font-light mb-8 group-hover:bg-[#FB432C] group-hover:text-white group-hover:border-[#FB432C] transition-all duration-500 shadow-sm">
+                    <div className="w-24 h-24 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border-2 border-dashed border-[#171717]/20 dark:border-white/20 flex items-center justify-center text-4xl text-[#737373] dark:text-[#85858B] font-light mb-8 group-hover:bg-[#FB432C] group-hover:text-white group-hover:border-[#FB432C] transition-all duration-500 shadow-sm">
                        +
                     </div>
-                    <h4 className="text-2xl font-black uppercase tracking-tight text-gray-400 group-hover:text-black transition-colors mb-2">Claim Your Spot</h4>
-                    <p className="text-sm font-medium text-gray-400 max-w-[200px] leading-relaxed group-hover:text-gray-600 transition-colors">
+                    <h4 className="text-2xl font-black uppercase tracking-tight text-[#737373] dark:text-[#85858B] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED] transition-colors mb-2">Claim Your Spot</h4>
+                    <p className="text-sm font-medium text-[#737373] dark:text-[#85858B] max-w-[200px] leading-relaxed group-hover:text-[#525252] dark:group-hover:text-[#A1A1A6] transition-colors">
                        Submit your application above to join our elite core team in AP.
                     </p>
                  </motion.div>

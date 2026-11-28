@@ -9,11 +9,11 @@ const XeroxQPrintDialog = dynamic(
 
 export default function DesktopTesterPage() {
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-black p-8 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] p-8 flex flex-col items-center justify-center">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Desktop Native Print Tester</h1>
-        <p className="text-zinc-500">
-          This simulates what the Shop Keeper sees when they click "Print" on an order.
+        <h1 className="text-3xl font-semibold tracking-tight mb-2">Desktop Native Print Tester</h1>
+        <p className="text-[#525252] dark:text-[#A1A1A6]">
+          This simulates what the Shop Keeper sees when they click &quot;Print&quot; on an order.
         </p>
       </div>
 

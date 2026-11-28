@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import { ThemeToggle } from "@/lib/theme";
 
 export default function UpdatePassword() {
   const [password, setPassword] = useState("");
@@ -70,51 +71,59 @@ export default function UpdatePassword() {
 
   if (success) {
     return (
-      <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
+      <main className="min-h-screen w-full bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex items-center justify-center p-6 font-sans relative">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <ThemeToggle compact />
+        </div>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full p-10 bg-[#FAFAFC] border border-slate-200 rounded-[24px] text-center space-y-6 shadow-sm"
+          className="max-w-md w-full p-10 bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-[20px] text-center space-y-6 shadow-[0_1px_2px_rgba(17,17,19,0.04)]"
         >
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
+            <div className="w-16 h-16 bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 rounded-full flex items-center justify-center border border-[#16A34A]/20 dark:border-[#4CC38A]/25">
+              <CheckCircle2 className="w-8 h-8 text-[#16A34A] dark:text-[#4CC38A]" />
             </div>
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-black tracking-tight">Password Updated!</h1>
-            <p className="text-auth-slate-50 font-medium text-[14px]">
+            <h1 className="text-2xl font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight">Password Updated!</h1>
+            <p className="text-[#525252] dark:text-[#A1A1A6] font-medium text-[14px]">
               {message}
             </p>
           </div>
-          <div className="w-8 h-8 border-2 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto mt-4" />
+          <div className="w-8 h-8 border-2 border-[#FB432C] border-t-transparent rounded-full animate-spin mx-auto mt-4" />
         </motion.div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen w-full bg-white flex items-center justify-center p-6 font-sans">
+    <main className="min-h-screen w-full bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex items-center justify-center p-6 font-sans relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <ThemeToggle compact />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[420px]"
+        className="w-full max-w-[420px] rounded-[20px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] p-7 sm:p-8 shadow-[0_1px_2px_rgba(17,17,19,0.04)]"
       >
         <div className="flex flex-col gap-2 mb-8">
-          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 mb-2">
-            <Lock className="w-6 h-6 text-primary-blue" />
+          <div className="w-12 h-12 bg-[#FB432C]/10 rounded-2xl flex items-center justify-center border border-[#FB432C]/20 mb-2">
+            <Lock className="w-6 h-6 text-[#FB432C]" />
           </div>
-          <h1 className="text-[32px] font-bold text-black leading-[1.2]">Create New Password</h1>
-          <p className="text-[14px] font-medium text-auth-slate-50">
+          <h1 className="text-[28px] font-semibold text-[#171717] dark:text-[#EDEDED] leading-[1.2] tracking-tight">
+            Create New Password
+          </h1>
+          <p className="text-[14px] text-[#525252] dark:text-[#A1A1A6]">
             Please enter your new password below.
           </p>
         </div>
 
         <form onSubmit={handlePasswordUpdate} className="flex flex-col gap-5">
           {/* New Password Input */}
-          <div className="flex flex-col gap-[5.57px]">
-            <label className="text-[12.27px] font-semibold text-auth-slate-90" htmlFor="password">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-semibold text-[#171717] dark:text-[#EDEDED]" htmlFor="password">
               New Password
             </label>
             <div className="relative">
@@ -126,12 +135,12 @@ export default function UpdatePassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full auth-input pr-12 placeholder:text-auth-slate-20 text-[13px]"
+                className="w-full auth-input pr-12 text-[13px]"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-auth-slate-20 hover:text-auth-slate-50 transition-colors cursor-pointer"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -139,8 +148,8 @@ export default function UpdatePassword() {
           </div>
 
           {/* Confirm Password Input */}
-          <div className="flex flex-col gap-[5.57px]">
-            <label className="text-[12.27px] font-semibold text-auth-slate-90" htmlFor="confirm-password">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-semibold text-[#171717] dark:text-[#EDEDED]" htmlFor="confirm-password">
               Confirm New Password
             </label>
             <input
@@ -151,14 +160,14 @@ export default function UpdatePassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full auth-input placeholder:text-auth-slate-20 text-[13px]"
+              className="w-full auth-input text-[13px]"
             />
           </div>
 
           {/* Error Banner */}
           {message && isError && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-xl text-xs border border-red-100 font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <div className="flex items-center gap-3 p-3.5 bg-[#DC2626]/10 dark:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D] rounded-xl text-xs border border-[#DC2626]/20 dark:border-[#E5484D]/25 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{message}</span>
             </div>
           )}

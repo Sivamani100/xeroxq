@@ -56,13 +56,13 @@ export default function DemoRequest() {
   };
 
   const benefits = [
-    { title: "Custom Workflow Analysis", icon: Zap, color: "text-amber-500" },
-    { title: "Network Capacity Audit", icon: Globe, color: "text-blue-500" },
-    { title: "Security Compliance Review", icon: ShieldCheck, color: "text-emerald-500" }
+    { title: "Custom Workflow Analysis", icon: Zap, color: "text-amber-500 dark:text-amber-400" },
+    { title: "Network Capacity Audit", icon: Globe, color: "text-blue-500 dark:text-blue-400" },
+    { title: "Security Compliance Review", icon: ShieldCheck, color: "text-emerald-500 dark:text-emerald-400" }
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white">
       <SiteHeader />
       
       <main className="pt-32 pb-16">
@@ -75,10 +75,10 @@ export default function DemoRequest() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8 }}
-                className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md shadow-sm mb-6"
+                className="inline-flex items-center gap-2 px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-md shadow-sm mb-6"
               >
-                <Building2 className="w-3.5 h-3.5 text-black" />
-                <span className="text-[10px] font-black tracking-[0.2em] text-black uppercase">Enterprise Onboarding</span>
+                <Building2 className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+                <span className="text-[10px] font-black tracking-[0.2em] text-[#171717] dark:text-[#EDEDED] uppercase">Enterprise Onboarding</span>
               </motion.div>
               
               <div className="space-y-6">
@@ -86,7 +86,7 @@ export default function DemoRequest() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.1 }}
-                  className="text-[64px] lg:text-[84px] font-bold text-black tracking-tighter leading-[0.9] uppercase"
+                  className="text-[64px] lg:text-[84px] font-bold text-[#171717] dark:text-[#EDEDED] tracking-tighter leading-[0.9] uppercase"
                 >
                   Request <br /> A Demo.
                 </motion.h1>
@@ -94,7 +94,7 @@ export default function DemoRequest() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="text-2xl text-[#64748B] font-medium leading-relaxed max-w-xl"
+                  className="text-2xl text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed max-w-xl"
                 >
                   Join our technical architects for a deep-dive into the XeroxQ protocol and how it can optimize your physical document infrastructure.
                 </motion.p>
@@ -110,10 +110,10 @@ export default function DemoRequest() {
                      transition={{ delay: 0.3 + i * 0.1 }}
                      className="flex items-center gap-4 group"
                    >
-                     <div className={`w-10 h-10 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                     <div className={`w-10 h-10 rounded-lg bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center group-hover:scale-110 transition-transform`}>
                         <benefit.icon className={`w-5 h-5 ${benefit.color}`} />
                      </div>
-                     <span className="text-sm font-black text-black tracking-tight uppercase leading-none">{benefit.title}</span>
+                     <span className="text-sm font-black text-[#171717] dark:text-[#EDEDED] tracking-tight uppercase leading-none">{benefit.title}</span>
                    </motion.div>
                  ))}
               </div>
@@ -122,14 +122,14 @@ export default function DemoRequest() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5 }}
-                className="pt-12 border-t border-[#E2E8F0] flex items-center gap-8"
+                className="pt-12 border-t border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center gap-8"
               >
                  <div className="flex flex-col">
-                    <span className="text-3xl font-bold text-black tracking-tighter">500+</span>
-                    <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest leading-none">Enterprise Clients</span>
+                    <span className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tighter">500+</span>
+                    <span className="text-[10px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest leading-none">Enterprise Clients</span>
                  </div>
-                 <div className="w-[1px] h-10 bg-[#E2E8F0]" />
-                 <p className="text-sm font-medium text-[#64748B] max-w-[180px] italic">Globally distributed print infrastructure for the privacy era.</p>
+                 <div className="w-[1px] h-10 bg-[#171717]/[0.08] dark:bg-white/[0.08]" />
+                 <p className="text-sm font-medium text-[#525252] dark:text-[#A1A1A6] max-w-[180px] italic">Globally distributed print infrastructure for the privacy era.</p>
               </motion.div>
             </div>
 
@@ -138,13 +138,13 @@ export default function DemoRequest() {
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="bg-black p-10 lg:p-12 rounded-xl border border-white/10 relative overflow-hidden group shadow-2xl"
+              className="bg-[#171717] dark:bg-[#19191B] p-10 lg:p-12 rounded-xl border border-white/[0.08] text-white relative overflow-hidden group shadow-2xl"
             >
                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.03] blur-[100px] rounded-full" />
                <div className="relative z-10 space-y-8">
                   <div className="space-y-2">
                      <h3 className="text-2xl font-bold text-white tracking-tight uppercase leading-none">Technical Inquiry</h3>
-                     <p className="text-[#94A3B8] font-medium text-[11px] leading-relaxed italic max-w-xs opacity-70">
+                     <p className="text-[#A1A1A6] font-medium text-[11px] leading-relaxed italic max-w-xs opacity-85">
                         "High-density document physicalization infrastructure at global scale."
                      </p>
                   </div>
@@ -152,21 +152,21 @@ export default function DemoRequest() {
                   <form onSubmit={handleSubmit} className="space-y-5">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-2 text-left">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Identity</label>
-                           <input name="full_name" required type="text" placeholder="FULL NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                           <label className="text-[10px] font-black text-[#A1A1A6] uppercase tracking-widest ml-1">Identity</label>
+                           <input name="full_name" required type="text" placeholder="FULL NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-[#85858B] focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                         </div>
                         <div className="space-y-2 text-left">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Protocol / Email</label>
-                           <input name="email" required type="email" placeholder="OFFICE EMAIL" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                           <label className="text-[10px] font-black text-[#A1A1A6] uppercase tracking-widest ml-1">Protocol / Email</label>
+                           <input name="email" required type="email" placeholder="OFFICE EMAIL" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-[#85858B] focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                         </div>
                      </div>
                      <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Infrastructure Node / Company</label>
-                        <input name="organization" required type="text" placeholder="ORGANIZATION NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
+                        <label className="text-[10px] font-black text-[#A1A1A6] uppercase tracking-widest ml-1">Infrastructure Node / Company</label>
+                        <input name="organization" required type="text" placeholder="ORGANIZATION NAME" className="w-full bg-white/5 border border-white/10 rounded-lg h-11 px-4 text-white font-black text-[10px] uppercase placeholder:text-[#85858B] focus:bg-white/10 focus:border-white/20 transition-all outline-none" />
                      </div>
                      <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Requirements Payload</label>
-                        <textarea name="requirements" required rows={3} placeholder="DENSITY AND SECURITY SPECIFICATIONS" className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white font-black text-[10px] uppercase placeholder:text-slate-600 focus:bg-white/10 focus:border-white/20 transition-all outline-none resize-none" />
+                        <label className="text-[10px] font-black text-[#A1A1A6] uppercase tracking-widest ml-1">Requirements Payload</label>
+                        <textarea name="requirements" required rows={3} placeholder="DENSITY AND SECURITY SPECIFICATIONS" className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white font-black text-[10px] uppercase placeholder:text-[#85858B] focus:bg-white/10 focus:border-white/20 transition-all outline-none resize-none" />
                      </div>
 
                      {submitError && (
@@ -176,12 +176,12 @@ export default function DemoRequest() {
                         <p className="text-[11px] font-semibold text-emerald-400 text-left">Onboarding request received. Our team will reach out shortly.</p>
                      )}
 
-                     <button type="submit" disabled={submitting} className="w-full h-12 bg-white hover:bg-white/90 disabled:opacity-50 text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] group">
+                     <button type="submit" disabled={submitting} className="w-full h-12 bg-white hover:bg-[#FB432C] hover:text-white disabled:opacity-50 text-[#171717] font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] group">
                         {submitting ? "DISPATCHING..." : "INITIATE ONBOARDING"} <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                      </button>
                   </form>
 
-                  <div className="flex items-center gap-2 justify-center text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+                  <div className="flex items-center gap-2 justify-center text-[9px] font-black text-emerald-400 uppercase tracking-widest">
                      <CheckCircle2 className="w-3 h-3" /> SIGNAL VERIFIED / ENCRYPTED SUBMISSION
                   </div>
                </div>

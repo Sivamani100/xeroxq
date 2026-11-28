@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Sparkles, Upload } from "lucide-react";
+import { AlertCircle, Check, History, Loader2, Lock, Shield, ShieldCheck, Sparkles, Upload, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { generateToken, cn } from "@/lib/utils";
 import { CONFIG } from "@/lib/config";
 import { ImageCropper } from "@/components/editing/image-cropper";
+import { ThemeToggle } from "@/lib/theme";
 
 import {
   createStagedFile,
   detectPageCount,
+  detectDocumentColorMode,
+  isImageFile,
   revokeStagedFileUrl,
   validateFile,
   isOfficeFile,
   calculateCost,
   type StagedFile,
 } from "@/lib/file-utils";
+import { autoCropImageFile, combineImagesToA4Pdf, dataUrlToBlob } from "@/lib/image-auto-crop";
 
 import {
   addBatch,
@@ -34,9 +38,8 @@ import {
   PortalDropzone,
   StagedFileList,
   PrintPreferencesDeck,
-  ProcessingPipelineCard,
   ActiveTicketView,
-  HistoryDrawer,
+  HistoryPanel,
   FeedbackSheet,
 } from "@/components/portal";
 
@@ -65,14 +68,31 @@ interface Shop {
   is_active?: boolean;
 }
 
-type ProcessingStep =
-  | "validating"
-  | "converting"
-  | "uploading"
-  | "registering"
-  | "done";
-
 const SPRING = { type: "spring" as const, stiffness: 380, damping: 30 };
+
+const ACCEPT_DOCS_ATTR = [
+  ".pdf",
+  ".docx",
+  ".doc",
+  ".pptx",
+  ".ppt",
+  ".xlsx",
+  ".xls",
+  ".csv",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "image/*",
+].join(",");
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -91,26 +111,20 @@ export default function ShopCustomerPortal({
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const ownerUidRef = useRef<string | null>(null);
 
   // ── Preferences / mode ───────────────────────────────────────────────────
   const [mode, setMode] = useState<"shop" | "home">("shop");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [color, setColor] = useState(false);
+  const hasManuallyToggledColorRef = useRef(false);
   const [copies, setCopies] = useState(1);
   const [doubleSided, setDoubleSided] = useState(false);
 
-  // ── Upload / processing state ─────────────────────────────────────────────
+  // ── Upload state ─────────────────────────────────────────────────────────
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [currentStep, setCurrentStep] = useState<ProcessingStep>("validating");
-  const [uploadProgress, setUploadProgress] = useState<{
-    current: number;
-    total: number;
-    percent: number;
-    fileName: string;
-  } | null>(null);
   const [conversionError, setConversionError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -137,19 +151,24 @@ export default function ShopCustomerPortal({
   // ── Office conversion choice modal ────────────────────────────────────────
   const [showDocxChoice, setShowDocxChoice] = useState(false);
 
-  // ── Image crop ────────────────────────────────────────────────────────────
+  // ── Image crop & batch ID merge ────────────────────────────────────────────
   const [cropTarget, setCropTarget] = useState<{
     id: string;
     dataUrl: string;
+    presetHint?: "id_card" | "a4" | "free";
+    fileName?: string;
   } | null>(null);
+  const [isCombiningImages, setIsCombiningImages] = useState(false);
 
   // ─── Load shop + init session ─────────────────────────────────────────────
   useEffect(() => {
     async function init() {
       try {
         const { data: sess } = await supabase.auth.getSession();
+        ownerUidRef.current = sess.session?.user?.id ?? null;
         if (!sess.session) {
-          await supabase.auth.signInAnonymously();
+          const { data: anon } = await supabase.auth.signInAnonymously();
+          ownerUidRef.current = anon.user?.id ?? null;
         }
       } catch {
         /* ignore — upload will re-try */
@@ -398,27 +417,91 @@ export default function ShopCustomerPortal({
     setStagedFiles((prev) => {
       const next = [...prev, ...toStage];
       for (const sf of toStage) {
-        detectPageCount(sf.file)
-          .then((count) => {
-            setStagedFiles((cur) =>
-              cur.map((x) =>
-                x.id === sf.id
-                  ? { ...x, pageCount: count, pageCountStatus: "ready" }
-                  : x
-              )
-            );
-          })
-          .catch(() => {
-            setStagedFiles((cur) =>
-              cur.map((x) =>
-                x.id === sf.id ? { ...x, pageCountStatus: "error" } : x
-              )
-            );
-          });
+        if (isImageFile(sf.file)) {
+          // Run automatic Aadhaar/ID/document edge crop + B&W/Color detection
+          autoCropImageFile(sf.file)
+            .then(async ({ croppedFile, analysis }) => {
+              const targetFile =
+                analysis.wasAutoCropped && croppedFile !== sf.file
+                  ? croppedFile
+                  : sf.file;
+              const colorMode = await detectDocumentColorMode(targetFile).catch(() => null);
+              setStagedFiles((cur) =>
+                cur.map((x) => {
+                  if (x.id !== sf.id) return x;
+                  if (analysis.wasAutoCropped && croppedFile !== sf.file) {
+                    if (x.previewUrl) URL.revokeObjectURL(x.previewUrl);
+                    return {
+                      ...x,
+                      file: croppedFile,
+                      previewUrl: URL.createObjectURL(croppedFile),
+                      originalFile: x.originalFile ?? sf.file,
+                      autoCropped: true,
+                      presetHint: analysis.suggestedPreset,
+                      detectedColor: colorMode === null ? undefined : colorMode === "color",
+                      pageCount: 1,
+                      pageCountStatus: "ready",
+                    };
+                  }
+                  return {
+                    ...x,
+                    presetHint: analysis.suggestedPreset,
+                    detectedColor: colorMode === null ? undefined : colorMode === "color",
+                    pageCount: 1,
+                    pageCountStatus: "ready",
+                  };
+                })
+              );
+            })
+            .catch(() => {
+              setStagedFiles((cur) =>
+                cur.map((x) =>
+                  x.id === sf.id ? { ...x, pageCount: 1, pageCountStatus: "ready" } : x
+                )
+              );
+            });
+        } else {
+          Promise.all([
+            detectPageCount(sf.file),
+            detectDocumentColorMode(sf.file).catch(() => null),
+          ])
+            .then(([count, colorMode]) => {
+              setStagedFiles((cur) =>
+                cur.map((x) =>
+                  x.id === sf.id
+                    ? {
+                        ...x,
+                        pageCount: count,
+                        detectedColor: colorMode === null ? undefined : colorMode === "color",
+                        pageCountStatus: "ready",
+                      }
+                    : x
+                )
+              );
+            })
+            .catch(() => {
+              setStagedFiles((cur) =>
+                cur.map((x) =>
+                  x.id === sf.id ? { ...x, pageCountStatus: "error" } : x
+                )
+              );
+            });
+        }
       }
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    if (stagedFiles.length === 0) {
+      hasManuallyToggledColorRef.current = false;
+      return;
+    }
+    if (hasManuallyToggledColorRef.current) return;
+    const known = stagedFiles.filter((f) => f.detectedColor !== undefined);
+    if (known.length === 0) return;
+    setColor(known.some((f) => f.detectedColor === true));
+  }, [stagedFiles]);
 
   const removeFile = useCallback((id: string) => {
     setUploadError(null);
@@ -453,38 +536,63 @@ export default function ShopCustomerPortal({
     [addFiles, dropDisabled]
   );
 
-  // ─── Crop ─────────────────────────────────────────────────────────────────
+  // ─── Crop & Batch ID Merge ────────────────────────────────────────────────
 
-  const handleCropRequest = useCallback((id: string, dataUrl: string) => {
-    setCropTarget({ id, dataUrl });
-  }, []);
+  const handleCropRequest = useCallback(
+    (
+      id: string,
+      dataUrl: string,
+      presetHint?: "id_card" | "a4" | "free",
+      fileName?: string
+    ) => {
+      setCropTarget({ id, dataUrl, presetHint, fileName });
+    },
+    []
+  );
 
   const handleCropComplete = useCallback(
     async (croppedDataUrl: string) => {
       if (!cropTarget) return;
       try {
-        const res = await fetch(croppedDataUrl);
-        const blob = await res.blob();
+        const blob = dataUrlToBlob(croppedDataUrl);
+        const targetId = cropTarget.id;
+        let updatedFile: File | null = null;
         setStagedFiles((prev) => {
-          const original = prev.find((f) => f.id === cropTarget.id);
+          const original = prev.find((f) => f.id === targetId);
           if (!original) return prev;
-          const newFile = new File([blob], original.file.name, {
+          const baseName = original.file.name.replace(/\.[^/.]+$/, "");
+          const newFile = new File([blob], `${baseName}.jpg`, {
             type: "image/jpeg",
             lastModified: Date.now(),
           });
-          const newSf = createStagedFile(newFile);
-          revokeStagedFileUrl(original);
+          updatedFile = newFile;
+          if (original.previewUrl) URL.revokeObjectURL(original.previewUrl);
           return prev.map((f) =>
-            f.id === cropTarget.id
+            f.id === targetId
               ? {
-                  ...newSf,
-                  id: cropTarget.id,
+                  ...f,
+                  file: newFile,
+                  previewUrl: URL.createObjectURL(newFile),
+                  originalFile: f.originalFile ?? original.file,
+                  autoCropped: true,
                   pageCount: 1,
                   pageCountStatus: "ready" as const,
                 }
               : f
           );
         });
+        if (updatedFile) {
+          detectDocumentColorMode(updatedFile)
+            .then((colorMode) => {
+              if (colorMode === null) return;
+              setStagedFiles((cur) =>
+                cur.map((x) =>
+                  x.id === targetId ? { ...x, detectedColor: colorMode === "color" } : x
+                )
+              );
+            })
+            .catch(() => {});
+        }
       } catch {
         /* ignore */
       } finally {
@@ -492,6 +600,49 @@ export default function ShopCustomerPortal({
       }
     },
     [cropTarget]
+  );
+
+  const handleCombineImages = useCallback(
+    async (layout: "id_two_up" | "one_per_page") => {
+      const imageItems = stagedFiles.filter((f) => isImageFile(f.file));
+      if (imageItems.length < 2 || isCombiningImages) return;
+
+      setIsCombiningImages(true);
+      setDropError(null);
+      try {
+        const pdfFile = await combineImagesToA4Pdf(
+          imageItems.map((i) => i.file),
+          layout
+        );
+        const pdfStaged = createStagedFile(pdfFile);
+        const [pages, colorMode] = await Promise.all([
+          detectPageCount(pdfFile).catch(() =>
+            layout === "id_two_up"
+              ? Math.ceil(imageItems.length / 2)
+              : imageItems.length
+          ),
+          detectDocumentColorMode(pdfFile).catch(() => null),
+        ]);
+        pdfStaged.pageCount = pages;
+        pdfStaged.detectedColor = colorMode === null ? undefined : colorMode === "color";
+        pdfStaged.pageCountStatus = "ready";
+
+        setStagedFiles((prev) => {
+          const nonImages = prev.filter((f) => !isImageFile(f.file));
+          prev.filter((f) => isImageFile(f.file)).forEach(revokeStagedFileUrl);
+          return [...nonImages, pdfStaged];
+        });
+      } catch (err) {
+        setDropError(
+          err instanceof Error
+            ? err.message
+            : "Could not combine photos into PDF. Try again."
+        );
+      } finally {
+        setIsCombiningImages(false);
+      }
+    },
+    [stagedFiles, isCombiningImages]
   );
 
   // ─── Computed values ──────────────────────────────────────────────────────
@@ -550,24 +701,29 @@ export default function ShopCustomerPortal({
       setUploadError(null);
       setConversionError(null);
       setIsProcessing(true);
-      setCurrentStep("validating");
 
-      let ownerUid: string | null = null;
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        ownerUid = sess.session?.user?.id ?? null;
-        if (!ownerUid) {
-          const { data: anon } = await supabase.auth.signInAnonymously();
-          ownerUid = anon.user?.id ?? null;
+      let ownerUid: string | null = ownerUidRef.current;
+      if (!ownerUid) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          ownerUid = sess.session?.user?.id ?? null;
+          if (!ownerUid) {
+            const { data: anon } = await supabase.auth.signInAnonymously();
+            ownerUid = anon.user?.id ?? null;
+          }
+          ownerUidRef.current = ownerUid;
+        } catch {
+          /* continue */
         }
-      } catch {
-        /* continue */
       }
 
-      let completedCount = 0;
       let hitConversionError = false;
-      const batchResults: { token: string; fileName: string; jobId: string }[] =
-        [];
+      const batchResults: {
+        token: string;
+        fileName: string;
+        jobId: string;
+        pageCount: number;
+      }[] = [];
       const expiresAtIso = new Date(Date.now() + 5 * 60_000).toISOString();
 
       const uploadSingleFile = async (
@@ -578,8 +734,6 @@ export default function ShopCustomerPortal({
         let finalFileName = sf.file.name;
 
         if (forceFileType === "pdf" && isOfficeFile(sf.file)) {
-          setIsConverting(true);
-          setCurrentStep("converting");
           try {
             const form = new FormData();
             form.append("file", sf.file as Blob);
@@ -606,10 +760,6 @@ export default function ShopCustomerPortal({
           }
         }
 
-        setCurrentStep("uploading");
-        setIsConverting(false);
-        setIsUploading(true);
-
         const finalExt = finalFileName.split(".").pop()?.toLowerCase() ?? "bin";
         const uid = crypto.randomUUID
           ? crypto.randomUUID()
@@ -626,8 +776,15 @@ export default function ShopCustomerPortal({
         const contentType =
           mimeByExt[finalExt] || sf.file.type || "application/octet-stream";
 
-        const [pageCount, uploadResult] = await Promise.all([
-          detectPageCount(finalFile),
+        const isSameReadyFile =
+          finalFile === sf.file && sf.pageCountStatus === "ready";
+        const [pageCount, detectedMode, uploadResult] = await Promise.all([
+          isSameReadyFile
+            ? Promise.resolve(sf.pageCount)
+            : detectPageCount(finalFile),
+          finalFile === sf.file && sf.detectedColor !== undefined
+            ? Promise.resolve(sf.detectedColor ? ("color" as const) : ("bw" as const))
+            : detectDocumentColorMode(finalFile).catch(() => null),
           supabase.storage
             .from("documents")
             .upload(storagePath, finalFile as Blob, {
@@ -642,20 +799,16 @@ export default function ShopCustomerPortal({
           );
         }
 
-        completedCount++;
-        setUploadProgress({
-          current: completedCount,
-          total: stagedFiles.length,
-          percent: Math.round((completedCount / stagedFiles.length) * 100),
-          fileName: finalFileName,
-        });
-
-        setCurrentStep("registering");
-
         let dbData: { id: string } | null = null;
         let dbErr: { code?: string; message?: string } | null = null;
         let retries = 3;
         let jobToken = "";
+
+        const detectedIsColor = detectedMode === null ? undefined : detectedMode === "color";
+        const effectiveColor =
+          shop.show_color_mode !== false
+            ? color
+            : detectedIsColor ?? color;
 
         while (retries > 0) {
           jobToken = generateToken();
@@ -663,10 +816,17 @@ export default function ShopCustomerPortal({
             .from("jobs")
             .insert({
               token: jobToken,
-              customer_name: customerName.trim() || "Guest",
+              customer_name: shop.require_customer_name
+                ? customerName.trim() || "Guest"
+                : "Guest",
               file_path: storagePath,
               file_name: finalFileName,
-              preferences: { color, copies, doubleSided },
+              preferences: {
+                color: effectiveColor,
+                copies,
+                doubleSided,
+                ...(detectedIsColor !== undefined ? { detectedColor: detectedIsColor } : {}),
+              },
               page_count: pageCount,
               is_preorder: mode === "home",
               is_paid: false,
@@ -707,6 +867,7 @@ export default function ShopCustomerPortal({
           token: jobToken,
           fileName: finalFileName,
           jobId: dbData.id,
+          pageCount,
         };
       };
 
@@ -718,11 +879,12 @@ export default function ShopCustomerPortal({
         const validBatch = batchResults.filter(Boolean);
         if (validBatch.length === 0) throw new Error("No files were uploaded.");
 
-        setCurrentStep("done");
-
+        const resolvedTotalPages =
+          validBatch.reduce((sum, item) => sum + item.pageCount, 0) ||
+          totalPages;
         const batchId = createBatchId();
         const cost = calculateCost(
-          totalPages,
+          resolvedTotalPages,
           copies,
           color,
           doubleSided,
@@ -744,11 +906,11 @@ export default function ShopCustomerPortal({
           isPaid: false,
           estimatedTotal: cost,
           feedbackSubmitted: false,
-          files: validBatch.map((bt, idx) => ({
+          files: validBatch.map((bt) => ({
             jobId: bt.jobId,
             token: bt.token,
             fileName: bt.fileName,
-            pageCount: stagedFiles[idx]?.pageCount ?? 1,
+            pageCount: bt.pageCount,
             color,
             copies,
             doubleSided,
@@ -780,7 +942,13 @@ export default function ShopCustomerPortal({
           lastShopSlug: slug,
         });
 
-        setBatchTokens(validBatch);
+        setBatchTokens(
+          validBatch.map(({ token, fileName, jobId }) => ({
+            token,
+            fileName,
+            jobId,
+          }))
+        );
         setJobStatus("pending");
         setIsDeleted(false);
         setDeletionReason(null);
@@ -792,9 +960,6 @@ export default function ShopCustomerPortal({
         }
       } finally {
         setIsProcessing(false);
-        setIsConverting(false);
-        setIsUploading(false);
-        setUploadProgress(null);
       }
     },
     [
@@ -821,14 +986,6 @@ export default function ShopCustomerPortal({
     setConversionError(null);
     handleUpload("raw");
   }, [handleUpload]);
-
-  const handleCancelProcessing = useCallback(() => {
-    setConversionError(null);
-    setIsProcessing(false);
-    setIsConverting(false);
-    setIsUploading(false);
-    setCurrentStep("validating");
-  }, []);
 
   // ─── Delete handler ───────────────────────────────────────────────────────
 
@@ -933,7 +1090,6 @@ export default function ShopCustomerPortal({
     setDeletionReason(null);
     setUploadError(null);
     setConversionError(null);
-    setCurrentStep("validating");
     setActiveExpiresAt(null);
     setCurrentBatchId(null);
     setFeedbackSubmitted(false);
@@ -942,35 +1098,50 @@ export default function ShopCustomerPortal({
 
   // ─── Derived: show sections ───────────────────────────────────────────────
 
-  const showProcessing = isProcessing || Boolean(conversionError);
-  const showTicket = batchTokens.length > 0 && !showProcessing;
-  const showUploadForm = !showTicket && !showProcessing;
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const picked = Array.from(e.target.files ?? []);
+      if (picked.length > 0) addFiles(picked);
+      e.target.value = "";
+    },
+    [addFiles]
+  );
+
+  const openDocsPicker = useCallback(() => {
+    if (!dropDisabled) docInputRef.current?.click();
+  }, [dropDisabled]);
+
+  const showTicket = batchTokens.length > 0;
+  const showUploadForm = !showTicket;
   const activeStepNumber = showTicket ? 3 : stagedFiles.length > 0 ? 2 : 1;
 
   // ─── Loading / 404 ────────────────────────────────────────────────────────
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6">
+      <div className="min-h-[100dvh] w-full overflow-x-clip bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex items-center justify-center p-4 sm:p-6 relative">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <ThemeToggle compact />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={SPRING}
-          className="text-center max-w-sm rounded-[28px] bg-white border border-black/[0.06] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-8"
+          className="text-center w-full max-w-sm rounded-[20px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-[0_1px_2px_rgba(17,17,19,0.04)] p-6 sm:p-8"
         >
-          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-[#F2F2F7] p-2 flex items-center justify-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-[#F4F4F5] dark:bg-[#232325] p-2 flex items-center justify-center">
             <img
               src="/logo_color.png"
               alt="XeroxQ"
-              className="w-full h-full object-contain opacity-60"
+              className="w-full h-full object-contain opacity-70"
             />
           </div>
-          <h2 className="text-xl font-bold text-[#111827] mb-2">
+          <h2 className="text-xl font-semibold text-[#171717] dark:text-[#EDEDED] mb-2">
             Shop not found
           </h2>
-          <p className="text-sm text-[#6B7280] leading-relaxed">
+          <p className="text-sm text-[#525252] dark:text-[#A1A1A6] leading-relaxed [overflow-wrap:anywhere]">
             The shop link{" "}
-            <code className="bg-[#F2F2F7] px-1.5 py-0.5 rounded-md text-xs text-[#111827]">
+            <code className="bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded-md text-xs text-[#171717] dark:text-[#EDEDED]">
               /{slug}
             </code>{" "}
             is inactive or doesn&apos;t exist.
@@ -982,7 +1153,7 @@ export default function ShopCustomerPortal({
 
   if (!shop) {
     return (
-      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center">
+      <div className="min-h-[100dvh] w-full overflow-x-clip bg-[#FAFAFA] dark:bg-[#111113] flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
@@ -995,262 +1166,472 @@ export default function ShopCustomerPortal({
   // ─── Main render ──────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] flex flex-col">
-      {/* Sticky Apple Translucent Toolbar */}
+    <div className="min-h-[100dvh] w-full overflow-x-clip bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col">
+      {/* Sticky Translucent Toolbar */}
       <PortalHeader
         shop={shop}
         historyCount={historyCount}
-        onHistoryOpen={() => setHistoryOpen(true)}
+        onHistoryOpen={() => setHistoryOpen((v) => !v)}
+      />
+
+      {/* Shared Hidden File Picker (PDF, Word, PowerPoint, Excel, Images) */}
+      <input
+        ref={docInputRef}
+        type="file"
+        accept={ACCEPT_DOCS_ATTR}
+        multiple
+        className="sr-only"
+        onChange={handleFileInputChange}
+        tabIndex={-1}
       />
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-4 pt-6 pb-12 flex flex-col gap-4">
-        {/* Clear Guided Prompt + 3-Step Strip */}
-        {showUploadForm && (
-          <div className="px-1 space-y-2.5">
-            <div>
-              <h2 className="text-[24px] sm:text-[26px] font-extrabold tracking-[-0.025em] text-[#111827] leading-tight">
-                {stagedFiles.length > 0
-                  ? `${stagedFiles.length} ${stagedFiles.length === 1 ? "file" : "files"} ready`
-                  : "What would you like to print?"}
-              </h2>
-              <p className="text-[13.5px] text-[#6B7280] mt-0.5 leading-snug">
-                {stagedFiles.length > 0
-                  ? "Choose Black & White or Color below, then tap Send."
-                  : `Pick your files or photos below to print at ${shop.name}.`}
-              </p>
-            </div>
-
-            {/* Clean 3-step indicator */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {[
-                { num: 1, label: "Pick Files" },
-                { num: 2, label: "Print Options" },
-                { num: 3, label: "Pickup Code" },
-              ].map((step) => {
-                const current = activeStepNumber === step.num;
-                const done = activeStepNumber > step.num;
-                return (
-                  <span
-                    key={step.num}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
-                      current
-                        ? "bg-[#111827] text-white"
-                        : done
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/70"
-                        : "bg-black/[0.04] text-[#6B7280]"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
-                        current
-                          ? "bg-white/20 text-white"
-                          : done
-                          ? "bg-emerald-500 text-white"
-                          : "bg-black/[0.08] text-[#6B7280]"
-                      )}
-                    >
-                      {done ? "✓" : step.num}
-                    </span>
-                    {step.label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+      <main
+        className={cn(
+          "flex-1 w-full max-w-lg sm:max-w-xl mx-auto px-3 sm:px-4 pt-3.5 sm:pt-5 flex flex-col gap-3.5 sm:gap-4 min-w-0",
+          !historyOpen && stagedFiles.length > 0 && showUploadForm
+            ? "pb-[calc(9.5rem+env(safe-area-inset-bottom))]"
+            : "pb-[calc(4.85rem+env(safe-area-inset-bottom))]"
         )}
-
-        {/* Service mode toggle — visible when pre-orders enabled */}
-        {shop.accept_preorders && (
-          <ModeSegmentedBar
-            mode={mode}
-            onChange={(m) => {
-              setMode(m);
-              setUploadError(null);
-            }}
-            show={showUploadForm}
+      >
+        {historyOpen ? (
+          <HistoryPanel
+            currentShopId={shop.id}
+            onResumeBatch={handleResumeBatch}
+            onClose={() => setHistoryOpen(false)}
           />
-        )}
+        ) : (
+          <>
+            {/* Top Hero + Organized 3-Step Strip */}
+            {showUploadForm && (
+              <div className="space-y-3.5 sm:space-y-4 shrink-0">
+                {stagedFiles.length === 0 ? (
+                  <div className="flex items-center justify-between gap-2.5 sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-[22px] min-[360px]:text-[25px] sm:text-[28px] font-bold tracking-[-0.03em] text-[#171717] dark:text-[#EDEDED] leading-[1.12]">
+                        Send documents
+                        <br />
+                        to{" "}
+                        <span className="relative inline-block text-[#FB432C]">
+                          print
+                          <svg
+                            viewBox="0 0 92 10"
+                            fill="none"
+                            aria-hidden="true"
+                            className="absolute -bottom-1 left-0 w-full h-2.5 text-[#FB432C]"
+                          >
+                            <path
+                              d="M2 7.5C26 2.5 64 1.5 90 6.5"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                      </h2>
+                      <p className="text-[12px] sm:text-[13px] text-[#525252] dark:text-[#A1A1A6] mt-1.5 sm:mt-2 leading-relaxed max-w-[260px]">
+                        Upload your files, choose print options, and pick them up at{" "}
+                        {shop.name}.
+                      </p>
+                    </div>
 
-        {/* Upload form */}
-        <AnimatePresence mode="wait">
-          {showUploadForm && (
-            <motion.div
-              key="upload-form"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={SPRING}
-              className="flex flex-col gap-4"
-            >
-              {/* Dropzone */}
-              <PortalDropzone
-                files={stagedFiles}
-                isDragging={isDragging}
-                disabled={dropDisabled}
-                disabledReason={disabledReason}
-                onFilesAdded={addFiles}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                error={dropError}
-              />
-
-              {/* Staged file list */}
-              <AnimatePresence>
-                {stagedFiles.length > 0 && (
-                  <motion.div
-                    key="staged-list"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={SPRING}
-                  >
-                    <StagedFileList
-                      files={stagedFiles}
-                      onRemove={removeFile}
-                      onCropRequest={handleCropRequest}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* iOS Settings Grouped Preferences */}
-              <AnimatePresence>
-                {stagedFiles.length > 0 && (
-                  <motion.div
-                    key="prefs"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={SPRING}
-                  >
-                    <PrintPreferencesDeck
-                      shop={shop}
-                      mode={mode}
-                      customerName={customerName}
-                      customerPhone={customerPhone}
-                      color={color}
-                      copies={copies}
-                      doubleSided={doubleSided}
-                      totalPages={totalPages}
-                      fileCount={stagedFiles.length}
-                      isPricingLoading={isPricingLoading}
-                      onNameChange={(v) => {
-                        setCustomerName(v);
-                        if (uploadError) setUploadError(null);
-                      }}
-                      onPhoneChange={(v) => {
-                        setCustomerPhone(v);
-                        if (uploadError) setUploadError(null);
-                      }}
-                      onColorChange={setColor}
-                      onCopiesChange={setCopies}
-                      onDoubleSidedChange={setDoubleSided}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Upload error */}
-              <AnimatePresence>
-                {uploadError && (
-                  <motion.div
-                    key="upload-err"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 6 }}
-                    transition={{ duration: 0.2 }}
-                    className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700"
-                  >
-                    {uploadError}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Send CTA Button */}
-              <AnimatePresence>
-                {stagedFiles.length > 0 && !isShopClosed && !isTrialExhausted && (
-                  <motion.div
-                    key="send-btn"
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={SPRING}
-                  >
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleUpload()}
-                      disabled={isProcessing}
-                      className="w-full h-[54px] rounded-[18px] font-bold text-white text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(251,67,44,0.28),inset_0_1px_0_rgba(255,255,255,0.25)] transition-opacity hover:opacity-95 disabled:opacity-60"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
-                      }}
+                    {/* Clean Coral Printer Illustration matching home UI */}
+                    <div
+                      className="shrink-0 w-[84px] h-[72px] min-[375px]:w-[98px] min-[375px]:h-[84px] sm:w-[116px] sm:h-[98px] flex items-center justify-center relative select-none"
+                      aria-hidden="true"
                     >
-                      <Upload className="h-4 w-4" strokeWidth={2.4} />
-                      <span>
-                        Send to Print · {totalPages}{" "}
-                        {totalPages === 1 ? "page" : "pages"}
-                      </span>
-                    </motion.button>
-                  </motion.div>
+                      <svg viewBox="0 0 130 110" fill="none" className="w-full h-full">
+                        <ellipse cx="68" cy="56" rx="52" ry="44" fill="#FB432C" fillOpacity="0.09" />
+                        <rect x="42" y="12" width="46" height="36" rx="6" fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="1.5" transform="rotate(-6 42 12)" />
+                        <line x1="50" y1="22" x2="76" y2="19" stroke="#D1D5DB" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="51" y1="29" x2="72" y2="27" stroke="#E5E7EB" strokeWidth="2.5" strokeLinecap="round" />
+                        <rect x="24" y="42" width="82" height="40" rx="11" fill="#FB432C" />
+                        <rect x="24" y="54" width="82" height="28" rx="10" fill="#E03923" />
+                        <circle cx="91" cy="51" r="2.8" fill="#FFFFFF" fillOpacity="0.9" />
+                        <rect x="34" y="49" width="22" height="4" rx="2" fill="#FFFFFF" fillOpacity="0.28" />
+                        <rect x="38" y="66" width="54" height="5" rx="2.5" fill="#7F1D1D" fillOpacity="0.55" />
+                        <path d="M44 69H86L92 96H38L44 69Z" fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="1.5" />
+                        <line x1="50" y1="77" x2="80" y2="77" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="48" y1="84" x2="76" y2="84" stroke="#D1D5DB" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="100" y1="22" x2="105" y2="14" stroke="#FB432C" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="109" y1="29" x2="117" y2="25" stroke="#FB432C" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="110" y1="38" x2="118" y2="39" stroke="#FB432C" strokeWidth="2.5" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-[22px] min-[360px]:text-[25px] sm:text-[28px] font-bold tracking-[-0.03em] text-[#171717] dark:text-[#EDEDED] leading-[1.15]">
+                      {stagedFiles.length}{" "}
+                      {stagedFiles.length === 1 ? "file" : "files"} ready to{" "}
+                      <span className="text-[#FB432C]">print</span>
+                    </h2>
+                    <p className="text-[12.5px] sm:text-[13px] text-[#525252] dark:text-[#A1A1A6] mt-1">
+                      Review your files and print options, then tap Send to Print below.
+                    </p>
+                  </div>
                 )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Processing pipeline */}
-        <AnimatePresence>
-          {showProcessing && (
-            <ProcessingPipelineCard
-              visible={showProcessing}
-              isConverting={isConverting}
-              isUploading={isUploading}
-              progress={uploadProgress}
-              currentStep={currentStep}
-              conversionError={conversionError}
-              onRetryConvert={handleRetryConvert}
-              onSendRawInstead={handleSendRawInstead}
-              onCancel={handleCancelProcessing}
-            />
-          )}
-        </AnimatePresence>
+                {/* Organized Step-by-Step Indicator */}
+                <div className="relative grid grid-cols-3 gap-1.5 sm:gap-2.5 items-center">
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-px bg-[#171717]/[0.10] dark:bg-white/[0.10]"
+                  />
+                  {[
+                    { num: 1, label: "Pick File" },
+                    { num: 2, label: "Print Options" },
+                    { num: 3, label: "Pickup Code" },
+                  ].map((step) => {
+                    const current = activeStepNumber === step.num;
+                    const done = activeStepNumber > step.num;
+                    return (
+                      <span
+                        key={step.num}
+                        className={cn(
+                          "relative z-10 inline-flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 rounded-full text-[10.5px] sm:text-[11.5px] font-semibold transition-colors min-w-0",
+                          current
+                            ? "bg-[#FB432C] text-white shadow-xs"
+                            : done
+                            ? "bg-[#ECFDF5] dark:bg-[#102A1E] text-[#16A34A] dark:text-[#4CC38A] border border-[#16A34A]/25 dark:border-[#4CC38A]/30"
+                            : "bg-white dark:bg-[#19191B] text-[#525252] dark:text-[#A1A1A6] border border-[#171717]/[0.08] dark:border-white/[0.08]"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0",
+                            current
+                              ? "bg-white text-[#FB432C]"
+                              : done
+                              ? "bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113]"
+                              : "bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6]"
+                          )}
+                        >
+                          {done ? <Check className="w-2.5 h-2.5" strokeWidth={3} /> : step.num}
+                        </span>
+                        <span className="truncate">{step.label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
 
-        {/* Active Wallet Ticket */}
-        <AnimatePresence>
-          {showTicket && (
-            <ActiveTicketView
-              shop={shop}
-              batchTokens={batchTokens}
-              jobStatus={jobStatus}
-              isDeleted={isDeleted}
-              deletionReason={deletionReason}
-              isDeleting={isDeleting}
-              mode={mode}
-              estimatedTotal={estimatedTotal}
-              expiresAt={activeExpiresAt}
-              customerName={customerName}
-              feedbackSubmitted={feedbackSubmitted}
-              onDelete={handleDelete}
-              onUploadAnother={resetPortal}
-              onOpenFeedback={() => setFeedbackOpen(true)}
-            />
-          )}
-        </AnimatePresence>
+                {/* Service mode toggle — visible when pre-orders enabled */}
+                {shop.accept_preorders && (
+                  <ModeSegmentedBar
+                    mode={mode}
+                    onChange={(m) => {
+                      setMode(m);
+                      setUploadError(null);
+                    }}
+                    show={showUploadForm}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Upload Middle Stage */}
+            <AnimatePresence mode="wait">
+              {showUploadForm && (
+                <motion.div
+                  key="upload-form"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={SPRING}
+                  className="flex-1 w-full min-w-0 flex flex-col gap-3.5 sm:gap-4"
+                >
+                  {stagedFiles.length === 0 ? (
+                    <>
+                      {/* Dashed Upload Box grows seamlessly to fill height on any phone */}
+                      <PortalDropzone
+                        files={stagedFiles}
+                        isDragging={isDragging}
+                        disabled={dropDisabled}
+                        disabledReason={disabledReason}
+                        onFilesAdded={addFiles}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onOpenDocsPicker={openDocsPicker}
+                        error={dropError}
+                      />
+
+                      {/* 3 Trust Mini-Cards matching home design */}
+                      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 shrink-0">
+                        {[
+                          { icon: Zap, title: "Fast Printing", sub: "In minutes" },
+                          { icon: Shield, title: "Secure Files", sub: "Auto delete" },
+                          { icon: Lock, title: "Private", sub: "Only you see" },
+                        ].map((item) => (
+                          <div
+                            key={item.title}
+                            className="rounded-2xl bg-[#FFF5F4] dark:bg-[#19191B] border border-[#FB432C]/15 dark:border-white/[0.08] px-2 sm:px-2.5 py-2.5 sm:py-3 flex flex-col items-center justify-center text-center min-w-0"
+                          >
+                            <item.icon className="w-4 h-4 text-[#FB432C] mb-1.5 shrink-0" strokeWidth={1.85} />
+                            <span className="text-[11px] sm:text-[11.5px] font-bold text-[#171717] dark:text-[#EDEDED] leading-tight">
+                              {item.title}
+                            </span>
+                            <span className="text-[9.5px] min-[375px]:text-[10px] sm:text-[10.5px] text-[#737373] dark:text-[#85858B] mt-0.5 leading-tight whitespace-nowrap">
+                              {item.sub}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Soft Green Auto-Delete Banner */}
+                      <div className="w-full rounded-xl bg-[#ECFDF5] dark:bg-[#102A1E] border border-[#16A34A]/20 dark:border-[#4CC38A]/25 px-3 sm:px-3.5 py-2.5 flex items-center justify-center gap-2 text-center text-[11.5px] sm:text-[12px] font-medium text-[#16A34A] dark:text-[#4CC38A] shrink-0">
+                        <ShieldCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
+                        <span>Files are automatically deleted after 5 minutes.</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Staged file list (spacious) */}
+                      <StagedFileList
+                        files={stagedFiles}
+                        onRemove={removeFile}
+                        onCropRequest={handleCropRequest}
+                        onCombineImages={handleCombineImages}
+                        isCombining={isCombiningImages}
+                      />
+
+                      {/* Add more files strip */}
+                      <PortalDropzone
+                        files={stagedFiles}
+                        isDragging={isDragging}
+                        disabled={dropDisabled}
+                        disabledReason={disabledReason}
+                        onFilesAdded={addFiles}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onOpenDocsPicker={openDocsPicker}
+                        error={dropError}
+                      />
+
+                      {/* Settings Grouped Preferences */}
+                      <PrintPreferencesDeck
+                        shop={shop}
+                        mode={mode}
+                        customerName={customerName}
+                        customerPhone={customerPhone}
+                        color={color}
+                        copies={copies}
+                        doubleSided={doubleSided}
+                        totalPages={totalPages}
+                        fileCount={stagedFiles.length}
+                        isPricingLoading={isPricingLoading}
+                        onNameChange={(v) => {
+                          setCustomerName(v);
+                          if (uploadError) setUploadError(null);
+                        }}
+                        onPhoneChange={(v) => {
+                          setCustomerPhone(v);
+                          if (uploadError) setUploadError(null);
+                        }}
+                        onColorChange={(v) => {
+                          hasManuallyToggledColorRef.current = true;
+                          setColor(v);
+                        }}
+                        onCopiesChange={setCopies}
+                        onDoubleSidedChange={setDoubleSided}
+                      />
+
+                      {/* Office conversion error recovery */}
+                      <AnimatePresence>
+                        {conversionError && (
+                          <motion.div
+                            key="conv-err"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 6 }}
+                            transition={{ duration: 0.2 }}
+                            className="rounded-2xl border border-[#DC2626]/20 dark:border-[#E5484D]/25 bg-[#DC2626]/10 dark:bg-[#E5484D]/15 p-3.5 sm:p-4 space-y-2.5"
+                          >
+                            <div className="flex items-start gap-2.5 text-[13px] font-medium text-[#DC2626] dark:text-[#E5484D]">
+                              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                              <span className="[overflow-wrap:anywhere]">{conversionError}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={handleRetryConvert}
+                                disabled={isProcessing}
+                                className="h-9 rounded-xl bg-[#FB432C] hover:bg-[#E03923] text-white text-[12.5px] font-semibold transition-colors cursor-pointer disabled:opacity-60"
+                              >
+                                Retry PDF Convert
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSendRawInstead}
+                                disabled={isProcessing}
+                                className="h-9 rounded-xl bg-white dark:bg-[#19191B] border border-[#171717]/[0.12] dark:border-white/[0.12] text-[#171717] dark:text-[#EDEDED] text-[12.5px] font-semibold transition-colors cursor-pointer disabled:opacity-60"
+                              >
+                                Send Original File
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Upload error */}
+                      <AnimatePresence>
+                        {uploadError && (
+                          <motion.div
+                            key="upload-err"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 6 }}
+                            transition={{ duration: 0.2 }}
+                            className="rounded-2xl border border-[#DC2626]/20 dark:border-[#E5484D]/25 bg-[#DC2626]/10 dark:bg-[#E5484D]/15 px-4 py-3 text-[13px] font-medium text-[#DC2626] dark:text-[#E5484D] [overflow-wrap:anywhere]"
+                          >
+                            {uploadError}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Active Ticket Result */}
+            {showTicket && (
+              <div className="flex-1 w-full min-w-0 flex flex-col gap-3.5 pt-1 pb-2">
+                <AnimatePresence>
+                  <ActiveTicketView
+                    shop={shop}
+                    batchTokens={batchTokens}
+                    jobStatus={jobStatus}
+                    isDeleted={isDeleted}
+                    deletionReason={deletionReason}
+                    isDeleting={isDeleting}
+                    mode={mode}
+                    estimatedTotal={estimatedTotal}
+                    expiresAt={activeExpiresAt}
+                    customerName={customerName}
+                    feedbackSubmitted={feedbackSubmitted}
+                    onDelete={handleDelete}
+                    onUploadAnother={resetPortal}
+                    onOpenFeedback={() => setFeedbackOpen(true)}
+                  />
+                </AnimatePresence>
+
+                <div className="w-full rounded-xl bg-[#ECFDF5] dark:bg-[#102A1E] border border-[#16A34A]/20 dark:border-[#4CC38A]/25 px-3 sm:px-3.5 py-2.5 flex items-center justify-center gap-2 text-center text-[11.5px] sm:text-[12px] font-medium text-[#16A34A] dark:text-[#4CC38A]">
+                  <ShieldCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
+                  <span>Files are automatically deleted after 5 minutes.</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </main>
 
-      {/* Subtle Apple Privacy Footer */}
-      <footer className="pb-6 px-4 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-black/[0.05] px-3.5 py-1.5 text-[11px] font-medium text-[#6B7280] shadow-2xs">
-          <ShieldCheck className="h-3.5 w-3.5 text-[#34C759]" />
-          <span>Files automatically delete after 5 minutes</span>
+      {/* Pinned Bottom Action Bar on Staged Options Stage (NO Upload/History tabs here) */}
+      {!historyOpen && stagedFiles.length > 0 && showUploadForm && (
+        <div className="fixed bottom-0 inset-x-0 z-40 w-full bg-white/95 dark:bg-[#19191B]/95 backdrop-blur-xl border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+          <div className="max-w-lg sm:max-w-xl mx-auto px-3 sm:px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col gap-2">
+            <div className="flex items-center justify-center gap-1.5 text-center text-[11px] sm:text-[11.5px] font-medium text-[#16A34A] dark:text-[#4CC38A]">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              <span>Files are automatically deleted after 5 minutes.</span>
+            </div>
+
+            {!isShopClosed && !isTrialExhausted && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.985 }}
+                onClick={() => handleUpload()}
+                disabled={isProcessing}
+                className="w-full h-12 rounded-full bg-[#FB432C] hover:bg-[#E03923] font-semibold text-white text-[15px] flex items-center justify-center gap-2 shadow-sm shadow-[#FB432C]/25 transition-colors disabled:opacity-75 cursor-pointer"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.25} />
+                    <span>Sending to print...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" strokeWidth={2.25} />
+                    <span>
+                      Send to Print · {totalPages}{" "}
+                      {totalPages === 1 ? "page" : "pages"}
+                    </span>
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
         </div>
-      </footer>
+      )}
+
+      {/* Pinned Fixed Bottom Tab Navigation Bar on Home, History & Ticket Views */}
+      {(historyOpen || stagedFiles.length === 0 || showTicket) && (
+        <nav
+          aria-label="Portal navigation"
+          className="fixed bottom-0 inset-x-0 z-40 w-full bg-white/95 dark:bg-[#19191B]/95 backdrop-blur-xl border-t border-[#171717]/[0.08] dark:border-white/[0.08]"
+        >
+          <div className="max-w-lg sm:max-w-xl mx-auto px-3 sm:px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(false)}
+              className="flex flex-col items-center justify-center gap-0.5 py-1 cursor-pointer group"
+            >
+              <span
+                className={cn(
+                  "px-5 py-1 rounded-full transition-colors",
+                  !historyOpen
+                    ? "bg-[#FB432C]/12 dark:bg-[#FB432C]/20 text-[#FB432C]"
+                    : "text-[#737373] dark:text-[#85858B] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED]"
+                )}
+              >
+                <Upload className="w-4 h-4" strokeWidth={2.25} />
+              </span>
+              <span
+                className={cn(
+                  "text-[11px] font-semibold",
+                  !historyOpen
+                    ? "text-[#FB432C]"
+                    : "text-[#737373] dark:text-[#85858B]"
+                )}
+              >
+                Upload
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex flex-col items-center justify-center gap-0.5 py-1 cursor-pointer group"
+            >
+              <span
+                className={cn(
+                  "relative px-5 py-1 rounded-full transition-colors",
+                  historyOpen
+                    ? "bg-[#FB432C]/12 dark:bg-[#FB432C]/20 text-[#FB432C]"
+                    : "text-[#737373] dark:text-[#85858B] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED]"
+                )}
+              >
+                <History className="w-4 h-4" strokeWidth={2} />
+                {historyCount > 0 && (
+                  <span className="absolute top-0.5 right-3 min-w-[15px] h-[15px] px-1 rounded-full bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] text-[9px] font-bold flex items-center justify-center tabular-nums">
+                    {historyCount > 99 ? "99+" : historyCount}
+                  </span>
+                )}
+              </span>
+              <span
+                className={cn(
+                  "text-[11px] font-semibold",
+                  historyOpen
+                    ? "text-[#FB432C]"
+                    : "text-[#737373] dark:text-[#85858B]"
+                )}
+              >
+                History
+              </span>
+            </button>
+          </div>
+        </nav>
+      )}
 
       {/* Office conversion choice modal */}
       <AnimatePresence>
@@ -1261,7 +1642,7 @@ export default function ShopCustomerPortal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/35 backdrop-blur-xs"
+              className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs"
               onClick={() => setShowDocxChoice(false)}
             />
             <motion.div
@@ -1272,11 +1653,11 @@ export default function ShopCustomerPortal({
               transition={SPRING}
               className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg p-4"
             >
-              <div className="rounded-[28px] bg-white border border-black/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.18)] p-6">
-                <h3 className="text-base font-bold text-[#111827] mb-1">
+              <div className="rounded-[24px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.22)] p-6">
+                <h3 className="text-base font-semibold text-[#171717] dark:text-[#EDEDED] mb-1">
                   Make document print-ready?
                 </h3>
-                <p className="text-sm text-[#6B7280] mb-5 leading-relaxed">
+                <p className="text-sm text-[#525252] dark:text-[#A1A1A6] mb-5 leading-relaxed">
                   Converting to PDF keeps fonts and pages from shifting when
                   printed.
                 </p>
@@ -1288,11 +1669,7 @@ export default function ShopCustomerPortal({
                       setShowDocxChoice(false);
                       handleUpload("pdf");
                     }}
-                    className="w-full h-12 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(251,67,44,0.28)]"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
-                    }}
+                    className="w-full h-12 rounded-xl bg-[#FB432C] hover:bg-[#E03923] font-semibold text-white text-sm flex items-center justify-center gap-2 transition-colors"
                   >
                     <Sparkles className="h-4 w-4" />
                     Prepare &amp; Send
@@ -1304,7 +1681,7 @@ export default function ShopCustomerPortal({
                       setShowDocxChoice(false);
                       handleUpload("raw");
                     }}
-                    className="w-full h-12 rounded-2xl font-semibold text-[#111827] text-sm bg-[#F2F2F7] hover:bg-[#E5E5EA] transition-colors"
+                    className="w-full h-12 rounded-xl font-semibold text-[#171717] dark:text-[#EDEDED] text-sm bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] transition-colors"
                   >
                     Send Original File
                   </motion.button>
@@ -1320,19 +1697,13 @@ export default function ShopCustomerPortal({
         {cropTarget && (
           <ImageCropper
             image={cropTarget.dataUrl}
+            initialPreset={cropTarget.presetHint}
+            fileName={cropTarget.fileName}
             onCropComplete={handleCropComplete}
             onCancel={() => setCropTarget(null)}
           />
         )}
       </AnimatePresence>
-
-      {/* History Drawer */}
-      <HistoryDrawer
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        currentShopId={shop.id}
-        onResumeBatch={handleResumeBatch}
-      />
 
       {/* Feedback Sheet */}
       <AnimatePresence>

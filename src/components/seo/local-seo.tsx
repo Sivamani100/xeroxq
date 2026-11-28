@@ -13,24 +13,24 @@ export function LocalBusinessHeader({ city }: { city: string }) {
   return (
     <>
       <LocalBusinessStructuredData city={city} />
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white dark:bg-[#19191B] border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-2xl font-bold text-black">
+              <Link href="/" className="text-2xl font-bold text-[#171717] dark:text-[#EDEDED]">
                 XeroxQ
               </Link>
-              <div className="hidden md:flex items-center text-gray-600">
+              <div className="hidden md:flex items-center text-[#525252] dark:text-[#A1A1A6]">
                 <MapPin className="w-4 h-4 mr-1" />
                 <span>{city}, India</span>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="dark:border-white/[0.12] dark:text-[#EDEDED] dark:hover:bg-[#232325]">
                 <Phone className="w-4 h-4 mr-2" />
                 +91 9849497911
               </Button>
-              <Button size="sm" className="bg-[#FB432C] hover:bg-[#FB432C]/90 text-white">
+              <Button size="sm" className="bg-[#FB432C] hover:bg-[#E03923] text-white">
                 Find Local Shops
               </Button>
             </div>
@@ -45,7 +45,7 @@ export function LocalHero({ city }: { city: string }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <section className="bg-gradient-to-br from-black via-gray-900 to-black text-white py-20">
+    <section className="bg-[#171717] dark:bg-[#19191B] border-b border-white/[0.08] text-white py-20">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
@@ -58,7 +58,7 @@ export function LocalHero({ city }: { city: string }) {
                 Xerox Shops in {city}
                 <span className="block text-[#FB432C]">Print Documents Securely</span>
               </h1>
-              <p className="text-xl text-gray-300 leading-relaxed">
+              <p className="text-xl text-white/75 leading-relaxed">
                 Find verified xerox shops in {city}. Upload documents online, get instant quotes, 
                 and print with military-grade security. No WhatsApp required, 100% privacy protected.
               </p>
@@ -73,7 +73,7 @@ export function LocalHero({ city }: { city: string }) {
                   <Star className="w-5 h-5 text-yellow-400 fill-current" />
                   <Star className="w-5 h-5 text-yellow-400 fill-current" />
                 </div>
-                <span className="text-gray-300">4.9/5 from 2,347 reviews in {city}</span>
+                <span className="text-white/75">4.9/5 from 2,347 reviews in {city}</span>
               </div>
               
               <div className="grid grid-cols-3 gap-4 text-sm">
@@ -93,12 +93,12 @@ export function LocalHero({ city }: { city: string }) {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/15">
             <h3 className="text-2xl font-bold mb-6">Find Print Shops in {city}</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Location/Area</label>
-                <select className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white">
+                <select className="w-full px-4 py-3 bg-[#232325] border border-white/20 rounded-lg text-white">
                   <option value="">All areas in {city}</option>
                   <option value="central">Central {city}</option>
                   <option value="north">North {city}</option>
@@ -109,7 +109,7 @@ export function LocalHero({ city }: { city: string }) {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Service Type</label>
-                <select className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white">
+                <select className="w-full px-4 py-3 bg-[#232325] border border-white/20 rounded-lg text-white">
                   <option value="">All services</option>
                   <option value="document">Document Printing</option>
                   <option value="photo">Photo Printing</option>
@@ -123,10 +123,10 @@ export function LocalHero({ city }: { city: string }) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by area or landmark..."
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50"
                 />
               </div>
-              <Button className="w-full bg-[#FB432C] hover:bg-[#FB432C]/90 text-white font-semibold">
+              <Button className="w-full bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold">
                 <Navigation className="w-5 h-5 mr-2" />
                 Find Shops Near Me
               </Button>
@@ -176,13 +176,13 @@ export function LocalShopList({ city }: { city: string }) {
   ];
 
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-[#FAFAFA] dark:bg-[#111113]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-black mb-4">
+          <h2 className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             Verified Xerox Shops in {city}
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Find trusted printing partners in {city}. All shops are verified and offer secure document printing.
           </p>
         </div>
@@ -191,8 +191,8 @@ export function LocalShopList({ city }: { city: string }) {
           {shops.map((shop, index) => (
             <div
               key={index}
-              className={`bg-white rounded-xl border-2 p-6 hover:shadow-lg transition-all ${
-                shop.featured ? 'border-[#FB432C] shadow-md' : 'border-gray-200'
+              className={`bg-white dark:bg-[#19191B] rounded-xl border-2 p-6 hover:shadow-lg transition-all ${
+                shop.featured ? 'border-[#FB432C] shadow-md' : 'border-[#171717]/[0.08] dark:border-white/[0.08]'
               }`}
             >
               {shop.featured && (
@@ -205,8 +205,8 @@ export function LocalShopList({ city }: { city: string }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-bold text-black mb-2">{shop.name}</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED] mb-2">{shop.name}</h3>
+                    <div className="flex items-center space-x-4 text-sm text-[#525252] dark:text-[#A1A1A6]">
                       <div className="flex items-center">
                         <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                         <span className="font-medium">{shop.rating}</span>
@@ -220,28 +220,28 @@ export function LocalShopList({ city }: { city: string }) {
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center text-gray-700">
-                      <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                    <div className="flex items-center text-[#525252] dark:text-[#A1A1A6]">
+                      <MapPin className="w-4 h-4 mr-2 text-[#737373] dark:text-[#85858B]" />
                       <span className="text-sm">{shop.address}</span>
                     </div>
-                    <div className="flex items-center text-gray-700">
-                      <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                    <div className="flex items-center text-[#525252] dark:text-[#A1A1A6]">
+                      <Phone className="w-4 h-4 mr-2 text-[#737373] dark:text-[#85858B]" />
                       <span className="text-sm">{shop.phone}</span>
                     </div>
-                    <div className="flex items-center text-gray-700">
-                      <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                    <div className="flex items-center text-[#525252] dark:text-[#A1A1A6]">
+                      <Clock className="w-4 h-4 mr-2 text-[#737373] dark:text-[#85858B]" />
                       <span className="text-sm">{shop.hours}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-black">Services Offered</h4>
+                  <h4 className="font-semibold text-[#171717] dark:text-[#EDEDED]">Services Offered</h4>
                   <div className="flex flex-wrap gap-2">
                     {shop.services.map((service, serviceIndex) => (
                       <span
                         key={serviceIndex}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
+                        className="px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] text-sm rounded-full"
                       >
                         {service}
                       </span>
@@ -250,11 +250,11 @@ export function LocalShopList({ city }: { city: string }) {
                 </div>
 
                 <div className="flex items-end justify-end space-x-3">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="dark:border-white/[0.12] dark:text-[#EDEDED] dark:hover:bg-[#232325]">
                     <Phone className="w-4 h-4 mr-2" />
                     Call Shop
                   </Button>
-                  <Button size="sm" className="bg-[#FB432C] hover:bg-[#FB432C]/90 text-white">
+                  <Button size="sm" className="bg-[#FB432C] hover:bg-[#E03923] text-white">
                     <Zap className="w-4 h-4 mr-2" />
                     Upload & Print
                   </Button>
@@ -265,7 +265,7 @@ export function LocalShopList({ city }: { city: string }) {
         </div>
 
         <div className="mt-12 text-center">
-          <Button variant="outline" size="lg">
+          <Button variant="outline" size="lg" className="dark:border-white/[0.12] dark:text-[#EDEDED] dark:hover:bg-[#232325]">
             View All {city} Printing Shops
             <Navigation className="w-5 h-5 ml-2" />
           </Button>
@@ -288,13 +288,13 @@ export function LocalServiceAreas({ city }: { city: string }) {
   ];
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-16 bg-[#F4F4F5] dark:bg-[#161618]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-black mb-4">
+          <h2 className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             Service Areas in {city}
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Find xerox shops in all major areas of {city}. We cover every neighborhood with verified printing partners.
           </p>
         </div>
@@ -306,13 +306,13 @@ export function LocalServiceAreas({ city }: { city: string }) {
               href={`/${city.toLowerCase()}/${area.name.toLowerCase().replace(/\s+/g, '-')}`}
               className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
                 area.popular
-                  ? 'border-[#FB432C] bg-white'
-                  : 'border-gray-200 bg-white'
+                  ? 'border-[#FB432C] bg-white dark:bg-[#19191B]'
+                  : 'border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B]'
               }`}
             >
               <div className="text-center">
-                <h3 className="font-semibold text-black mb-2">{area.name}</h3>
-                <div className="text-sm text-gray-600">
+                <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-2">{area.name}</h3>
+                <div className="text-sm text-[#525252] dark:text-[#A1A1A6]">
                   <span className="font-medium">{area.shops}</span> shops
                 </div>
                 {area.popular && (
@@ -357,32 +357,32 @@ export function LocalTestimonials({ city }: { city: string }) {
   ];
 
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-[#FAFAFA] dark:bg-[#111113]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-black mb-4">
+          <h2 className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             What {city} Users Say About XeroxQ
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Real reviews from actual users in {city}. Join thousands who trust us for secure document printing.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, index) => (
-            <div key={index} className="bg-gray-50 p-6 rounded-xl">
+            <div key={index} className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] p-6 rounded-xl">
               <div className="flex items-center mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
                 ))}
               </div>
-              <p className="text-gray-700 mb-4 italic">"{testimonial.content}"</p>
+              <p className="text-[#525252] dark:text-[#A1A1A6] mb-4 italic">"{testimonial.content}"</p>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-black">{testimonial.name}</div>
-                  <div className="text-sm text-gray-600">{testimonial.role}</div>
+                  <div className="font-semibold text-[#171717] dark:text-[#EDEDED]">{testimonial.name}</div>
+                  <div className="text-sm text-[#525252] dark:text-[#A1A1A6]">{testimonial.role}</div>
                 </div>
-                <div className="text-sm text-gray-500">{testimonial.area}</div>
+                <div className="text-sm text-[#737373] dark:text-[#85858B]">{testimonial.area}</div>
               </div>
             </div>
           ))}
@@ -394,7 +394,7 @@ export function LocalTestimonials({ city }: { city: string }) {
 
 export function LocalNAP({ city }: { city: string }) {
   return (
-    <section className="py-16 bg-black text-white">
+    <section className="py-16 bg-[#171717] dark:bg-[#19191B] border-y border-white/[0.08] text-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="text-center">
@@ -402,7 +402,7 @@ export function LocalNAP({ city }: { city: string }) {
               <Phone className="w-8 h-8 text-[#FB432C]" />
             </div>
             <h3 className="text-xl font-bold mb-2">Call Us</h3>
-            <p className="text-gray-300 mb-2">24/7 Customer Support</p>
+            <p className="text-white/70 mb-2">24/7 Customer Support</p>
             <a href="tel:+919849497911" className="text-[#FB432C] font-semibold text-lg">
               +91 9849497911
             </a>
@@ -413,7 +413,7 @@ export function LocalNAP({ city }: { city: string }) {
               <Mail className="w-8 h-8 text-[#FB432C]" />
             </div>
             <h3 className="text-xl font-bold mb-2">Email Support</h3>
-            <p className="text-gray-300 mb-2">Quick response guaranteed</p>
+            <p className="text-white/70 mb-2">Quick response guaranteed</p>
             <a href="mailto:support@arkio.in" className="text-[#FB432C] font-semibold text-lg">
               support@arkio.in
             </a>
@@ -424,7 +424,7 @@ export function LocalNAP({ city }: { city: string }) {
               <MapPin className="w-8 h-8 text-[#FB432C]" />
             </div>
             <h3 className="text-xl font-bold mb-2">Service Coverage</h3>
-            <p className="text-gray-300 mb-2">All areas in {city}</p>
+            <p className="text-white/70 mb-2">All areas in {city}</p>
             <span className="text-[#FB432C] font-semibold text-lg">
               120+ Verified Shops
             </span>
@@ -460,22 +460,22 @@ export function LocalFAQ({ city }: { city: string }) {
   ];
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-16 bg-[#F4F4F5] dark:bg-[#161618]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-black mb-4">
+          <h2 className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             Frequently Asked Questions - {city}
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Common questions about printing services in {city}. Can't find what you're looking for? Contact our support team.
           </p>
         </div>
 
         <div className="max-w-3xl mx-auto space-y-4">
           {faqs.map((faq, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="font-semibold text-black mb-3">{faq.question}</h3>
-              <p className="text-gray-600">{faq.answer}</p>
+            <div key={index} className="bg-white dark:bg-[#19191B] p-6 rounded-lg border border-[#171717]/[0.08] dark:border-white/[0.08]">
+              <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-3">{faq.question}</h3>
+              <p className="text-[#525252] dark:text-[#A1A1A6]">{faq.answer}</p>
             </div>
           ))}
         </div>

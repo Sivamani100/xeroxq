@@ -15,18 +15,20 @@
 
 # next.js
 /.next/
+/.next-desktop/
 /out/
 
 # production
 /dist/
 dist/
-# Binaries — excluded; re-add with LFS when ready to ship
+# Binaries — ignore build scratch & standalone .exe/.apk, allow published landing installers via LFS
 /release_build/
 release_build/
-public/downloads/
 *.exe
 *.apk
 xeroxq_user_app/build/
+public/downloads/*
+!public/downloads/*.exe
 
 # misc
 .DS_Store

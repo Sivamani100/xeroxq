@@ -6,7 +6,7 @@ export function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-black/5", className)}
+      className={cn("animate-pulse rounded-md bg-[#171717]/10 dark:bg-white/10", className)}
       {...props}
     />
   );
@@ -15,7 +15,7 @@ export function Skeleton({
 export function SkeletonLoader({ type }: { type: 'card' | 'text' | 'hero' }) {
   if (type === 'card') {
     return (
-      <div className="p-8 border border-gray-100 rounded-2xl bg-white space-y-4">
+      <div className="p-8 border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl bg-white dark:bg-[#19191B] space-y-4">
         <Skeleton className="h-12 w-12 rounded-xl" />
         <Skeleton className="h-6 w-3/4" />
         <Skeleton className="h-20 w-full" />

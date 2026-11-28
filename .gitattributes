@@ -1,3 +1,2 @@
-# *.exe LFS tracking disabled — binaries are excluded via .gitignore
-# Re-enable when ready to distribute installers:
-# *.exe filter=lfs diff=lfs merge=lfs -text
+# Track downloadable desktop installer binaries via Git LFS
+*.exe filter=lfs diff=lfs merge=lfs -text

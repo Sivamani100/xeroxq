@@ -45,51 +45,39 @@ export function HeroSection() {
   return (
     <>
       <SiteHeader />
-      <main className="overflow-hidden">
-        {/* Ambient background glow — light-mode only decorations */}
-        <div
-          aria-hidden
-          className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
-          <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(12,90%,58%,.07)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
-          <div className="h-[80rem] absolute left-0 top-0 w-56 -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(12,90%,58%,.05)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)] [translate:5%_-50%]" />
-          <div className="h-[80rem] -translate-y-[350px] absolute left-0 top-0 w-56 -rotate-45 bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.04)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)]" />
-        </div>
-
+      <main className="overflow-hidden bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED]">
         {/* ── Hero ── */}
         <section>
-          <div className="relative pt-[160px] md:pt-[180px]">
-            {/* subtle gradient fade at bottom */}
-            <div aria-hidden className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,white_75%)]" />
-
+          <div className="relative pt-[150px] md:pt-[170px]">
             <div className="mx-auto max-w-7xl px-6">
               <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
                 <AnimatedGroup variants={transitionVariants}>
                   {/* Badge */}
-                  <div className="mx-auto flex w-fit items-center gap-4 rounded-full border border-gray-200 bg-gray-50 p-1 pl-6 shadow-md shadow-black/5 transition-all duration-300 group hover:bg-white">
-                    <span className="text-sm font-normal text-gray-700">100% Free for Shop Owners</span>
-                    <span className="block h-4 w-0.5 border-l border-gray-300 bg-white"></span>
-                    <div className="bg-white group-hover:bg-gray-50 size-6 overflow-hidden rounded-full duration-500">
-                      <div className="flex w-12 -translate-x-1/2 duration-500 ease-in-out group-hover:translate-x-0">
+                  <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-[#171717]/[0.10] dark:border-white/[0.10] bg-white dark:bg-[#19191B] p-1 pl-5 transition-colors duration-200 group">
+                    <span className="text-xs sm:text-sm font-medium text-[#525252] dark:text-[#A1A1A6]">100% Free for Shop Owners</span>
+                    <span className="block h-4 w-px bg-[#171717]/[0.12] dark:bg-white/[0.12]" />
+                    <div className="bg-[#F4F4F5] dark:bg-[#232325] size-6 overflow-hidden rounded-full duration-300">
+                      <div className="flex w-12 -translate-x-1/2 duration-300 ease-in-out group-hover:translate-x-0">
                         <span className="flex size-6">
-                          <ArrowRight className="m-auto size-3 text-gray-600" />
+                          <ArrowRight className="m-auto size-3 text-[#525252] dark:text-[#A1A1A6]" />
                         </span>
                         <span className="flex size-6">
-                          <ArrowRight className="m-auto size-3 text-gray-600" />
+                          <ArrowRight className="m-auto size-3 text-[#525252] dark:text-[#A1A1A6]" />
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <h1 className="mt-8 max-w-4xl mx-auto text-balance text-6xl font-bold tracking-tight text-black md:text-7xl lg:mt-10 xl:text-[5rem] leading-[1.05]">
+                  <h1 className="mt-8 max-w-4xl mx-auto text-balance text-5xl font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] md:text-7xl lg:mt-10 xl:text-[4.75rem] leading-[1.06]">
                     Privacy-First Printing,{' '}
-                    <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(315deg,#FB432C 0%,#FF591E 100%)' }}>
+                    <span className="text-[#FB432C]">
                       Anywhere.
                     </span>
                   </h1>
 
                   {/* Sub-headline */}
-                  <p className="mx-auto mt-6 max-w-3xl text-balance text-lg text-gray-500 font-medium leading-relaxed">
-                    Walk into any XeroxQ shop, scan the QR code, upload your document it prints and vanishes. No accounts, no servers, no trace.
+                  <p className="mx-auto mt-6 max-w-3xl text-balance text-lg text-[#525252] dark:text-[#A1A1A6] font-normal leading-relaxed">
+                    Walk into any XeroxQ shop, scan the QR code, upload your document — it prints and vanishes. No accounts, no servers, no trace.
                   </p>
                 </AnimatedGroup>
 
@@ -100,24 +88,22 @@ export function HeroSection() {
                       visible: {
                         transition: {
                           staggerChildren: 0.05,
-                          delayChildren: 0.75,
+                          delayChildren: 0.35,
                         },
                       },
                     },
                     ...transitionVariants,
                   }}
                   className="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row">
-                  <div className="bg-orange-50 rounded-full border border-brand-primary/10 p-0.5">
-                    <Button
-                      onClick={() => setIsDownloadOpen(true)}
-                      className="h-12 rounded-full px-8 text-base font-semibold bg-[#FB432C] hover:bg-black text-white shadow-xl shadow-brand-primary/20 transition-all duration-300 flex items-center gap-2">
-                      <Download className="size-5" />
-                      <span className="text-nowrap">Download Now (.exe)</span>
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => setIsDownloadOpen(true)}
+                    className="h-12 rounded-full px-8 text-base font-semibold bg-[#FB432C] hover:bg-[#E03923] text-white transition-colors flex items-center gap-2 cursor-pointer">
+                    <Download className="size-4" />
+                    <span className="text-nowrap">Download Now (.exe)</span>
+                  </Button>
                   <Button
                     asChild
-                    className="h-10 rounded-full px-8 bg-black hover:bg-[#FB432C] text-white font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20">
+                    className="h-12 rounded-full px-8 bg-[#171717] dark:bg-[#EDEDED] hover:bg-[#2C2C2E] dark:hover:bg-white text-white dark:text-[#111113] font-semibold text-sm transition-colors">
                     <Link href="/how-it-works">
                       <span className="text-nowrap">See How It Works</span>
                       <ChevronRight className="ml-1 size-4" />
@@ -132,23 +118,23 @@ export function HeroSection() {
                       visible: {
                         transition: {
                           staggerChildren: 0.05,
-                          delayChildren: 1,
+                          delayChildren: 0.5,
                         },
                       },
                     },
                     ...transitionVariants,
                   }}
-                  className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
+                  className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-[#525252] dark:text-[#A1A1A6]">
                   <div className="flex items-center gap-2">
-                    <Zap className="size-4 text-brand-primary" />
+                    <Zap className="size-4 text-[#FB432C]" />
                     <span>No Joining Fees</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-brand-primary" />
+                    <Sparkles className="size-4 text-[#FB432C]" />
                     <span>Instant Shop Setup</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Printer className="size-4 text-brand-primary" />
+                    <Printer className="size-4 text-[#FB432C]" />
                     <span>Available Across AP</span>
                   </div>
                 </AnimatedGroup>
@@ -162,50 +148,38 @@ export function HeroSection() {
                   visible: {
                     transition: {
                       staggerChildren: 0.1,
-                      delayChildren: 0.8,
+                      delayChildren: 0.45,
                     },
                   },
                 },
                 ...transitionVariants,
               }}>
-              <motion.div 
-                animate={{ 
-                  y: [0, -10, 0],
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="relative mt-10 overflow-hidden px-2 sm:mt-10 md:mt-12 w-full flex justify-center"
-              >
-                <div className="ring-gray-200 bg-white relative mx-auto max-w-7xl overflow-hidden rounded-2xl border border-gray-200 p-3 shadow-2xl shadow-black/10 ring-1">
-                  {/* Hero dashboard mockup — light */}
-                  <div className="aspect-[4/3] sm:aspect-[15/8] relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-gray-100 flex flex-col w-full shadow-inner">
-                    {/* Fake browser chrome */}
-                    <div className="h-10 bg-white border-b border-gray-100 flex items-center gap-3 px-4">
+              <div className="relative mt-10 overflow-hidden px-2 sm:mt-10 md:mt-12 w-full flex justify-center">
+                <div className="bg-white dark:bg-[#19191B] relative mx-auto max-w-7xl overflow-hidden rounded-2xl border border-[#171717]/[0.10] dark:border-white/[0.10] p-3">
+                  <div className="aspect-[4/3] sm:aspect-[15/8] relative rounded-xl overflow-hidden bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.06] flex flex-col w-full">
+                    {/* Browser chrome */}
+                    <div className="h-10 bg-white dark:bg-[#19191B] border-b border-[#171717]/[0.06] dark:border-white/[0.08] flex items-center gap-3 px-4">
                       <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                        <div className="w-3 h-3 rounded-full bg-green-400" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                       </div>
-                      <div className="flex-1 h-6 bg-gray-100 rounded-md mx-8 flex items-center px-3 gap-2">
-                        <Shield className="size-3 text-brand-primary" />
-                        <span className="text-[10px] text-gray-400 font-mono">xeroxq.arkio.in/admin</span>
+                      <div className="flex-1 h-6 bg-[#F4F4F5] dark:bg-[#232325] rounded-md mx-8 flex items-center px-3 gap-2">
+                        <Shield className="size-3 text-[#FB432C]" />
+                        <span className="text-[10px] text-[#737373] dark:text-[#85858B] font-mono">xeroxq.arkio.in/admin</span>
                       </div>
                     </div>
 
-                    {/* Mac Browser UI inside */}
-                    <div className="flex-1 overflow-hidden bg-white border-t border-gray-100 flex items-center justify-center">
-                      <img 
-                        src="/demoscreen.png" 
-                        alt="XeroxQ Dashboard Demo" 
+                    <div className="flex-1 overflow-hidden bg-white dark:bg-[#111113] flex items-center justify-center">
+                      <img
+                        src="/demoscreen.png"
+                        alt="XeroxQ Dashboard Demo"
                         className="w-full h-full object-contain sm:object-cover object-top"
                       />
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </AnimatedGroup>
           </div>
         </section>
@@ -267,24 +241,24 @@ const features = [
 
 function HeroFeatures() {
   return (
-    <section className="pt-[100px] pb-0 bg-white border-t border-gray-100">
-      <div className="mx-auto w-full max-w-[1280px] space-y-16 px-6">
+    <section className="pt-[100px] pb-0 bg-[#FAFAFA] dark:bg-[#111113] border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+      <div className="mx-auto w-full max-w-[1280px] space-y-14 px-6">
         <AnimatedContainer className="mx-auto max-w-3xl text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/5 mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-            <span className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Service Features</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#FB432C]" />
+            <span className="text-[11px] font-semibold text-[#525252] dark:text-[#A1A1A6] uppercase tracking-wider">Service Features</span>
           </div>
-          <h2 className="text-[40px] md:text-[54px] font-bold tracking-tighter text-black leading-none mb-6 text-balance">
+          <h2 className="text-[36px] md:text-[48px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-tight mb-4 text-balance">
             Modernize Your Shop.
           </h2>
-          <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
-            Everything you need to grow your xerox business and managing printing efficiently in Andhra Pradesh.
+          <p className="text-base md:text-lg font-normal text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-2xl mx-auto">
+            Everything you need to grow your xerox business and manage printing efficiently in Andhra Pradesh.
           </p>
         </AnimatedContainer>
 
         <AnimatedContainer
-          delay={0.4}
-          className="grid grid-cols-1 divide-x divide-y divide-gray-100 border border-gray-100 sm:grid-cols-2 md:grid-cols-3 rounded-3xl overflow-hidden shadow-2xl shadow-black/[0.02]"
+          delay={0.2}
+          className="grid grid-cols-1 divide-x divide-y divide-[#171717]/[0.08] dark:divide-white/[0.08] border border-[#171717]/[0.08] dark:border-white/[0.08] sm:grid-cols-2 md:grid-cols-3 rounded-2xl overflow-hidden"
         >
           {features.map((feature, i) => (
             <FeatureCard key={i} feature={feature} />

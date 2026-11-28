@@ -8,7 +8,8 @@ import {
   MapPin, 
   Search, 
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -54,143 +55,142 @@ export default function ShopsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] selection:bg-[#FB432C] selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white flex flex-col font-sans">
       <SiteHeader />
-      
-      <main className="flex-1 pt-32 pb-0">
-        {/* Shops Hero - Styled identically to the landing page */}
-        <section className="relative pt-12 pb-16 text-center overflow-hidden">
-          {/* Subtle background element */}
-          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
-               style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
-          
+
+      <main className="flex-1 pt-28 pb-0">
+        <section className="relative pt-10 pb-16 text-center">
           <div className="max-w-[1280px] mx-auto px-6 relative z-10">
-            <motion.div 
+            <motion.div
               variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+                hidden: { opacity: 0, y: 16 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.45 } }
               }}
               initial="hidden"
               animate="visible"
-              className="mx-auto mb-16 max-w-2xl text-center"
+              className="mx-auto mb-12 max-w-2xl text-center"
             >
-              {/* Landing Page style badge */}
-              <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
-                <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
-                <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Global Network</span>
+              <div className="inline-flex items-center gap-2 px-3.5 h-7 rounded-full bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-6 mx-auto">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FB432C]" />
+                <span className="text-[11px] font-semibold text-[#525252] dark:text-[#A1A1A6] tracking-wide">Global Network</span>
               </div>
-              
-              <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
-                Find A XeroxQ Partner Shop
-              </h2>
-              <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto mb-12">
-                Search our verified network of print nodes across Andhra Pradesh. Print securely without ever saving the shop owner's number.
+
+              <h1 className="text-[36px] md:text-[48px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-tight mb-4">
+                Find a XeroxQ Partner Shop
+              </h1>
+              <p className="text-base font-normal text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-xl mx-auto mb-8">
+                Search our verified print shops across Andhra Pradesh. Print privately without saving phone numbers.
               </p>
 
-              {/* Premium Pill Search Bar */}
-              <motion.div 
-                 initial={{ opacity: 0, y: 10 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 transition={{ duration: 0.8, delay: 0.3 }}
-                 className="relative group mx-auto max-w-xl"
-              >
-                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-[#FB432C] transition-colors" />
-                 <input 
-                    type="text" 
-                    placeholder="Search by shop name, city, or zip code..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-16 pl-14 pr-6 bg-white border border-gray-200 rounded-full text-[15px] font-bold text-black placeholder:text-gray-400 focus:border-[#FB432C]/30 focus:ring-4 focus:ring-[#FB432C]/10 transition-all shadow-lg shadow-black/5 outline-none" 
-                 />
-              </motion.div>
+              {/* Search Bar */}
+              <div className="relative group mx-auto max-w-xl">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#737373] dark:text-[#85858B] group-focus-within:text-[#FB432C] transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search by shop name, city, or zip code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-12 pl-12 pr-10 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-xl text-[14px] font-medium text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] focus:border-[#FB432C] transition-colors outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] hover:bg-[#F4F4F5] dark:hover:bg-[#232325]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </motion.div>
 
             {/* Global Shop Grid */}
-            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3 mb-24">
-               {loading ? (
-                  [...Array(6)].map((_, i) => (
-                     <div key={i} className="relative rounded-2xl border bg-white p-6 lg:p-8 space-y-4">
-                        <Skeleton className="w-14 h-14 rounded-2xl mb-6" />
-                        <Skeleton className="w-3/4 h-6 mb-3" />
-                        <Skeleton className="w-full h-12" />
-                     </div>
-                  ))
-               ) : (
-                  filteredShops.map((node, i) => (
-                     <motion.div
-                        key={node.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: "-50px" }}
-                        transition={{ delay: i * 0.1, duration: 0.8, type: 'spring', bounce: 0.3 }}
-                        onClick={() => router.push(`/${node.slug}`)}
-                        className={cn(
-                          "relative flex flex-col justify-between overflow-hidden rounded-[32px] border border-black/5 bg-white transition-all duration-500 ease-in-out group text-left cursor-pointer",
-                          "hover:-translate-y-2 hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] hover:border-black/10"
-                        )}
-                     >
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#FB432C]/0 via-transparent to-[#FB432C]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                        
-                        <div className="p-8 pb-6 flex-1 relative z-10">
-                          <div className="flex justify-between items-start mb-10">
-                            <div className="relative">
-                               <div className="absolute inset-0 bg-[#FB432C] blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                               <div className="relative flex h-16 w-16 items-center justify-center rounded-[20px] bg-black text-white shadow-xl shadow-black/20 group-hover:bg-[#FB432C] group-hover:-rotate-3 transition-all duration-500 border border-black/5">
-                                 <Printer className="h-7 w-7" />
-                               </div>
-                            </div>
-                            <div className="px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm rounded-full flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-                              <span className="text-[10px] font-black text-black uppercase tracking-widest">Active Node</span>
-                            </div>
-                          </div>
-                          
-                          <h3 className="mb-3 text-2xl font-black tracking-tighter uppercase leading-none group-hover:text-[#FB432C] transition-colors duration-300 line-clamp-1">{node.name}</h3>
-                          
-                          <div className="flex items-start gap-2.5 text-[#64748B] mb-2">
-                             <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-black/20 group-hover:text-[#FB432C]/60 transition-colors" />
-                             <p className="text-sm font-medium leading-relaxed italic line-clamp-2">{node.shop_location || node.address || "Verified XeroxQ Partner Location in Andhra Pradesh."}</p>
-                          </div>
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-20">
+              {loading ? (
+                [...Array(6)].map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] p-6 space-y-4">
+                    <Skeleton className="w-12 h-12 rounded-xl mb-4" />
+                    <Skeleton className="w-3/4 h-5 mb-2" />
+                    <Skeleton className="w-full h-10" />
+                  </div>
+                ))
+              ) : (
+                filteredShops.map((node, i) => (
+                  <motion.div
+                    key={node.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ delay: i * 0.04, duration: 0.4 }}
+                    onClick={() => router.push(`/${node.slug}`)}
+                    className={cn(
+                      "flex flex-col justify-between rounded-[20px] border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] transition-all duration-200 group text-left cursor-pointer",
+                      "hover:-translate-y-1 hover:border-[#FB432C]/40"
+                    )}
+                  >
+                    <div className="p-6 pb-5 flex-1">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] group-hover:bg-[#FB432C] group-hover:text-white transition-colors">
+                          <Printer className="h-5 w-5" />
                         </div>
-                        
-                        <div className="relative z-10 p-5 mx-3 mb-3 bg-[#F8FAFC] group-hover:bg-black rounded-[24px] border border-black/5 flex items-center justify-between transition-colors duration-500 mt-2">
-                           <div className="flex items-center gap-3">
-                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white group-hover:bg-white/10 shadow-sm transition-colors duration-500 border border-black/5">
-                               <ShieldCheck className="h-4 w-4 text-black group-hover:text-white transition-colors duration-500" />
-                             </div>
-                             <span className="text-[11px] font-black text-black uppercase tracking-[0.15em] group-hover:text-white transition-colors duration-500">Connect to Print</span>
-                           </div>
-                           <div className="w-10 h-10 rounded-full flex items-center justify-center">
-                              <ArrowRight className="w-5 h-5 text-black group-hover:text-white group-hover:translate-x-1 transition-all duration-500" />
-                           </div>
+                        <div className="px-2.5 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-full flex items-center gap-1.5">
+                          <span className={cn("w-2 h-2 rounded-full", node.is_open ? "bg-[#16A34A] dark:bg-[#4CC38A]" : "bg-[#DC2626] dark:bg-[#E5484D]")} />
+                          <span className="text-[11px] font-semibold text-[#171717] dark:text-[#EDEDED]">
+                            {node.is_open ? "Open" : "Closed"}
+                          </span>
                         </div>
-                     </motion.div>
-                  ))
-               )}
+                      </div>
+
+                      <h2 className="mb-2 text-lg font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] group-hover:text-[#FB432C] transition-colors line-clamp-1">
+                        {node.name}
+                      </h2>
+
+                      <div className="flex items-start gap-2 text-[#525252] dark:text-[#A1A1A6]">
+                        <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-[#737373] dark:text-[#85858B]" />
+                        <p className="text-sm leading-relaxed line-clamp-2">
+                          {node.shop_location || node.address || "Verified XeroxQ partner shop in Andhra Pradesh."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="px-4 py-3 mx-3 mb-3 bg-[#F4F4F5] dark:bg-[#232325] group-hover:bg-[#FB432C] rounded-xl flex items-center justify-between transition-colors">
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck className="h-4 w-4 text-[#16A34A] dark:text-[#4CC38A] group-hover:text-white transition-colors" />
+                        <span className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED] group-hover:text-white transition-colors">
+                          Connect to Print
+                        </span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-[#525252] dark:text-[#A1A1A6] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
 
             {/* Not Found Placeholder */}
             {!loading && filteredShops.length === 0 && (
-               <motion.div 
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 className="py-12 text-center"
-               >
-                  <div className="inline-flex items-center gap-2 px-6 py-4 bg-gray-50 border border-gray-200 rounded-full mb-6">
-                    <Search className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm font-bold text-gray-600">No shops found for "{searchQuery}"</span>
-                  </div>
-                  <div>
-                    <button 
-                      onClick={() => setSearchQuery("")} 
-                      className="text-sm font-bold text-[#FB432C] hover:text-black hover:underline transition-colors uppercase tracking-widest"
-                    >
-                      Reset Search
-                    </button>
-                  </div>
-               </motion.div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-12 text-center"
+              >
+                <div className="inline-flex items-center gap-2 px-5 py-3 bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-full mb-5">
+                  <Search className="w-4 h-4 text-[#737373] dark:text-[#85858B]" />
+                  <span className="text-sm font-medium text-[#525252] dark:text-[#A1A1A6]">
+                    No shops found for &quot;{searchQuery}&quot;
+                  </span>
+                </div>
+                <div>
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-sm font-semibold text-[#FB432C] hover:underline transition-colors"
+                  >
+                    Reset search
+                  </button>
+                </div>
+              </motion.div>
             )}
-
           </div>
         </section>
       </main>

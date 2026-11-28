@@ -71,9 +71,9 @@ class JobRepository {
 
     // 2. Upload file to 'documents' bucket using correct platform data format
     try {
-      if (kIsWeb) {
+      if (kIsWeb || (file == null && fileBytes != null)) {
         if (fileBytes == null) {
-          throw Exception('Web upload requires file bytes');
+          throw Exception('Upload requires file bytes');
         }
         await _client.storage.from('documents').uploadBinary(
               storagePath,

@@ -79,7 +79,7 @@ function InlineSegmented({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="inline-flex items-center bg-[#F2F2F7] rounded-full p-0.5 border border-black/[0.04]">
+    <div className="inline-flex items-center bg-[#F4F4F5] dark:bg-[#232325] rounded-lg p-0.5 border border-[#171717]/[0.06] dark:border-white/[0.06] shrink-0">
       {options.map((opt) => {
         const active = value === opt.key;
         return (
@@ -88,15 +88,17 @@ function InlineSegmented({
             type="button"
             onClick={() => onChange(opt.key)}
             className={cn(
-              "relative z-10 px-3 py-1 rounded-full text-[12px] font-semibold transition-colors whitespace-nowrap",
-              active ? "text-[#111827]" : "text-[#6B7280] hover:text-[#111827]"
+              "relative z-10 px-2.5 sm:px-3 py-1 rounded-md text-[11.5px] sm:text-[12px] font-medium transition-colors whitespace-nowrap cursor-pointer",
+              active
+                ? "text-[#171717] dark:text-[#EDEDED]"
+                : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
             )}
           >
             {active && (
               <motion.span
                 layoutId={layoutId}
                 transition={SPRING}
-                className="absolute inset-0 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.09)] -z-10"
+                className="absolute inset-0 rounded-md bg-white dark:bg-[#19191B] border border-[#171717]/[0.06] dark:border-white/[0.08] -z-10"
               />
             )}
             {opt.label}
@@ -132,25 +134,34 @@ export default function PrintPreferencesDeck({
   const totalSheets = sheetsPerCopy * copies;
 
   return (
-    <div className="w-full rounded-[24px] bg-white/95 backdrop-blur-2xl border border-black/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden divide-y divide-black/[0.05]">
-      {/* 1. Customer Name (always clean optional or required when enabled) */}
-      <div className="px-4 py-3 flex items-center gap-3">
-        <IconTile bg="bg-[#007AFF]">
-          <User className="w-3.5 h-3.5" strokeWidth={2.4} />
-        </IconTile>
-        <input
-          id="customer-name"
-          type="text"
-          value={customerName}
-          onChange={(e) => onNameChange(e.target.value)}
-          placeholder={
-            shop.require_customer_name
-              ? "Your name (required)"
-              : "Your name (optional)"
-          }
-          className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium text-[#111827] placeholder:text-[#9CA3AF]"
-        />
-      </div>
+    <div className="w-full rounded-[16px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-[0_1px_2px_rgba(17,17,19,0.04)] overflow-hidden divide-y divide-[#171717]/[0.06] dark:divide-white/[0.07]">
+      {/* 1. Customer Name — shown ONLY when enabled by the shopkeeper */}
+      <AnimatePresence initial={false}>
+        {shop.require_customer_name && (
+          <motion.div
+            key="name-row"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 py-3 flex items-center gap-3">
+              <IconTile bg="bg-[#007AFF] dark:bg-[#2F7CF6]">
+                <User className="w-3.5 h-3.5" strokeWidth={2} />
+              </IconTile>
+              <input
+                id="customer-name"
+                type="text"
+                value={customerName}
+                onChange={(e) => onNameChange(e.target.value)}
+                placeholder="Your name (required)"
+                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B]"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 2. Phone input (Pre-Order mode only) */}
       <AnimatePresence initial={false}>
@@ -164,10 +175,10 @@ export default function PrintPreferencesDeck({
             className="overflow-hidden"
           >
             <div className="px-4 py-3 flex items-center gap-3">
-              <IconTile bg="bg-[#34C759]">
-                <Phone className="w-3.5 h-3.5" strokeWidth={2.4} />
+              <IconTile bg="bg-[#16A34A] dark:bg-[#4CC38A]">
+                <Phone className="w-3.5 h-3.5" strokeWidth={2} />
               </IconTile>
-              <span className="text-[13px] font-semibold text-[#6B7280] pr-2 border-r border-black/[0.08] select-none">
+              <span className="text-[13px] font-medium text-[#525252] dark:text-[#A1A1A6] pr-2 border-r border-[#171717]/[0.10] dark:border-white/[0.10] select-none">
                 +91
               </span>
               <input
@@ -177,7 +188,7 @@ export default function PrintPreferencesDeck({
                 value={customerPhone}
                 onChange={(e) => onPhoneChange(e.target.value)}
                 placeholder="Mobile number (for pickup update)"
-                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium text-[#111827] placeholder:text-[#9CA3AF]"
+                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B]"
               />
             </div>
           </motion.div>
@@ -186,17 +197,17 @@ export default function PrintPreferencesDeck({
 
       {/* 3. Color Mode */}
       {showColorMode && (
-        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <IconTile bg="bg-gradient-to-br from-[#FF3B30] via-[#FF9500] to-[#AF52DE]">
-              <Palette className="w-3.5 h-3.5" strokeWidth={2.4} />
+        <div className="px-3.5 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <IconTile bg="bg-[#FB432C]">
+              <Palette className="w-3.5 h-3.5" strokeWidth={2} />
             </IconTile>
-            <span className="text-[14px] font-medium text-[#111827]">Color</span>
+            <span className="text-[13.5px] sm:text-[14px] font-medium text-[#171717] dark:text-[#EDEDED]">Color</span>
           </div>
           <InlineSegmented
             layoutId="color-pill"
             options={[
-              { key: "bw", label: "Black & White" },
+              { key: "bw", label: "B&W" },
               { key: "color", label: "Color" },
             ]}
             value={color ? "color" : "bw"}
@@ -207,12 +218,12 @@ export default function PrintPreferencesDeck({
 
       {/* 4. Print Sides */}
       {showDuplex && (
-        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <IconTile bg="bg-[#5856D6]">
-              <BookOpen className="w-3.5 h-3.5" strokeWidth={2.4} />
+        <div className="px-3.5 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <IconTile bg="bg-[#5856D6] dark:bg-[#6E6CE8]">
+              <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
             </IconTile>
-            <span className="text-[14px] font-medium text-[#111827]">Sides</span>
+            <span className="text-[13.5px] sm:text-[14px] font-medium text-[#171717] dark:text-[#EDEDED]">Sides</span>
           </div>
           <InlineSegmented
             layoutId="duplex-pill"
@@ -228,43 +239,43 @@ export default function PrintPreferencesDeck({
 
       {/* 5. Copies Stepper */}
       {showCopies && (
-        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <IconTile bg="bg-[#FF9500]">
-              <Copy className="w-3.5 h-3.5" strokeWidth={2.4} />
+        <div className="px-3.5 sm:px-4 py-3 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <IconTile bg="bg-[#D97706] dark:bg-[#F59E0B]">
+              <Copy className="w-3.5 h-3.5" strokeWidth={2} />
             </IconTile>
-            <span className="text-[14px] font-medium text-[#111827]">Copies</span>
+            <span className="text-[13.5px] sm:text-[14px] font-medium text-[#171717] dark:text-[#EDEDED]">Copies</span>
           </div>
-          <div className="inline-flex items-center gap-1 bg-[#F2F2F7] rounded-full p-0.5 border border-black/[0.04]">
+          <div className="inline-flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#232325] rounded-full p-0.5 border border-[#171717]/[0.06] dark:border-white/[0.08]">
             <motion.button
               type="button"
-              whileTap={{ scale: 0.88 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => onCopiesChange(Math.max(1, copies - 1))}
               disabled={copies <= 1}
               aria-label="Decrease copies"
-              className="w-7 h-7 rounded-full bg-white shadow-2xs flex items-center justify-center text-[#111827] disabled:opacity-35 transition-opacity"
+              className="w-7 h-7 rounded-full bg-white dark:bg-[#19191B] border border-[#171717]/[0.06] dark:border-white/[0.08] flex items-center justify-center text-[#171717] dark:text-[#EDEDED] disabled:opacity-35 transition-opacity"
             >
-              <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              <Minus className="w-3.5 h-3.5" strokeWidth={2} />
             </motion.button>
-            <span className="w-8 text-center text-[13.5px] font-bold text-[#111827] tabular-nums select-none">
+            <span className="w-8 text-center text-[13.5px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums select-none">
               {copies}
             </span>
             <motion.button
               type="button"
-              whileTap={{ scale: 0.88 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => onCopiesChange(Math.min(99, copies + 1))}
               disabled={copies >= 99}
               aria-label="Increase copies"
-              className="w-7 h-7 rounded-full bg-white shadow-2xs flex items-center justify-center text-[#111827] disabled:opacity-35 transition-opacity"
+              className="w-7 h-7 rounded-full bg-white dark:bg-[#19191B] border border-[#171717]/[0.06] dark:border-white/[0.08] flex items-center justify-center text-[#171717] dark:text-[#EDEDED] disabled:opacity-35 transition-opacity"
             >
-              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              <Plus className="w-3.5 h-3.5" strokeWidth={2} />
             </motion.button>
           </div>
         </div>
       )}
 
-      {/* Clean Summary Strip (NO copy rates noise) */}
-      <div className="px-4 py-2.5 bg-[#FAFAFC] flex items-center justify-between text-[12px] text-[#6B7280]">
+      {/* Clean Summary Strip */}
+      <div className="px-4 py-3 bg-[#F4F4F5]/70 dark:bg-[#141416] flex items-center justify-between text-[12.5px] text-[#525252] dark:text-[#A1A1A6]">
         {isPricingLoading ? (
           <Skeleton className="h-3.5 w-40 rounded-full" />
         ) : (
@@ -273,7 +284,7 @@ export default function PrintPreferencesDeck({
               {fileCount ? `${fileCount} ${fileCount === 1 ? "file" : "files"} · ` : ""}
               {totalPages} {totalPages === 1 ? "page" : "pages"}
             </span>
-            <span className="font-semibold text-[#111827] tabular-nums">
+            <span className="font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">
               {totalSheets} {totalSheets === 1 ? "sheet" : "sheets"} to print
             </span>
           </>

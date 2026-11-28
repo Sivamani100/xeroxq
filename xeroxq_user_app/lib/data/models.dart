@@ -251,6 +251,8 @@ class PrintFile {
   final String name;
   final File? file;          // Null on Web
   final Uint8List? bytes;    // Null on mobile if using file path
+  final Uint8List? originalBytes; // Uncropped original photo bytes for re-adjustment
+  final bool autoCropped;
   final int sizeBytes;
   final int totalPages;      // Total calculated pages
   
@@ -272,6 +274,8 @@ class PrintFile {
     required this.name,
     this.file,
     this.bytes,
+    this.originalBytes,
+    this.autoCropped = false,
     required this.sizeBytes,
     required this.totalPages,
     this.color = false,

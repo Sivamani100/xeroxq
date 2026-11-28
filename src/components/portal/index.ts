@@ -7,6 +7,6 @@ export { default as PrintPreferencesDeck } from "./PrintPreferencesDeck";
 // Named-exported components
 export { ProcessingPipelineCard } from "./ProcessingPipelineCard";
 export { ActiveTicketView } from "./ActiveTicketView";
-export { HistoryDrawer } from "./HistoryDrawer";
+export { HistoryDrawer, HistoryPanel } from "./HistoryDrawer";
 export { FeedbackSheet } from "./FeedbackSheet";
 export { UploadConnectClient } from "./UploadConnectClient";

@@ -129,6 +129,9 @@ import {
   FAQPageJsonLd,
 } from "@/components/seo/json-ld";
 import { MaintenanceGuard } from "@/components/layout/maintenance-guard";
+import { ThemeProvider } from "@/lib/theme";
+
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('xeroxq_theme')||localStorage.getItem('xeroxq_admin_theme')||'light';if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -136,20 +139,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-IN" className="dark" suppressHydrationWarning>
+    <html lang="en-IN" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {/* ── Structured Data (JSON-LD) ── */}
         <OrganizationJsonLd />
         <WebSiteJsonLd />
         <LocalBusinessJsonLd />
         <FAQPageJsonLd />
       </head>
-      <body className={`${inter.className} min-h-screen antialiased selection:bg-brand-primary/30`}>
+      <body className={`${inter.className} min-h-screen antialiased bg-[#FAFAFA] text-[#171717] dark:bg-[#111113] dark:text-[#EDEDED] selection:bg-[#FB432C]/25`}>
 
         {/* ── Google Analytics 4 (GA4) ──────────────────────────────────────────
             Measurement ID: G-9HSQS64CK5
             strategy="afterInteractive" fires after page hydration — zero
-            impact on LCP / CLS / FID Core Web Vitals scores.
+            impact on LCP / CLS / FID Core Web Web Vitals scores.
             Placed in root layout = automatically fires on EVERY page. ────── */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-9HSQS64CK5"
@@ -167,12 +171,14 @@ export default function RootLayout({
           `}
         </Script>
 
-        <MaintenanceGuard>
-          {children}
-        </MaintenanceGuard>
-        <Analytics />
-        <SpeedInsights />
-        <CookieConsent />
+        <ThemeProvider>
+          <MaintenanceGuard>
+            {children}
+          </MaintenanceGuard>
+          <Analytics />
+          <SpeedInsights />
+          <CookieConsent />
+        </ThemeProvider>
       </body>
     </html>
   );

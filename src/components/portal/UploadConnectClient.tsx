@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { loadHistory, loadPreferences, type StoredBatch } from "@/lib/customer-storage";
 import { formatDisplayUrl, getPublicOrigin } from "@/lib/site-url";
 import { finalizeSlugInput, normalizeSlugTyping } from "@/lib/shop-slug";
+import { ThemeToggle } from "@/lib/theme";
 import cn from "@/lib/utils";
 
 const SPRING = { type: "spring" as const, stiffness: 380, damping: 30 };
@@ -50,15 +51,18 @@ export function UploadConnectClient() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col items-center justify-center p-4 sm:p-6 relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <ThemeToggle compact />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={SPRING}
-        className="w-full max-w-md rounded-[28px] bg-white border border-black/[0.06] shadow-[0_12px_40px_rgba(0,0,0,0.06)] p-7 sm:p-9"
+        className="w-full max-w-md rounded-[20px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-[0_1px_2px_rgba(17,17,19,0.04)] p-7 sm:p-9"
       >
-        {/* Real XeroxQ App Icon */}
-        <div className="w-14 h-14 rounded-[18px] bg-white border border-black/[0.07] shadow-[0_4px_14px_rgba(0,0,0,0.07)] flex items-center justify-center mx-auto mb-5 p-2.5">
+        {/* XeroxQ App Icon */}
+        <div className="w-14 h-14 rounded-2xl bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto mb-5 p-2.5">
           <img
             src="/logo_color.png"
             alt="XeroxQ"
@@ -67,10 +71,10 @@ export function UploadConnectClient() {
         </div>
 
         <div className="text-center mb-7">
-          <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight mb-1.5">
+          <h1 className="text-2xl font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight mb-1.5">
             Connect to Print Shop
           </h1>
-          <p className="text-sm text-[#6B7280] leading-relaxed">
+          <p className="text-sm text-[#525252] dark:text-[#A1A1A6] leading-relaxed">
             Enter your print shop&apos;s short link to upload documents and get a
             pickup code right away.
           </p>
@@ -79,14 +83,14 @@ export function UploadConnectClient() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div
             className={cn(
-              "flex items-center rounded-[16px] h-[52px] overflow-hidden",
-              "bg-[#F7F7FA] border transition-all duration-150",
+              "flex items-center rounded-[14px] h-[50px] overflow-hidden",
+              "bg-[#F4F4F5] dark:bg-[#232325] border transition-colors duration-150",
               error
-                ? "border-red-400 shadow-[0_0_0_3px_rgba(239,68,68,0.10)]"
-                : "border-black/[0.08] focus-within:bg-white focus-within:border-[#3568FF]/50 focus-within:shadow-[0_0_0_3px_rgba(53,104,255,0.10)]"
+                ? "border-[#DC2626] dark:border-[#E5484D]"
+                : "border-[#171717]/[0.10] dark:border-white/[0.10] focus-within:bg-white dark:focus-within:bg-[#19191B] focus-within:border-[#FB432C]"
             )}
           >
-            <span className="px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap shrink-0 border-r border-black/[0.07] bg-black/[0.02] h-full flex items-center max-w-[160px] truncate">
+            <span className="px-3 text-xs font-medium text-[#737373] dark:text-[#85858B] whitespace-nowrap shrink-0 border-r border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#171717]/[0.02] dark:bg-white/[0.03] h-full flex items-center max-w-[160px] truncate">
               {originDisplay}/
             </span>
             <input
@@ -100,30 +104,27 @@ export function UploadConnectClient() {
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="flex-1 min-w-0 bg-transparent outline-none text-sm font-semibold text-[#111827] px-3 h-full placeholder:text-[#9CA3AF]"
+              className="flex-1 min-w-0 bg-transparent outline-none text-sm font-medium text-[#171717] dark:text-[#EDEDED] px-3 h-full placeholder:text-[#737373] dark:placeholder:text-[#85858B]"
             />
           </div>
 
           {error && (
-            <p className="text-xs font-medium text-red-600 px-1">{error}</p>
+            <p className="text-xs font-medium text-[#DC2626] dark:text-[#E5484D] px-1">{error}</p>
           )}
 
           <motion.button
             type="submit"
             whileTap={{ scale: 0.98 }}
-            className="w-full h-[52px] rounded-[16px] font-bold text-white text-sm flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(251,67,44,0.28)] transition-opacity hover:opacity-95"
-            style={{
-              background: "linear-gradient(135deg, #FB432C 0%, #FF591E 100%)",
-            }}
+            className="w-full h-[50px] rounded-[14px] bg-[#FB432C] hover:bg-[#E03923] font-semibold text-white text-sm flex items-center justify-center gap-2 transition-colors"
           >
             Go to Shop
-            <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
+            <ArrowRight className="w-4 h-4" strokeWidth={2} />
           </motion.button>
         </form>
 
         {recentShops.length > 0 && (
-          <div className="mt-6 pt-5 border-t border-black/[0.06]">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] mb-2.5 flex items-center gap-1.5">
+          <div className="mt-6 pt-5 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B] mb-2.5 flex items-center gap-1.5">
               <History className="w-3.5 h-3.5" />
               Recent Shops
             </p>
@@ -132,7 +133,7 @@ export function UploadConnectClient() {
                 <Link
                   key={rs.slug}
                   href={`/${rs.slug}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F2F2F7] hover:bg-[#E5E5EA] text-xs font-semibold text-[#111827] transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-xs font-semibold text-[#171717] dark:text-[#EDEDED] transition-colors"
                 >
                   {rs.name}
                   <ArrowRight className="w-3 h-3 opacity-60" />
@@ -142,16 +143,16 @@ export function UploadConnectClient() {
           </div>
         )}
 
-        <div className="mt-6 pt-5 border-t border-black/[0.06] flex items-center justify-between gap-2 text-xs text-[#6B7280]">
+        <div className="mt-6 pt-5 border-t border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-2 text-xs text-[#525252] dark:text-[#A1A1A6]">
           <Link
             href="/shops"
-            className="inline-flex items-center gap-1 font-semibold text-[#3568FF] hover:underline"
+            className="inline-flex items-center gap-1 font-semibold text-[#FB432C] hover:underline"
           >
             <MapPin className="w-3.5 h-3.5" />
             Find Nearby Shops
           </Link>
           <span className="inline-flex items-center gap-1 text-[11px]">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#34C759]" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A] dark:text-[#4CC38A]" />
             Deletes after 5m
           </span>
         </div>

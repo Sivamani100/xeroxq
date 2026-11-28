@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:local_auth/local_auth.dart';
@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/vault_repository.dart';
+import '../print/image_adjust_page.dart';
 import '../print/print_wizard_page.dart';
 import 'scan_page.dart';
 
@@ -119,12 +120,45 @@ class _VaultPageState extends State<VaultPage> with SingleTickerProviderStateMix
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'txt'],
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'txt'],
       withData: true, // required to get bytes on web
     );
     if (result == null) return;
     
     final pickedFile = result.files.single;
+    final lowerName = pickedFile.name.toLowerCase();
+    final isImage = lowerName.endsWith('.jpg') ||
+        lowerName.endsWith('.jpeg') ||
+        lowerName.endsWith('.png') ||
+        lowerName.endsWith('.webp');
+
+    if (isImage) {
+      Uint8List? rawBytes = pickedFile.bytes;
+      if (rawBytes == null && !kIsWeb && pickedFile.path != null) {
+        rawBytes = await File(pickedFile.path!).readAsBytes();
+      }
+      if (rawBytes != null && mounted) {
+        final adjusted = await Navigator.push<ImageAdjustResult>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageAdjustPage(
+              imageBytes: rawBytes!,
+              fileName: pickedFile.name,
+            ),
+          ),
+        );
+        if (adjusted == null || !mounted) return;
+        final base = pickedFile.name.replaceAll(RegExp(r'\.[^/.]+$'), '');
+        await context.read<VaultRepository>().addFileToVault(
+              sourceBytes: adjusted.bytes,
+              name: '$base.png',
+              category: _selectedCategory == 'All' ? 'IDs' : _selectedCategory,
+            );
+        _loadDocuments();
+        return;
+      }
+    }
+
     if (kIsWeb) {
       if (pickedFile.bytes == null) return;
       if (!mounted) return;

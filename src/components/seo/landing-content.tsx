@@ -10,8 +10,7 @@ export function SEOHero() {
   const [email, setEmail] = useState('');
 
   return (
-    <section className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white py-20 overflow-hidden">
-      <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
+    <section className="relative bg-[#171717] dark:bg-[#19191B] border-b border-white/[0.08] text-white py-20 overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
@@ -24,7 +23,7 @@ export function SEOHero() {
                 Find Xerox Shops Near You
                 <span className="block text-[#FB432C]">Print Documents Securely</span>
               </h1>
-              <p className="text-xl text-gray-300 leading-relaxed">
+              <p className="text-xl text-white/75 leading-relaxed">
                 India's #1 privacy-first document printing platform. Upload files online, 
                 find local xerox shops, and print without WhatsApp. Zero-knowledge encryption, 
                 military-grade security, 100% free.
@@ -34,7 +33,7 @@ export function SEOHero() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button 
                 size="lg" 
-                className="bg-[#FB432C] hover:bg-[#FB432C]/90 text-white font-semibold px-8 py-4"
+                className="bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold px-8 py-4"
               >
                 <Zap className="w-5 h-5 mr-2" />
                 Start Printing Now
@@ -42,14 +41,14 @@ export function SEOHero() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-black"
+                className="border-white/25 text-white hover:bg-white hover:text-[#171717]"
               >
                 <MapPin className="w-5 h-5 mr-2" />
                 Find Shops Near Me
               </Button>
             </div>
 
-            <div className="flex items-center gap-6 text-sm text-gray-400">
+            <div className="flex items-center gap-6 text-sm text-white/60">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#FB432C]" />
                 <span>50,000+ Users</span>
@@ -65,12 +64,12 @@ export function SEOHero() {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/15">
             <h3 className="text-2xl font-bold mb-6">Quick Print Estimate</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Document Type</label>
-                <select className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400">
+                <select className="w-full px-4 py-3 bg-[#232325] border border-white/20 rounded-lg text-white">
                   <option value="">Select document type</option>
                   <option value="pdf">PDF Document</option>
                   <option value="docx">Word Document</option>
@@ -83,7 +82,7 @@ export function SEOHero() {
                 <input 
                   type="number" 
                   placeholder="Enter number of pages"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50"
                 />
               </div>
               <div>
@@ -93,10 +92,10 @@ export function SEOHero() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50"
                 />
               </div>
-              <Button className="w-full bg-[#FB432C] hover:bg-[#FB432C]/90 text-white font-semibold">
+              <Button className="w-full bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold">
                 Get Instant Quote
               </Button>
             </div>
@@ -141,13 +140,13 @@ export function TrustSignals() {
   ];
 
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-20 bg-[#F4F4F5] dark:bg-[#161618]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             Trusted by 50,000+ Users Across India
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Join thousands of students, professionals, and businesses who trust XeroxQ for secure document printing.
           </p>
         </div>
@@ -161,8 +160,8 @@ export function TrustSignals() {
                   <stat.icon className="w-8 h-8 text-[#FB432C]" />
                 </div>
               </div>
-              <div className="text-3xl font-bold text-black mb-2">{stat.number}</div>
-              <div className="text-gray-600">{stat.label}</div>
+              <div className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-2">{stat.number}</div>
+              <div className="text-[#525252] dark:text-[#A1A1A6]">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -170,19 +169,19 @@ export function TrustSignals() {
         {/* Testimonials */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, index) => (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div key={index} className="bg-white dark:bg-[#19191B] p-6 rounded-xl shadow-sm border border-[#171717]/[0.08] dark:border-white/[0.08]">
               <div className="flex items-center mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
                 ))}
               </div>
-              <p className="text-gray-700 mb-4 italic">"{testimonial.content}"</p>
+              <p className="text-[#525252] dark:text-[#A1A1A6] mb-4 italic">"{testimonial.content}"</p>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-black">{testimonial.name}</div>
-                  <div className="text-sm text-gray-600">{testimonial.role}</div>
+                  <div className="font-semibold text-[#171717] dark:text-[#EDEDED]">{testimonial.name}</div>
+                  <div className="text-sm text-[#525252] dark:text-[#A1A1A6]">{testimonial.role}</div>
                 </div>
-                <div className="text-sm text-gray-500">{testimonial.location}</div>
+                <div className="text-sm text-[#737373] dark:text-[#85858B]">{testimonial.location}</div>
               </div>
             </div>
           ))}
@@ -222,13 +221,13 @@ export function FeaturesSection() {
   ];
 
   return (
-    <section className="py-20 bg-white">
+    <section className="py-20 bg-[#FAFAFA] dark:bg-[#111113]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             Why Choose XeroxQ?
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             Experience the future of document printing with our revolutionary privacy-first platform.
           </p>
         </div>
@@ -241,12 +240,12 @@ export function FeaturesSection() {
                   <feature.icon className="w-6 h-6 text-[#FB432C]" />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-xl font-bold text-black">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED]">{feature.title}</h3>
+                  <p className="text-[#525252] dark:text-[#A1A1A6]">{feature.description}</p>
                   <ul className="space-y-2">
                     {feature.benefits.map((benefit, benefitIndex) => (
-                      <li key={benefitIndex} className="flex items-center text-sm text-gray-700">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                      <li key={benefitIndex} className="flex items-center text-sm text-[#525252] dark:text-[#A1A1A6]">
+                        <CheckCircle className="w-4 h-4 text-[#16A34A] dark:text-[#4CC38A] mr-2 flex-shrink-0" />
                         {benefit}
                       </li>
                     ))}
@@ -307,37 +306,37 @@ export function ComparisonSection() {
   ];
 
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-20 bg-[#F4F4F5] dark:bg-[#161618] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">
             XeroxQ vs Traditional Printing Methods
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-[#525252] dark:text-[#A1A1A6] max-w-3xl mx-auto">
             See why XeroxQ is the superior choice for secure document printing in India.
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="grid grid-cols-4 gap-4 p-6 bg-gray-50 border-b border-gray-200">
-            <div className="font-semibold text-black">Feature</div>
+        <div className="bg-white dark:bg-[#19191B] rounded-xl shadow-sm border border-[#171717]/[0.08] dark:border-white/[0.08] overflow-hidden">
+          <div className="grid grid-cols-4 gap-4 p-6 bg-[#F4F4F5] dark:bg-[#232325] border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+            <div className="font-semibold text-[#171717] dark:text-[#EDEDED]">Feature</div>
             <div className="font-semibold text-[#FB432C] text-center">XeroxQ</div>
-            <div className="font-semibold text-gray-600 text-center">WhatsApp</div>
-            <div className="font-semibold text-gray-600 text-center">Traditional</div>
+            <div className="font-semibold text-[#525252] dark:text-[#A1A1A6] text-center">WhatsApp</div>
+            <div className="font-semibold text-[#525252] dark:text-[#A1A1A6] text-center">Traditional</div>
           </div>
           
           {comparisonData.map((row, index) => (
-            <div key={index} className="grid grid-cols-4 gap-4 p-6 border-b border-gray-200 last:border-b-0">
-              <div className="font-medium text-black">{row.feature}</div>
-              <div className="text-center text-green-600">{row.xeroxq}</div>
-              <div className="text-center text-red-600">{row.whatsapp}</div>
-              <div className="text-center text-yellow-600">{row.traditional}</div>
+            <div key={index} className="grid grid-cols-4 gap-4 p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08] last:border-b-0">
+              <div className="font-medium text-[#171717] dark:text-[#EDEDED]">{row.feature}</div>
+              <div className="text-center text-[#16A34A] dark:text-[#4CC38A]">{row.xeroxq}</div>
+              <div className="text-center text-[#DC2626] dark:text-[#E5484D]">{row.whatsapp}</div>
+              <div className="text-center text-amber-600 dark:text-amber-400">{row.traditional}</div>
             </div>
           ))}
         </div>
 
         <div className="mt-12 text-center">
-          <Button size="lg" className="bg-[#FB432C] hover:bg-[#FB432C]/90 text-white font-semibold px-8">
+          <Button size="lg" className="bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold px-8">
             Try XeroxQ Now - It's Free
           </Button>
         </div>
@@ -349,13 +348,13 @@ export function ComparisonSection() {
 // CTA section
 export function CTASection() {
   return (
-    <section className="py-20 bg-black text-white">
+    <section className="py-20 bg-[#171717] dark:bg-[#19191B] border-y border-white/[0.08] text-white">
       <div className="max-w-7xl mx-auto px-6 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
           <h2 className="text-3xl md:text-4xl font-bold">
             Ready to Experience Secure Printing?
           </h2>
-          <p className="text-xl text-gray-300">
+          <p className="text-xl text-white/80">
             Join 50,000+ users who trust XeroxQ for their document printing needs. 
             Start printing securely in under 5 minutes.
           </p>
@@ -363,7 +362,7 @@ export function CTASection() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
-              className="bg-[#FB432C] hover:bg-[#FB432C]/90 text-white font-semibold px-8 py-4"
+              className="bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold px-8 py-4"
             >
               <Zap className="w-5 h-5 mr-2" />
               Start Printing Now
@@ -371,14 +370,14 @@ export function CTASection() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-white text-white hover:bg-white hover:text-black"
+              className="border-white/25 text-white hover:bg-white hover:text-[#171717]"
             >
               <Phone className="w-5 h-5 mr-2" />
               Call Support: +91 9849497911
             </Button>
           </div>
 
-          <div className="flex items-center justify-center gap-8 text-sm text-gray-400">
+          <div className="flex items-center justify-center gap-8 text-sm text-white/60">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               <span>5-minute setup</span>

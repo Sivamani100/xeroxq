@@ -14,7 +14,8 @@ import {
   Cpu,
   Globe,
   Lock,
-  MessageCircle
+  MessageCircle,
+  X
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -108,6 +109,7 @@ const mockPosts = [
 
 export default function Blog() {
   const [activeTag, setActiveTag] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [posts, setPosts] = useState<any[]>(mockPosts);
   const [loading, setLoading] = useState(true);
 
@@ -140,21 +142,26 @@ export default function Blog() {
     fetchBlogs();
   }, []);
 
-  const filteredPosts = activeTag === "All" ? posts : posts.filter(p => p.tag === activeTag);
+  const filteredPosts = posts.filter(p => {
+    const matchesTag = activeTag === "All" || p.tag === activeTag;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      p.title?.toLowerCase().includes(q) ||
+      p.excerpt?.toLowerCase().includes(q) ||
+      p.tag?.toLowerCase().includes(q);
+    return matchesTag && matchesSearch;
+  });
   const featuredPost = posts[0] || mockPosts[0];
   const gridPosts = filteredPosts.filter(p => p.slug !== featuredPost.slug);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white overflow-x-hidden">
       <SiteHeader />
       
       <main className="flex-1 pt-32 pb-0">
         
         {/* Blog Hero */}
         <section className="relative pt-12 pb-16 text-center">
-          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
-               style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '40px 40px' }} />
-               
           <div className="max-w-[1280px] mx-auto px-6 relative z-10">
              <motion.div 
                variants={{
@@ -165,15 +172,15 @@ export default function Blog() {
                animate="visible"
                className="max-w-4xl mx-auto"
              >
-               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8">
-                 <Newspaper className="w-3.5 h-3.5 text-black" />
-                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Editorial Hub</span>
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-8">
+                 <Newspaper className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+                 <span className="text-[10px] font-bold text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] leading-none">Editorial Hub</span>
                </div>
                
-               <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-black leading-[0.95] mb-6 uppercase">
+               <h1 className="text-[50px] md:text-[80px] font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] leading-[0.95] mb-6 uppercase">
                  India's #1 <br /> Printing Blog.
                </h1>
-               <p className="text-lg md:text-xl font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+               <p className="text-lg md:text-xl font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed italic max-w-2xl mx-auto">
                  Expert insights on secure document printing, WhatsApp printing services, and India's best printing solutions. Discover why XeroxQ leads the industry in privacy and innovation.
                </p>
              </motion.div>
@@ -181,7 +188,7 @@ export default function Blog() {
         </section>
 
         {/* Sticky Category Filter */}
-        <section className="sticky top-0 z-[500] py-4 bg-white/80 backdrop-blur-xl border-y border-gray-100">
+        <section className="sticky top-0 z-[500] py-4 bg-white/85 dark:bg-[#19191B]/85 backdrop-blur-xl border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
            <div className="max-w-[1280px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
                  {["All", "Industry Analysis", "Local Printing", "Mobile Printing", "Security", "Digital Printing", "Innovation", "Engineering"].map(tag => (
@@ -191,8 +198,8 @@ export default function Blog() {
                       className={cn(
                         "h-10 px-6 rounded-full font-bold text-[11px] uppercase tracking-widest transition-all whitespace-nowrap border",
                         activeTag === tag 
-                          ? "bg-black text-white border-black shadow-lg shadow-black/10" 
-                          : "bg-gray-50 text-gray-500 border-gray-200 hover:border-black/20 hover:bg-white"
+                          ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] border-[#171717] dark:border-[#EDEDED] shadow-lg shadow-black/10" 
+                          : "bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] border-[#171717]/[0.08] dark:border-white/[0.08] hover:border-[#171717]/25 dark:hover:border-white/25 hover:bg-white dark:hover:bg-[#19191B]"
                       )}
                     >
                        {tag}
@@ -200,8 +207,24 @@ export default function Blog() {
                  ))}
               </div>
               <div className="relative w-full md:w-[280px]">
-                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                 <input type="text" placeholder="Search articles..." className="w-full h-10 bg-gray-50 border border-gray-200 rounded-full pl-11 pr-4 text-[13px] font-medium placeholder:text-gray-400 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all" />
+                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#737373] dark:text-[#85858B]" />
+                 <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search articles..."
+                    className="w-full h-10 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.12] dark:border-white/[0.12] text-[#171717] dark:text-[#EDEDED] rounded-full pl-11 pr-9 text-[13px] font-medium placeholder:text-[#737373] dark:placeholder:text-[#85858B] focus:border-[#171717] dark:focus:border-[#EDEDED] focus:ring-1 focus:ring-[#171717] dark:focus:ring-[#EDEDED] outline-none transition-all"
+                 />
+                 {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#171717] dark:text-[#85858B] dark:hover:text-[#EDEDED] transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                 )}
               </div>
            </div>
         </section>
@@ -214,27 +237,23 @@ export default function Blog() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8 }}
-                className="group relative bg-black rounded-[40px] overflow-hidden shadow-2xl shadow-black/20 p-10 md:p-16 flex flex-col justify-end min-h-[420px] cursor-pointer border border-black/20"
+                className="group relative bg-[#171717] dark:bg-[#19191B] rounded-[40px] overflow-hidden shadow-2xl shadow-black/20 p-10 md:p-16 flex flex-col justify-end min-h-[420px] cursor-pointer border border-white/[0.08]"
                 onClick={() => window.location.href = `/blog/${featuredPost.slug}`}
               >
-                 {/* Background decoration */}
-                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500 opacity-10 blur-[120px] rounded-full group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
-                 
                  <div className="relative z-20 space-y-6 max-w-3xl text-left">
                     <div className="flex items-center gap-4">
                        <span className="px-4 py-1.5 bg-white/10 text-white rounded-full text-[11px] font-black uppercase tracking-widest backdrop-blur-sm">
                           Featured
                        </span>
-                       <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold uppercase tracking-widest">
-                          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Top Read
+                       <div className="flex items-center gap-2 text-white/60 text-[10px] font-bold uppercase tracking-widest">
+                          <TrendingUp className="w-3.5 h-3.5 text-[#4CC38A]" /> Top Read
                        </div>
                     </div>
                     
-                    <h2 className="text-3xl md:text-5xl font-extrabold text-white tracking-tighter leading-[0.95] uppercase group-hover:text-blue-300 transition-colors">
+                    <h2 className="text-3xl md:text-5xl font-extrabold text-white tracking-tighter leading-[0.95] uppercase group-hover:text-[#FB432C] transition-colors">
                        {featuredPost.title}
                     </h2>
-                    <p className="text-lg text-gray-400 font-medium leading-relaxed max-w-2xl">
+                    <p className="text-lg text-white/70 font-medium leading-relaxed max-w-2xl">
                        {featuredPost.excerpt}
                     </p>
                     
@@ -245,7 +264,7 @@ export default function Blog() {
                           </div>
                           <span className="text-white font-bold text-xs">{featuredPost.author}</span>
                        </div>
-                       <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                       <div className="flex items-center gap-2 text-white/60 text-[10px] font-bold uppercase tracking-widest">
                           <Clock className="w-3.5 h-3.5" /> {featuredPost.readTime} read
                        </div>
                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{featuredPost.date}</span>
@@ -256,7 +275,7 @@ export default function Blog() {
         </section>
 
         {/* Post Grid */}
-        <section className="py-24 bg-[#F8FAFC] border-y border-gray-100">
+        <section className="py-24 bg-[#F4F4F5] dark:bg-[#161618] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
            <div className="max-w-[1280px] mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                  {gridPosts.map((post, i) => (
@@ -266,36 +285,36 @@ export default function Blog() {
                        whileInView={{ opacity: 1, y: 0 }}
                        viewport={{ once: true }}
                        transition={{ delay: i * 0.1, duration: 0.6 }}
-                       className="group bg-white p-8 rounded-[32px] border border-gray-200 hover:border-black/10 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col justify-between h-full"
+                       className="group bg-white dark:bg-[#19191B] p-8 rounded-[32px] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:border-[#171717]/20 dark:hover:border-white/20 hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-black/40 hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col justify-between h-full"
                        onClick={() => window.location.href = `/blog/${post.slug}`}
                     >
                        <div>
                           <div className="flex items-center justify-between mb-8">
-                             <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-black group-hover:bg-black group-hover:text-white transition-all duration-500 shadow-sm">
+                             <div className="w-14 h-14 rounded-2xl bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center text-[#171717] dark:text-[#EDEDED] group-hover:bg-[#171717] dark:group-hover:bg-[#EDEDED] group-hover:text-white dark:group-hover:text-[#111113] transition-all duration-500 shadow-sm">
                                 <post.icon className="w-6 h-6" />
                              </div>
-                             <span className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest rounded-full">
+                             <span className="px-3 py-1.5 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] text-[10px] font-black text-[#525252] dark:text-[#A1A1A6] uppercase tracking-widest rounded-full">
                                 {post.tag}
                              </span>
                           </div>
                           
-                          <h3 className="text-xl lg:text-2xl font-black text-black tracking-tighter uppercase leading-tight mb-4 group-hover:text-[#FB432C] transition-colors">
+                          <h3 className="text-xl lg:text-2xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tighter uppercase leading-tight mb-4 group-hover:text-[#FB432C] transition-colors">
                              {post.title}
                           </h3>
-                          <p className="text-[14px] font-medium text-gray-500 leading-relaxed line-clamp-3">
+                          <p className="text-[14px] font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed line-clamp-3">
                              {post.excerpt}
                           </p>
                        </div>
 
-                       <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
+                       <div className="mt-8 pt-6 border-t border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between">
                           <div className="space-y-1">
-                             <span className="text-[11px] font-bold text-gray-800 block">{post.author}</span>
-                             <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                             <span className="text-[11px] font-bold text-[#171717] dark:text-[#EDEDED] block">{post.author}</span>
+                             <div className="flex items-center gap-3 text-[10px] font-bold text-[#737373] dark:text-[#85858B] uppercase tracking-widest">
                                 <span>{post.date}</span>
                                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime}</span>
                              </div>
                           </div>
-                          <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-[#FB432C] border border-gray-100 group-hover:border-transparent flex items-center justify-center text-black group-hover:text-white transition-all duration-500 shrink-0 shadow-sm">
+                          <div className="w-10 h-10 rounded-full bg-[#F4F4F5] dark:bg-[#232325] group-hover:bg-[#FB432C] border border-[#171717]/[0.08] dark:border-white/[0.08] group-hover:border-transparent flex items-center justify-center text-[#171717] dark:text-[#EDEDED] group-hover:text-white transition-all duration-500 shrink-0 shadow-sm">
                              <ArrowRight className="w-4 h-4" />
                           </div>
                        </div>
@@ -306,11 +325,11 @@ export default function Blog() {
         </section>
 
         {/* Subscribe CTA */}
-        <section className="py-32 bg-white text-center">
+        <section className="py-32 bg-[#FAFAFA] dark:bg-[#111113] text-center">
            <div className="max-w-2xl mx-auto px-6">
-              <Newspaper className="w-12 h-12 text-black mx-auto mb-6 opacity-20" />
-              <h2 className="text-3xl md:text-5xl font-extrabold text-black tracking-tighter uppercase mb-6">Stay Physical. <br /> Stay Secure.</h2>
-              <p className="text-lg text-gray-500 font-medium mb-10 italic">
+              <Newspaper className="w-12 h-12 text-[#171717] dark:text-[#EDEDED] mx-auto mb-6 opacity-20" />
+              <h2 className="text-3xl md:text-5xl font-extrabold text-[#171717] dark:text-[#EDEDED] tracking-tighter uppercase mb-6">Stay Physical. <br /> Stay Secure.</h2>
+              <p className="text-lg text-[#525252] dark:text-[#A1A1A6] font-medium mb-10 italic">
                  Join developers and shopkeepers receiving weekly protocol insights and network updates directly.
               </p>
               
@@ -318,12 +337,12 @@ export default function Blog() {
                  <input 
                     type="email" 
                     placeholder="Enter your email address" 
-                    className="flex-1 h-14 bg-gray-50 border border-gray-200 rounded-full px-6 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all" 
+                    className="flex-1 h-14 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.12] dark:border-white/[0.12] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] rounded-full px-6 focus:outline-none focus:border-[#171717] dark:focus:border-[#EDEDED] focus:ring-1 focus:ring-[#171717] dark:focus:ring-[#EDEDED] transition-all" 
                     required 
                  />
                  <button 
                     type="submit"
-                    className="h-14 px-8 bg-black hover:bg-[#FB432C] text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-black/10"
+                    className="h-14 px-8 bg-[#171717] dark:bg-[#EDEDED] hover:bg-[#FB432C] dark:hover:bg-[#FB432C] text-white dark:text-[#111113] dark:hover:text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-black/10"
                  >
                     Subscribe
                  </button>

@@ -64,29 +64,28 @@ export function CookieConsent() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="fixed bottom-4 left-4 right-4 md:left-6 md:right-auto z-[2000] max-w-[440px] pointer-events-auto"
         >
-          {/* Light Theme Cookie Consent Dialog */}
-          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.12)] text-black font-sans">
+          <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-2xl p-5 shadow-lg text-[#171717] dark:text-[#EDEDED] font-sans">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-black text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Cookie className="w-4 h-4 text-white" />
+                <div className="w-7 h-7 rounded-lg bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] flex items-center justify-center shrink-0">
+                  <Cookie className="w-4 h-4" strokeWidth={1.75} />
                 </div>
-                <h4 className="text-[13px] font-bold text-black tracking-tight">
+                <h4 className="text-[13px] font-semibold tracking-tight">
                   We use cookies
                 </h4>
               </div>
               <button
                 onClick={() => setIsVisible(false)}
-                className="text-[#7E8B9E] hover:text-black transition-colors p-1 -mr-1 -mt-1 rounded-md cursor-pointer"
+                className="text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors p-1 -mr-1 -mt-1 rounded-md cursor-pointer"
                 aria-label="Close cookie banner"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" strokeWidth={1.75} />
               </button>
             </div>
 
-            <p className="text-[12px] text-[#7E8B9E] font-medium leading-relaxed mt-2.5 mb-4">
-              We use essential cookies to manage authentication, maintain your terminal session, and ensure platform security. Learn more in our{" "}
-              <Link href="/privacy" className="text-black font-bold underline underline-offset-2 hover:text-blue-600 transition-colors">
+            <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] leading-relaxed mt-2.5 mb-4">
+              We use essential cookies to manage authentication, maintain your session, and ensure platform security. Learn more in our{" "}
+              <Link href="/privacy" className="text-[#171717] dark:text-[#EDEDED] font-medium underline underline-offset-2 hover:text-[#FB432C] transition-colors">
                 Privacy Policy
               </Link>
               .
@@ -95,13 +94,13 @@ export function CookieConsent() {
             <div className="flex items-center gap-2.5">
               <button
                 onClick={handleAccept}
-                className="flex-1 h-9 bg-black hover:bg-black/90 text-white text-[12px] font-bold rounded-lg transition-all shadow-sm cursor-pointer uppercase tracking-wider"
+                className="flex-1 h-9 bg-[#171717] dark:bg-[#EDEDED] hover:bg-[#262626] dark:hover:bg-white text-white dark:text-[#111113] text-[12px] font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Accept
               </button>
               <button
                 onClick={handleDecline}
-                className="flex-1 h-9 bg-white hover:bg-[#F8FAFC] text-[#7E8B9E] hover:text-black border border-[#E2E8F0] text-[12px] font-bold rounded-lg transition-all cursor-pointer uppercase tracking-wider"
+                className="flex-1 h-9 bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-white/[0.12] text-[#525252] dark:text-[#A1A1A6] hover:text-[#171717] dark:hover:text-[#EDEDED] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[12px] font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Decline
               </button>

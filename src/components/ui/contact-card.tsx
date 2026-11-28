@@ -42,39 +42,39 @@ export function ContactCard({
 				}
 			}}
 			className={cn(
-				'bg-white border border-gray-200 relative grid h-full w-full shadow-2xl shadow-black/[0.02] md:grid-cols-2 lg:grid-cols-3 rounded-3xl overflow-visible',
+				'bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] relative grid h-full w-full md:grid-cols-2 lg:grid-cols-3 rounded-2xl overflow-visible',
 				className,
 			)}
 		>
-			<PlusIcon className="absolute -top-3 -left-3 h-6 w-6 text-black hover:text-[#FB432C] transition-colors duration-300 cursor-default" strokeWidth={3} />
-			<PlusIcon className="absolute -top-3 -right-3 h-6 w-6 text-black hover:text-[#FB432C] transition-colors duration-300 cursor-default" strokeWidth={3} />
-			<PlusIcon className="absolute -bottom-3 -left-3 h-6 w-6 text-black hover:text-[#FB432C] transition-colors duration-300 cursor-default" strokeWidth={3} />
-			<PlusIcon className="absolute -right-3 -bottom-3 h-6 w-6 text-black hover:text-[#FB432C] transition-colors duration-300 cursor-default" strokeWidth={3} />
-			
+			<PlusIcon className="absolute -top-3 -left-3 h-5 w-5 text-[#171717] dark:text-[#EDEDED] hover:text-[#FB432C] transition-colors cursor-default" strokeWidth={2.5} />
+			<PlusIcon className="absolute -top-3 -right-3 h-5 w-5 text-[#171717] dark:text-[#EDEDED] hover:text-[#FB432C] transition-colors cursor-default" strokeWidth={2.5} />
+			<PlusIcon className="absolute -bottom-3 -left-3 h-5 w-5 text-[#171717] dark:text-[#EDEDED] hover:text-[#FB432C] transition-colors cursor-default" strokeWidth={2.5} />
+			<PlusIcon className="absolute -right-3 -bottom-3 h-5 w-5 text-[#171717] dark:text-[#EDEDED] hover:text-[#FB432C] transition-colors cursor-default" strokeWidth={2.5} />
+
 			<div className="flex flex-col justify-between lg:col-span-2">
 				<div className="relative h-full space-y-6 px-6 py-10 md:p-12">
-					<motion.div 
+					<motion.div
 						variants={{
 							hidden: { opacity: 0, y: 20 },
-							visible: { opacity: 1, y: 0, transition: { duration: 0.8 } }
+							visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
 						}}
 						className="space-y-4"
 					>
-						<h1 className="text-4xl font-bold md:text-5xl lg:text-6xl text-black tracking-tighter uppercase leading-none">
+						<h1 className="text-3xl font-semibold md:text-5xl text-[#171717] dark:text-[#EDEDED] tracking-tight leading-tight">
 							{title}
 						</h1>
-						<p className="text-gray-500 max-w-xl text-sm md:text-base lg:text-lg font-medium italic leading-relaxed">
+						<p className="text-[#525252] dark:text-[#A1A1A6] max-w-xl text-sm md:text-base font-normal leading-relaxed">
 							{description}
 						</p>
 					</motion.div>
-					
+
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pt-4 md:pt-8">
 						{contactInfo?.map((info, index) => (
 							<motion.div
 								key={index}
 								variants={{
-									hidden: { opacity: 0, scale: 0.9, y: 10 },
-									visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', bounce: 0.4 } }
+									hidden: { opacity: 0, scale: 0.95, y: 10 },
+									visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', bounce: 0.3 } }
 								}}
 							>
 								<ContactInfo {...info} />
@@ -83,14 +83,14 @@ export function ContactCard({
 					</div>
 				</div>
 			</div>
-			
+
 			<motion.div
 				variants={{
 					hidden: { opacity: 0, x: 20 },
-					visible: { opacity: 1, x: 0, transition: { duration: 0.8 } }
+					visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
 				}}
 				className={cn(
-					'bg-[#F8FAFC] flex h-full w-full items-center border-t border-gray-100 p-6 md:p-10 md:col-span-1 md:border-t-0 md:border-l rounded-b-2xl md:rounded-r-2xl md:rounded-bl-none',
+					'bg-[#F4F4F5] dark:bg-[#232325] flex h-full w-full items-center border-t border-[#171717]/[0.08] dark:border-white/[0.08] p-6 md:p-10 md:col-span-1 md:border-t-0 md:border-l rounded-b-2xl md:rounded-r-2xl md:rounded-bl-none',
 					formSectionClassName,
 				)}
 			>
@@ -108,13 +108,13 @@ function ContactInfo({
 	...props
 }: ContactInfoProps) {
 	return (
-		<div className={cn('flex items-start gap-4 py-2 group', className)} {...props}>
-			<div className="bg-black text-white rounded-lg p-3 group-hover:bg-[#FB432C] group-hover:scale-110 transition-all duration-300 shadow-lg shadow-black/10 group-hover:shadow-brand-primary/20">
+		<div className={cn('flex items-start gap-3.5 py-2 group', className)} {...props}>
+			<div className="bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] rounded-lg p-3 group-hover:bg-[#FB432C] group-hover:text-white transition-colors">
 				<Icon className="h-5 w-5" />
 			</div>
 			<div className="space-y-0.5">
-				<p className="text-xs font-black text-black uppercase tracking-widest">{label}</p>
-				<p className="text-sm font-medium text-gray-500 tracking-tight">{value}</p>
+				<p className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED] uppercase tracking-wider">{label}</p>
+				<p className="text-sm font-normal text-[#525252] dark:text-[#A1A1A6] tracking-tight">{value}</p>
 			</div>
 		</div>
 	);

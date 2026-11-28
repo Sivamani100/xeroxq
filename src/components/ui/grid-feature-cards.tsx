@@ -22,29 +22,26 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
 	}, []);
 
 	return (
-		<div className={cn('relative overflow-hidden p-8 group transition-all duration-500 bg-white hover:bg-black group', className)} {...props}>
+		<div className={cn('relative overflow-hidden p-8 group transition-colors duration-200 bg-white dark:bg-[#19191B] hover:bg-[#171717] dark:hover:bg-[#232325]', className)} {...props}>
 			{/* Grid Pattern Overlay */}
-			<div className="pointer-events-none absolute top-0 left-1/2 -mt-2 -ml-20 h-full w-full [mask-image:linear-gradient(white,transparent)] group-hover:opacity-20 transition-opacity duration-500">
-				<div className="from-black/5 to-black/1 absolute inset-0 bg-gradient-to-r [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] opacity-100">
+			<div className="pointer-events-none absolute top-0 left-1/2 -mt-2 -ml-20 h-full w-full [mask-image:linear-gradient(white,transparent)] group-hover:opacity-20 transition-opacity duration-300">
+				<div className="from-black/5 to-black/1 dark:from-white/5 dark:to-white/1 absolute inset-0 bg-gradient-to-r [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] opacity-100">
 					<GridPattern
 						width={20}
 						height={20}
 						x="-12"
 						y="4"
 						squares={p}
-						className="fill-black/5 stroke-black/10 absolute inset-0 h-full w-full mix-blend-overlay group-hover:fill-white/10 group-hover:stroke-white/20"
+						className="fill-black/5 stroke-black/10 dark:fill-white/5 dark:stroke-white/10 absolute inset-0 h-full w-full mix-blend-overlay group-hover:fill-white/10 group-hover:stroke-white/20"
 					/>
 				</div>
 			</div>
-			
-			<div className="relative z-10">
-				<feature.icon className="text-brand-primary group-hover:text-white size-6 transition-colors duration-500" strokeWidth={1.5} aria-hidden />
-				<h3 className="mt-12 text-sm md:text-[15px] font-bold tracking-tight text-black group-hover:text-white transition-colors duration-500 uppercase">{feature.title}</h3>
-				<p className="text-gray-500 group-hover:text-gray-400 relative z-20 mt-3 text-[13px] font-medium leading-relaxed transition-colors duration-500 tracking-tight">{feature.description}</p>
-			</div>
 
-			{/* Corner Accent Decor */}
-			<div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-black/[0.03] to-transparent pointer-events-none group-hover:from-white/5" />
+			<div className="relative z-10">
+				<feature.icon className="text-[#FB432C] group-hover:text-white size-6 transition-colors duration-200" strokeWidth={1.75} aria-hidden />
+				<h3 className="mt-10 text-base font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] group-hover:text-white transition-colors duration-200">{feature.title}</h3>
+				<p className="text-[#525252] dark:text-[#A1A1A6] group-hover:text-white/80 relative z-20 mt-2.5 text-[13.5px] leading-relaxed transition-colors duration-200">{feature.description}</p>
+			</div>
 		</div>
 	);
 }

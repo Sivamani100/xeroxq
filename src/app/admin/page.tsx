@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/lib/theme";
 import { getPublicOrigin, formatDisplayUrl } from "@/lib/site-url";
 import {
   Printer,
@@ -18,30 +19,26 @@ import {
   Activity,
   ArrowUpRight,
   Settings,
-  MousePointer2,
-  Copy,
-  Maximize,
   ShieldCheck,
   CheckCircle2,
   Download,
   Plus,
-  Minus,
-  RotateCcw,
-  Grid,
-  ArrowUpToLine,
-  ArrowDownToLine,
-  Palette,
-  History,
-  Crop,
   Bell,
   BellOff,
   Smartphone,
   MapPin,
   ShieldAlert,
   AlertCircle,
-  Link2
+  Link2,
+  Sun,
+  Moon,
+  Star,
+  MessageSquare,
+  X,
+  Inbox,
+  Copy,
+  Check
 } from "lucide-react";
-import { Rnd } from "react-rnd";
 import { TableVirtuoso } from "react-virtuoso";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -59,7 +56,6 @@ import {
 } from "@/lib/shop-slug";
 import { extractPhoneFromUpi, generateWhatsAppLink } from "@/lib/whatsapp";
 
-import * as mammoth from "mammoth";
 const html2canvas = typeof window !== 'undefined' ? require("html2canvas-pro") : null;
 import { QRCodeSVG } from "qrcode.react";
 
@@ -84,7 +80,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { ImageCropper } from "@/components/editing/image-cropper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocationAutocomplete } from "@/components/ui/location-autocomplete";
 
@@ -123,6 +118,7 @@ interface Job {
     color: boolean;
     copies: number;
     doubleSided: boolean;
+    detectedColor?: boolean;
   };
   status: string;
   page_count: number;
@@ -149,6 +145,7 @@ export default function AdminDashboard() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showQR, setShowQR] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
@@ -180,43 +177,38 @@ export default function AdminDashboard() {
   const isTrialLimitReached = !isShopApproved && filesProcessedCount >= 3;
   const [printPreviewUrl, setPrintPreviewUrl] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
-  const [canvasItems, setCanvasItems] = useState<{ id: string, x: number, y: number, width: number, height: number, pageIndex: number, zIndex?: number, isGrayscale?: boolean, payloadUrl?: string, rawHtml?: string }[]>([]);
-  const [history, setHistory] = useState<typeof canvasItems[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const isHistoryAction = useRef(false);
-  const [isGridSnapped, setIsGridSnapped] = useState(false);
 
-  const [selectedCanvasIds, setSelectedCanvasIds] = useState<string[]>([]);
   const knownJobIdsRef = useRef<Set<string>>(new Set());
-  const [pageCount, setPageCount] = useState(1);
-  const [activePageIndex, setActivePageIndex] = useState(0);
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
   const [verifyingJobId, setVerifyingJobId] = useState<string | null>(null);
   const [verificationMode, setVerificationMode] = useState<'complete' | 'reprint' | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [tokenChallengeInput, setTokenChallengeInput] = useState("");
   const [activeDownloadId, setActiveDownloadId] = useState<string | null>(null);
   const [purgedJob, setPurgedJob] = useState<Job | null>(null);
+  const [confirmFlushQueue, setConfirmFlushQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  
+  const [copiedLink, setCopiedLink] = useState(false);
+  const { theme, isDark, toggleTheme } = useTheme();
+
   // Audio element for notification sound (more reliable than Web Audio API)
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const audioInitializedRef = useRef(false);
-  
+
   // Feedback management state
   const [showFeedbackManager, setShowFeedbackManager] = useState(false);
   const [showFeedbackResponses, setShowFeedbackResponses] = useState(false);
   const [customFeedbackQuestions, setCustomFeedbackQuestions] = useState<any[]>([]);
   const [feedbackResponses, setFeedbackResponses] = useState<any[]>([]);
   const [newQuestionText, setNewQuestionText] = useState("");
-  const [newQuestionOptions, setNewQuestionOptions] = useState("😠,😐,🙂,😍");
+  const [newQuestionOptions, setNewQuestionOptions] = useState("Poor, Fair, Good, Great");
   const [addingQuestion, setAddingQuestion] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [confirmDeleteQuestionId, setConfirmDeleteQuestionId] = useState<string | null>(null);
   const [feedbackAnalytics, setFeedbackAnalytics] = useState<any>(null);
 
   // Location picker state
@@ -224,143 +216,10 @@ export default function AdminDashboard() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canvasZoom, setCanvasZoom] = useState(1.0);
-  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
-  const [initialPinchZoom, setInitialPinchZoom] = useState<number>(1.0);
-  const [isCompositing, setIsCompositing] = useState(false);
-  const [croppingItemId, setCroppingItemId] = useState<string | null>(null);
-  const addImageInputRef = useRef<HTMLInputElement>(null);
-  const [viewportWidth, setViewportWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 0);
-  const [viewportHeight, setViewportHeight] = useState(typeof window !== "undefined" ? window.innerHeight : 0);
-
   useEffect(() => {
-    if (isHistoryAction.current) {
-      isHistoryAction.current = false;
-      return;
-    }
-    setHistory(prev => {
-      const newHist = prev.slice(0, historyIndex + 1);
-      newHist.push(canvasItems);
-      return newHist;
-    });
-    setHistoryIndex(prev => prev + 1);
-  }, [canvasItems]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setViewportWidth(window.innerWidth);
-      setViewportHeight(window.innerHeight);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY;
-        // Direct zoom manipulation without bubbling to browser
-        setCanvasZoom(prev => Math.max(0.4, Math.min(3.0, prev + delta * 0.005)));
-      }
-    };
-
-    // Non-passive true allows preventDefault to actually halt zooming at the browser level
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [activePrintJob, printPreviewUrl]);
-
-
-  const isMobileView = viewportWidth < 768;
-  const sidebarOffset = isMobileView ? 16 : 360;
-  const baseScale = Math.min((viewportWidth - sidebarOffset) / 850, viewportHeight / 1300);
-  const finalScale = Math.max(0.2, Math.min(1, baseScale)) * canvasZoom;
-
-
-  useEffect(() => {
-    // Update current time every second for accurate NEW tag timing
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return;
-
-      if (e.ctrlKey && e.key === "a") {
-        e.preventDefault();
-        setSelectedCanvasIds(canvasItems.map(i => i.id));
-      }
-
-      if (e.key === "Delete" || e.key === "Backspace") {
-        setCanvasItems(items => items.filter(i => !selectedCanvasIds.includes(i.id)));
-        setSelectedCanvasIds([]);
-      }
-
-      if (e.key === " ") setIsSpacePressed(true);
-
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-        e.preventDefault();
-        const delta = e.shiftKey ? 10 : 1;
-        setCanvasItems(items => items.map(item => {
-          if (!selectedCanvasIds.includes(item.id)) return item;
-          if (e.key === "ArrowUp") return { ...item, y: item.y - delta };
-          if (e.key === "ArrowDown") return { ...item, y: item.y + delta };
-          if (e.key === "ArrowLeft") return { ...item, x: item.x - delta };
-          if (e.key === "ArrowRight") return { ...item, x: item.x + delta };
-          return item;
-        }));
-      }
-
-      if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
-        e.preventDefault();
-        setCanvasZoom(z => Math.min(3.0, z + 0.1));
-      }
-      if (e.ctrlKey && e.key === "-") {
-        e.preventDefault();
-        setCanvasZoom(z => Math.max(0.4, z - 0.1));
-      }
-      if (e.ctrlKey && e.key === "0") {
-        e.preventDefault();
-        setCanvasZoom(1.0);
-        setPanOffset({ x: 0, y: 0 });
-      }
-
-      if (e.ctrlKey && e.key === "z") {
-        e.preventDefault();
-        if (historyIndex > 0) {
-          isHistoryAction.current = true;
-          const newIdx = historyIndex - 1;
-          setHistoryIndex(newIdx);
-          setCanvasItems(history[newIdx]);
-        }
-      }
-
-      if (e.ctrlKey && e.key === "y") {
-        e.preventDefault();
-        if (historyIndex < history.length - 1) {
-          isHistoryAction.current = true;
-          const newIdx = historyIndex + 1;
-          setHistoryIndex(newIdx);
-          setCanvasItems(history[newIdx]);
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === " ") setIsSpacePressed(false);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [canvasItems, selectedCanvasIds, history, historyIndex]);
+    return () => clearInterval(timer);
+  }, []);
 
   // Persist sound settings & Auto-Resume Audio Protocol
   useEffect(() => {
@@ -412,12 +271,17 @@ export default function AdminDashboard() {
       if (permission === 'granted') {
         setIsSoundEnabled(true);
         localStorage.setItem("xeroxq_admin_sound", "true");
-        // Play a small test sound to confirm
         playNotificationPing();
       } else {
-        alert("Permission denied. Desktop notifications will not be shown, but sound may still play if active.");
         setIsSoundEnabled(true);
         localStorage.setItem("xeroxq_admin_sound", "true");
+        setNotifications(prev => [{
+          id: `perm-${Date.now()}`,
+          type: 'info',
+          message: "Desktop alerts blocked by browser",
+          subMessage: "Sound alerts are enabled whenever this tab is open.",
+          timestamp: new Date()
+        }, ...prev]);
       }
     } else {
       setIsSoundEnabled(true);
@@ -440,7 +304,9 @@ export default function AdminDashboard() {
   const stats = {
     total: jobs.length,
     printed: jobs.filter(j => j.status === "printed").length,
-    active: jobs.filter(j => j.status !== "printed").length
+    active: jobs.filter(
+      j => j.status !== "printed" && !j.is_deleted_by_user && !j.is_auto_deleted && j.file_path !== null
+    ).length
   };
 
   // Get current location using browser geolocation API with IP fallback
@@ -546,11 +412,23 @@ export default function AdminDashboard() {
             setShowApprovalModal(false);
             setViewReadOnlyQueue(false);
             if (!silent) {
-              alert("🎉 Congratulations! Your shop has been APPROVED by Platform Admin. Unlimited printing unlocked!");
+              setNotifications(prev => [{
+                id: `approved-${Date.now()}`,
+                type: 'success',
+                message: "Shop approved",
+                subMessage: "Unlimited printing is now unlocked for your shop.",
+                timestamp: new Date()
+              }, ...prev]);
             }
           } else {
             if (!silent) {
-              alert("⏳ Your shop is still pending Platform Admin approval. Please check back shortly!");
+              setNotifications(prev => [{
+                id: `pending-${Date.now()}`,
+                type: 'info',
+                message: "Still pending approval",
+                subMessage: "Platform admin approval is still in progress. Check back shortly.",
+                timestamp: new Date()
+              }, ...prev]);
             }
           }
         }
@@ -1093,8 +971,8 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `action-blocked-${Date.now()}`,
         type: 'error',
-        message: "⛔ USER DELETED THIS FILE",
-        subMessage: `Customer manually deleted this file. Cannot complete or reprint. Database enforced.`,
+        message: "Deleted by customer",
+        subMessage: "The customer removed this file. Action unavailable.",
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1104,8 +982,8 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `action-blocked-${Date.now()}`,
         type: 'error',
-        message: "🛡️ DELETED BY PRIVACY POLICY",
-        subMessage: `File deleted automatically after 5 minutes due to software privacy policy.`,
+        message: "Removed by privacy policy",
+        subMessage: "Files expire automatically 5 minutes after upload.",
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1117,18 +995,19 @@ export default function AdminDashboard() {
         await updateStatus(job.id, "printed");
         setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
 
-        // Success notification
         setNotifications(prev => [{
           id: `status-${Date.now()}`,
           type: 'success',
-          message: "Job Completed",
-          subMessage: `Document ${job.file_name} marked as printed.`,
+          message: "Job completed",
+          subMessage: `${job.file_name} marked as printed.`,
           timestamp: new Date()
         }, ...prev]);
       } else {
         handlePrint(job);
       }
     } else {
+      setTokenChallengeInput("");
+      setTokenError(null);
       setVerifyingJobId(job.id);
       setVerificationMode(mode);
     }
@@ -1138,89 +1017,35 @@ export default function AdminDashboard() {
     const job = jobs.find(j => j.id === verifyingJobId);
     if (!job) return;
 
-      if (tokenChallengeInput === job.token) {
-        if (verificationMode === 'complete') {
-          await updateStatus(job.id, "printed");
-          setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
-        } else if (verificationMode === 'reprint') {
-          // Trigger the actual print logic for an already printed job
-          handlePrint(job);
-        }
-
-        setVerifyingJobId(null);
-        setVerificationMode(null);
-        setTokenChallengeInput("");
-      } else {
-        alert("Verification Failed: Invalid Token Credentials");
+    if (tokenChallengeInput === job.token) {
+      if (verificationMode === 'complete') {
+        await updateStatus(job.id, "printed");
+        setJobs(docs => docs.map(d => d.id === job.id ? { ...d, status: 'printed' } : d));
+      } else if (verificationMode === 'reprint') {
+        handlePrint(job);
       }
-    };
 
-  const escapeHtmlText = (value: string): string =>
-    value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
-  const sanitizeCanvasHtml = (rawHtml: string): string => {
-    if (typeof window === "undefined" || typeof DOMParser === "undefined") {
-      return escapeHtmlText(rawHtml);
+      setVerifyingJobId(null);
+      setVerificationMode(null);
+      setTokenChallengeInput("");
+      setTokenError(null);
+    } else {
+      setTokenError("Incorrect 2-digit code. Check with the customer and try again.");
     }
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(rawHtml, "text/html");
-    const blockedTags = ["script", "iframe", "object", "embed", "svg", "style", "meta", "link", "base", "form", "input", "button"];
-    for (const tag of blockedTags) {
-      doc.querySelectorAll(tag).forEach((el) => el.remove());
-    }
-    doc.querySelectorAll("*").forEach((el) => {
-      for (const attr of Array.from(el.attributes)) {
-        const name = attr.name.toLowerCase();
-        const val = attr.value.trim().toLowerCase();
-        if (name.startsWith("on") || name === "srcdoc") {
-          el.removeAttribute(attr.name);
-        } else if (["href", "src", "xlink:href", "action", "formaction"].includes(name)) {
-          const allowed =
-            val.startsWith("https://") ||
-            val.startsWith("http://") ||
-            val.startsWith("blob:") ||
-            val.startsWith("data:image/") ||
-            val.startsWith("/");
-          if (!allowed) el.removeAttribute(attr.name);
-        }
-      }
-    });
-    return doc.body.innerHTML;
-  };
-
-  const sanitizeMediaSrc = (src: string): string => {
-    const trimmed = (src || "").trim();
-    const lower = trimmed.toLowerCase();
-    if (
-      lower.startsWith("https://") ||
-      lower.startsWith("http://") ||
-      lower.startsWith("blob:") ||
-      lower.startsWith("data:image/")
-    ) {
-      return escapeHtmlText(trimmed);
-    }
-    return "";
   };
 
   const handlePrint = async (job: Job) => {
-    // Check if shop is awaiting approval and trial scan limit is reached
     if (isTrialLimitReached) {
       setShowApprovalModal(true);
       return;
     }
 
-    // ── SECURITY CHECKS ─────────────────────────────────────────────────────
     if (job.is_deleted_by_user) {
       setNotifications(prev => [{
         id: `print-blocked-${Date.now()}`,
         type: 'error',
-        message: "⛔ USER DELETED THIS FILE",
-        subMessage: `Customer manually deleted this file. No actions allowed. Database enforced.`,
+        message: "Deleted by customer",
+        subMessage: "The customer removed this file. Printing is disabled.",
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1230,8 +1055,8 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `print-blocked-${Date.now()}`,
         type: 'error',
-        message: "🛡️ DELETED BY PRIVACY POLICY",
-        subMessage: `File deleted automatically after 5 minutes due to software privacy policy.`,
+        message: "Removed by privacy policy",
+        subMessage: "Files expire automatically 5 minutes after upload.",
         timestamp: new Date()
       }, ...prev]);
       return;
@@ -1242,13 +1067,18 @@ export default function AdminDashboard() {
     setPrintPreviewUrl(null);
 
     try {
-      // Optional server-side expiration & deletion guard before decrypting
       const { data: actionAllowed } = await supabase.rpc("check_file_action_allowed", {
         job_uuid: job.id,
         action_type: "print",
       });
       if (actionAllowed === false) {
-        alert("Print blocked: file has expired or was deleted by the customer.");
+        setNotifications(prev => [{
+          id: `err-${Date.now()}`,
+          type: 'error',
+          message: "Print unavailable",
+          subMessage: "This file has expired or was deleted by the customer.",
+          timestamp: new Date()
+        }, ...prev]);
         setActivePrintJob(null);
         return;
       }
@@ -1257,9 +1087,7 @@ export default function AdminDashboard() {
 
       if (storageRes.error) {
         if (storageRes.error.message?.includes("Object not found") || (storageRes.error as { status?: number }).status === 404) {
-          if (confirm("CRITICAL: Mesh payload not found. It was likely purged for privacy compliance. Delete stale database record too?")) {
-            handleDeleteJob(job);
-          }
+          setPurgedJob(job);
           setActivePrintJob(null);
           return;
         }
@@ -1357,89 +1185,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const executeCanvasPrint = async () => {
-    if (!activePrintJob) return;
-
-    const imgWindow = window.open("", "_blank");
-    if (imgWindow) {
-      let pagesHtml = '';
-
-      for (let p = 0; p < pageCount; p++) {
-        let imagesHtml = '';
-        const pageItems = canvasItems.filter(i => i.pageIndex === p);
-
-        pageItems.forEach(item => {
-          const leftMm = (item.x / 794) * 210;
-          const topMm = (item.y / 1123) * 297;
-          const widthMm = (item.width / 794) * 210;
-          const heightMm = (item.height / 1123) * 297;
-          const filterCss = item.isGrayscale ? 'filter: grayscale(100%);' : '';
-          const zIndexCss = `z-index: ${item.zIndex || 0};`;
-
-          if (item.rawHtml) {
-            const safeHtml = sanitizeCanvasHtml(item.rawHtml);
-            imagesHtml += `<div style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; ${filterCss} ${zIndexCss}">${safeHtml}</div>`;
-          } else {
-            const safeSrc = sanitizeMediaSrc(item.payloadUrl || "");
-            if (safeSrc) {
-              imagesHtml += `<img src="${safeSrc}" style="position: absolute; left: ${leftMm}mm; top: ${topMm}mm; width: ${widthMm}mm; height: ${heightMm}mm; object-fit: contain; ${filterCss} ${zIndexCss}" />`;
-            }
-          }
-        });
-
-        // Compact HTML to avoid whitespace nodes triggering extra page breaks
-        pagesHtml += `<div class="print-page-container" style="width: 210mm; height: 297mm; position: relative; background: white; overflow: hidden; margin: 0; box-sizing: border-box;">${imagesHtml}</div>`;
-      }
-
-      const safeTitleName = escapeHtmlText(activePrintJob.file_name || "Document");
-      imgWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>XeroxQ Protocol | ${safeTitleName}</title>
-            <style>
-              * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              @page { margin: 0; size: A4; }
-              html, body { margin: 0; padding: 0; background: #fff; width: 210mm; height: 297mm; }
-              .print-page-container { 
-                width: 210mm; 
-                height: 297mm; 
-                page-break-after: always; 
-                break-after: page;
-                margin: 0;
-                padding: 0;
-                position: relative;
-                display: block;
-                overflow: hidden;
-              }
-              .print-page-container:last-child { page-break-after: auto; break-after: auto; }
-              @media screen {
-                body { background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 40px 0; height: auto; }
-                .print-page-container { margin-bottom: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-              }
-            </style>
-          </head>
-          <body>
-            ${pagesHtml}
-            <script>
-              // Ensure all images are loaded before printing
-              window.onload = () => {
-                setTimeout(() => { 
-                  window.print(); 
-                  window.close(); 
-                }, 1000);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      imgWindow.document.close();
-    }
-
-    setActivePrintJob(null);
-    setPrintPreviewUrl(null);
-  };
-
   const handleDownload = async (job: Job) => {
     if (isTrialLimitReached) {
       setShowApprovalModal(true);
@@ -1520,102 +1265,16 @@ export default function AdminDashboard() {
 
     } catch (error) {
       const e = error as Error;
-      console.error("Downlink Protocol Failure:", error);
-      alert("Downlink Failed: " + (e.message || "Unknown signal error"));
+      console.error("Download error:", error);
+      setNotifications(prev => [{
+        id: `dl-err-${Date.now()}`,
+        type: 'error',
+        message: "Download failed",
+        subMessage: e.message || "Could not download the file.",
+        timestamp: new Date()
+      }, ...prev]);
     } finally {
-      // 3. Micro-animation delay for UX stability
       setTimeout(() => setActiveDownloadId(null), 800);
-    }
-  };
-  const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      const img = new Image();
-      img.src = dataUrl;
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        const width = 400;
-        const height = width / ratio;
-
-        setCanvasItems(prev => [
-          ...prev,
-          {
-            id: `img-${Date.now()}`,
-            x: (794 - width) / 2,
-            y: 100,
-            width,
-            height,
-            pageIndex: activePageIndex,
-            payloadUrl: dataUrl
-          }
-        ]);
-      };
-    };
-    reader.readAsDataURL(file);
-    // Clear input so same file can be added again
-    e.target.value = '';
-  };
-
-  const saveCanvasAsImage = async () => {
-    setIsCompositing(true);
-    try {
-      if (pageCount === 1) {
-        // Single Page Mode: Download as high-res PNG
-        const a4Container = document.querySelector("#a4-page-0");
-        if (!a4Container) return;
-
-        const origOpacity = (a4Container as HTMLElement).style.opacity;
-        (a4Container as HTMLElement).style.opacity = '1';
-
-        const canvas = await html2canvas(a4Container as HTMLElement, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-        });
-
-        (a4Container as HTMLElement).style.opacity = origOpacity;
-
-        const link = document.createElement("a");
-        link.href = canvas.toDataURL('image/png');
-        link.download = `Composited_${activePrintJob?.file_name || "Document"}.png`;
-        link.click();
-      } else {
-        // Multi-Page Mode: Download as bundled PDF
-        const { jsPDF } = await import("jspdf");
-        const pdf = new jsPDF("p", "mm", "a4");
-
-        for (let i = 0; i < pageCount; i++) {
-          const a4Container = document.querySelector(`#a4-page-${i}`);
-          if (!a4Container) continue;
-
-          const origOpacity = (a4Container as HTMLElement).style.opacity;
-          (a4Container as HTMLElement).style.opacity = '1';
-
-          const canvas = await html2canvas(a4Container as HTMLElement, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff"
-          });
-
-          (a4Container as HTMLElement).style.opacity = origOpacity;
-
-          const imgData = canvas.toDataURL('image/png', 1.0);
-          if (i > 0) pdf.addPage();
-          // A4 dimensions in mm: 210 x 297
-          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
-        }
-
-        pdf.save(`Composited_Document_${activePrintJob?.file_name || "Document"}.pdf`);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Composited export failed: " + (e as Error).message);
-    } finally {
-      setIsCompositing(false);
     }
   };
 
@@ -1638,6 +1297,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const isShopOptionEnabled = (key: string): boolean => {
+    const val = shop?.[key as keyof Shop];
+    if (key === "require_customer_name" || key === "show_duplex" || key === "accept_preorders") {
+      return val === true;
+    }
+    return val !== false;
+  };
+
+  const toggleShopOpen = async () => {
+    if (!shop) return;
+    const nextOpen = shop.is_open === false;
+    setShop({ ...shop, is_open: nextOpen });
+    const { error } = await supabase
+      .from("shops")
+      .update({ is_open: nextOpen })
+      .eq("id", shop.id);
+    if (error) {
+      setShop(prev => prev ? { ...prev, is_open: !nextOpen } : null);
+      setNotifications(prev => [{
+        id: `open-err-${Date.now()}`,
+        type: 'error',
+        message: "Status update failed",
+        subMessage: error.message,
+        timestamp: new Date()
+      }, ...prev]);
+    }
+  };
+
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdatingSettings(true);
@@ -1646,15 +1333,14 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `sync-err-${Date.now()}`,
         type: 'error',
-        message: "Location Required",
-        subMessage: "Shop location address cannot be empty. Please set your location.",
+        message: "Location required",
+        subMessage: "Please enter your shop address before saving.",
         timestamp: new Date()
       }, ...prev]);
       setUpdatingSettings(false);
       return;
     }
 
-    // Server/Client bound limits to prevent DB errors or logical abuse
     const monoPrice = Math.max(0, Math.min(1000, shop?.price_mono || 0));
     const colorPrice = Math.max(0, Math.min(1000, shop?.price_color || 0));
 
@@ -1663,17 +1349,16 @@ export default function AdminDashboard() {
       shop_location: shop?.shop_location || "",
       price_mono: monoPrice,
       price_color: colorPrice,
-      is_open: shop?.is_open,
-      require_customer_name: shop?.require_customer_name !== false,
-      show_copies: shop?.show_copies !== false,
-      show_color_mode: shop?.show_color_mode !== false,
-      show_duplex: shop?.show_duplex === true,
-      generate_token: shop?.generate_token !== false,
-      accept_preorders: shop?.accept_preorders === true,
+      is_open: shop?.is_open !== false,
+      require_customer_name: isShopOptionEnabled("require_customer_name"),
+      show_copies: isShopOptionEnabled("show_copies"),
+      show_color_mode: isShopOptionEnabled("show_color_mode"),
+      show_duplex: isShopOptionEnabled("show_duplex"),
+      generate_token: isShopOptionEnabled("generate_token"),
+      accept_preorders: isShopOptionEnabled("accept_preorders"),
       contact_number: shop?.contact_number || ""
     };
 
-    // Only include lat/lng if they exist in the shop object (migration applied)
     if (shop?.shop_lat !== undefined) updateData.shop_lat = shop.shop_lat;
     if (shop?.shop_lng !== undefined) updateData.shop_lng = shop.shop_lng;
 
@@ -1682,9 +1367,7 @@ export default function AdminDashboard() {
       .update(updateData)
       .eq("id", shop?.id);
 
-    // If column doesn't exist yet, retry without lat/lng
     if (error && error.code === "42703") {
-      console.warn("[handleUpdateSettings] Lat/lng columns not found, retrying without them");
       delete updateData.shop_lat;
       delete updateData.shop_lng;
       const retry = await supabase
@@ -1698,17 +1381,18 @@ export default function AdminDashboard() {
       setNotifications(prev => [{
         id: `sync-err-${Date.now()}`,
         type: 'error',
-        message: "Sync Failure",
+        message: "Could not save settings",
         subMessage: error.message,
         timestamp: new Date()
       }, ...prev]);
     } else {
       setShowingSettings(false);
+      setConfirmFlushQueue(false);
       setNotifications(prev => [{
         id: `sync-ok-${Date.now()}`,
         type: 'success',
-        message: "Configurations Synced",
-        subMessage: "Your shop preferences are now cloud-consistent.",
+        message: "Settings saved",
+        subMessage: "Customer upload preferences updated.",
         timestamp: new Date()
       }, ...prev]);
     }
@@ -1716,17 +1400,15 @@ export default function AdminDashboard() {
   };
 
   const handleFlushQueue = async () => {
-    if (!shop || !confirm("CRITICAL: Flush entire terminal queue? All records and files will be permanently purged, yaar.")) return;
+    if (!shop) return;
 
     setUpdatingSettings(true);
     try {
-      // 1. List all files for this shop (we'll just clear the bucket for these jobs)
       const filePaths = jobs.map(j => j.file_path).filter(Boolean);
       if (filePaths.length > 0) {
         await supabase.storage.from('documents').remove(filePaths);
       }
 
-      // 2. Delete all records for this shop
       const { error } = await supabase
         .from('jobs')
         .delete()
@@ -1735,9 +1417,24 @@ export default function AdminDashboard() {
       if (error) throw error;
 
       setJobs([]);
+      setConfirmFlushQueue(false);
       setShowingSettings(false);
+      setNotifications(prev => [{
+        id: `flush-ok-${Date.now()}`,
+        type: 'success',
+        message: "Queue cleared",
+        subMessage: "All print jobs and uploaded files have been removed.",
+        timestamp: new Date()
+      }, ...prev]);
     } catch (error) {
       console.error("Flush failure:", error);
+      setNotifications(prev => [{
+        id: `flush-err-${Date.now()}`,
+        type: 'error',
+        message: "Could not clear queue",
+        subMessage: (error as Error).message,
+        timestamp: new Date()
+      }, ...prev]);
     } finally {
       setUpdatingSettings(false);
     }
@@ -1800,11 +1497,12 @@ export default function AdminDashboard() {
 
   const handleAddCustomQuestion = async () => {
     if (!shop || !newQuestionText.trim()) return;
-    
+
     setAddingQuestion(true);
-    
+    setFeedbackError(null);
+
     const options = newQuestionOptions.split(',').map(o => o.trim()).filter(Boolean);
-    
+
     const { error } = await supabase
       .from('feedback_questions_custom')
       .insert({
@@ -1815,47 +1513,53 @@ export default function AdminDashboard() {
         is_active: true,
         display_order: customFeedbackQuestions.length
       });
-    
+
     if (error) {
       console.error('Error adding question:', error);
-      alert('Failed to add question');
+      setFeedbackError('Could not add question. Please try again.');
     } else {
       setNewQuestionText("");
       await fetchCustomFeedbackQuestions();
     }
-    
+
     setAddingQuestion(false);
   };
 
   const handleDeleteCustomQuestion = async (questionId: string) => {
-    if (!confirm('Delete this question?')) return;
-    
+    setFeedbackError(null);
     const { error } = await supabase
       .from('feedback_questions_custom')
       .update({ is_active: false })
       .eq('id', questionId);
-    
+
     if (error) {
       console.error('Error deleting question:', error);
-      alert('Failed to delete question');
+      setFeedbackError('Could not delete question. Please try again.');
     } else {
+      setConfirmDeleteQuestionId(null);
       await fetchCustomFeedbackQuestions();
     }
   };
 
   const toggleShopFeedback = async () => {
     if (!shop) return;
-    
-    const newValue = !shop.feedback_enabled;
-    
+
+    const newValue = !(shop.feedback_enabled !== false);
+
     const { error } = await supabase
       .from('shops')
       .update({ feedback_enabled: newValue })
       .eq('id', shop.id);
-    
+
     if (error) {
       console.error('Error toggling feedback:', error);
-      alert('Failed to update setting');
+      setNotifications(prev => [{
+        id: `fb-err-${Date.now()}`,
+        type: 'error',
+        message: "Update failed",
+        subMessage: "Could not update feedback setting.",
+        timestamp: new Date()
+      }, ...prev]);
     } else {
       setShop({ ...shop, feedback_enabled: newValue });
     }
@@ -1863,17 +1567,23 @@ export default function AdminDashboard() {
 
   const toggleCustomFeedback = async () => {
     if (!shop) return;
-    
+
     const newValue = !shop.custom_feedback_enabled;
-    
+
     const { error } = await supabase
       .from('shops')
       .update({ custom_feedback_enabled: newValue })
       .eq('id', shop.id);
-    
+
     if (error) {
       console.error('Error toggling custom feedback:', error);
-      alert('Failed to update setting');
+      setNotifications(prev => [{
+        id: `cfb-err-${Date.now()}`,
+        type: 'error',
+        message: "Update failed",
+        subMessage: "Could not update custom questions setting.",
+        timestamp: new Date()
+      }, ...prev]);
     } else {
       setShop({ ...shop, custom_feedback_enabled: newValue });
       if (newValue) {
@@ -1887,67 +1597,60 @@ export default function AdminDashboard() {
     router.push("/login");
   };
 
-  const filteredJobs = jobs.filter(job =>
-    job.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.file_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (job.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredJobs = normalizedQuery
+    ? jobs.filter(job =>
+        job.token.toLowerCase().includes(normalizedQuery) ||
+        job.file_name.toLowerCase().includes(normalizedQuery) ||
+        (job.customer_name || "").toLowerCase().includes(normalizedQuery) ||
+        (job.customer_phone || "").toLowerCase().includes(normalizedQuery)
+      )
+    : jobs;
 
   const publicWebUrl = getPublicOrigin();
   const publicDisplayHost = formatDisplayUrl(publicWebUrl) || "xeroxq.app";
   const qrUrl = shop?.slug ? `${publicWebUrl}/${shop.slug}` : "";
 
   if (loading) {
+    const skelCls = isDark ? "bg-white/[0.08]" : "bg-[#E4E4E7]";
     return (
-      <div className="min-h-screen bg-[#F8FAFC]">
-        {/* Skeleton Header */}
-        <div className="w-full bg-white border-b border-[#E2E8F0]">
-          <div className="w-full px-6 lg:px-[100px] py-4 flex items-center justify-between">
+      <div className={cn("min-h-screen transition-colors", isDark ? "bg-[#111113] text-[#EDEDED]" : "bg-[#FAFAFA] text-[#171717]")}>
+        <div className={cn("w-full border-b", isDark ? "bg-[#19191B] border-white/[0.08]" : "bg-white border-[#171717]/[0.08]")}>
+          <div className="w-full px-5 lg:px-10 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Skeleton className="w-[40px] h-[40px] rounded-[5.57px]" />
-              <div className="flex flex-col gap-2">
-                <Skeleton className="w-[140px] h-[20px]" />
-                <Skeleton className="w-[90px] h-[12px]" />
-              </div>
+              <Skeleton className={cn("w-10 h-10 rounded-lg", skelCls)} />
+              <Skeleton className={cn("w-40 h-6", skelCls)} />
             </div>
-            <div className="flex gap-3">
-              <Skeleton className="w-[80px] h-[36px] rounded-[5.57px]" />
-              <Skeleton className="w-[60px] h-[36px] rounded-[5.57px]" />
-              <div className="h-[20px] w-[1px] bg-[#E2E8F0] mx-1" />
-              <Skeleton className="w-[80px] h-[36px] rounded-[5.57px]" />
+            <div className="flex gap-2 pr-12 lg:pr-[50px]">
+              <Skeleton className={cn("w-20 h-9 rounded-lg", skelCls)} />
+              <Skeleton className={cn("w-20 h-9 rounded-lg", skelCls)} />
+              <Skeleton className={cn("w-9 h-9 rounded-lg", skelCls)} />
             </div>
           </div>
         </div>
 
-        {/* Skeleton Subheader */}
-        <div className="w-full bg-[#F8FAFC]">
-          <div className="w-full px-6 lg:px-[100px] pt-6 pb-4 flex items-center justify-between">
-            <Skeleton className="w-[150px] h-[28px]" />
-            <div className="flex gap-2">
-              <Skeleton className="w-[200px] h-[36px] rounded-[5.57px]" />
-              <Skeleton className="w-[36px] h-[36px] rounded-[5.57px]" />
-            </div>
+        <div className="w-full px-6 sm:px-10 lg:px-[72px] pt-5 pb-3.5 flex items-center justify-between">
+          <Skeleton className={cn("w-36 h-7 rounded-md", skelCls)} />
+          <div className="flex gap-2">
+            <Skeleton className={cn("w-56 h-9 rounded-lg", skelCls)} />
+            <Skeleton className={cn("w-9 h-9 rounded-lg", skelCls)} />
           </div>
         </div>
 
-        {/* Skeleton Main Grid */}
-        <main className="w-full px-6 lg:px-[100px] mt-2 flex flex-col h-[calc(100vh-180px)]">
-          <div className="flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] overflow-hidden shadow-sm flex flex-col">
-            <div className="p-0 flex-1 overflow-hidden">
-              <div className="divide-y divide-[#E2E8F0]">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-6 px-6 py-6">
-                    <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="w-[30%] h-4" />
-                      <Skeleton className="w-[20%] h-3" />
-                    </div>
-                    <Skeleton className="w-[10%] h-6 rounded-lg" />
-                    <Skeleton className="w-[15%] h-8 rounded-lg" />
-                    <Skeleton className="w-[15%] h-8 rounded-lg" />
+        <main className="w-full px-6 sm:px-10 lg:px-[72px] mt-1 flex flex-col h-[calc(100vh-180px)]">
+          <div className={cn("flex-1 border rounded-xl overflow-hidden flex flex-col", isDark ? "bg-[#19191B] border-white/[0.08]" : "bg-white border-[#171717]/[0.08]")}>
+            <div className={cn("divide-y", isDark ? "divide-white/[0.06]" : "divide-[#171717]/[0.06]")}>
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="flex items-center gap-6 px-6 py-5">
+                  <Skeleton className={cn("w-9 h-9 rounded-lg shrink-0", skelCls)} />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className={cn("w-[28%] h-4", skelCls)} />
+                    <Skeleton className={cn("w-[18%] h-3", skelCls)} />
                   </div>
-                ))}
-              </div>
+                  <Skeleton className={cn("w-[16%] h-7 rounded-lg", skelCls)} />
+                  <Skeleton className={cn("w-[10%] h-8 rounded-lg", skelCls)} />
+                </div>
+              ))}
             </div>
           </div>
         </main>
@@ -1955,58 +1658,90 @@ export default function AdminDashboard() {
     );
   }
 
-  // --- STATE 1: INITIALIZE SHOP (Split-Screen) ---
+  // --- STATE 1: SETUP SHOP ---
   if (!shop) {
     const cleanedCustomForDisplay = finalizeSlugInput(shopSlugInput);
     const previewSlug = slugAvailability.resolvedSlug || cleanedCustomForDisplay;
     const hasValidShopName = newShopData.name.trim().length >= 2;
+    const setupInputCls = cn(
+      "w-full h-11 px-3.5 rounded-lg border text-[14px] outline-none transition-colors",
+      isDark
+        ? "bg-[#232325] border-white/[0.10] text-[#EDEDED] placeholder:text-[#85858B] focus:border-white/30"
+        : "bg-white border-[#171717]/[0.12] text-[#171717] placeholder:text-[#737373] focus:border-[#171717]/40"
+    );
+    const setupLabelCls = cn("text-[13px] font-medium", isDark ? "text-[#EDEDED]" : "text-[#171717]");
 
     return (
-      <div className="flex w-full min-h-screen bg-white overflow-x-hidden relative">
-        {/* Left Side (Form) */}
-        <div className="w-full lg:w-[630px] min-h-screen flex flex-col justify-center px-6 py-8 lg:px-[40px] lg:pl-[100px] shrink-0 relative z-10 bg-white items-center lg:items-start">
-          <form onSubmit={handleCreateShop} className="flex flex-col gap-5 w-full max-w-[378px]">
-            <div className="flex flex-col gap-[1.75px] mb-1 text-center lg:text-left">
-              <h1 className="text-[40px] lg:text-[42.06px] leading-[1.2] font-bold text-black whitespace-nowrap">
-                Setup Your Shop
+      <div className={cn("flex w-full min-h-screen overflow-x-hidden relative transition-colors", isDark ? "bg-[#111113] text-[#EDEDED]" : "bg-[#FAFAFA] text-[#171717]")}>
+        <div className="w-full lg:w-[580px] min-h-screen flex flex-col justify-between px-6 py-8 lg:px-14 shrink-0 relative z-10 border-r border-transparent lg:border-inherit">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <img src="/logo_color.png" alt="XeroxQ" className="w-7 h-7 object-contain rounded-md" />
+              <span className="text-[15px] font-semibold tracking-tight">XeroxQ</span>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={cn(
+                "h-8 px-2.5 rounded-lg border text-[12px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer",
+                isDark
+                  ? "bg-[#19191B] border-white/[0.08] text-[#A1A1A6] hover:text-[#EDEDED]"
+                  : "bg-white border-[#171717]/[0.08] text-[#525252] hover:text-[#171717]"
+              )}
+              title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {isDark ? <Sun className="w-3.5 h-3.5" strokeWidth={1.75} /> : <Moon className="w-3.5 h-3.5" strokeWidth={1.75} />}
+              <span>{isDark ? "Light" : "Dark"}</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateShop} className="flex flex-col gap-5 w-full max-w-[400px] mx-auto my-8">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-[28px] leading-tight font-semibold tracking-tight">
+                Set up your shop
               </h1>
-              <p className="text-[14px] lg:text-[14.02px] font-medium text-auth-slate-50 tracking-[0.01em]">
-                Connect your shop to the network.
+              <p className={cn("text-[14px] font-normal", isDark ? "text-[#A1A1A6]" : "text-[#525252]")}>
+                Create your print queue link and accept uploads in seconds.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3.5">
-              <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Name</label>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className={setupLabelCls} htmlFor="setup-shop-name">Shop name</label>
                 <input
+                  id="setup-shop-name"
                   type="text"
                   required
-                  placeholder="Your Shop Name"
-                  className="auth-input w-full h-[46.79px]"
+                  placeholder="e.g., Campus Copy Center"
+                  className={setupInputCls}
                   value={newShopData.name}
                   onChange={(e) => setNewShopData({ ...newShopData, name: e.target.value })}
                 />
               </div>
 
-              {/* Shop URL Preview & Editor */}
-              <div className="flex flex-col gap-[5.57px]">
+              <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90 flex items-center gap-1.5" htmlFor="shop-slug-input">
-                    <Link2 className="w-3.5 h-3.5 text-auth-slate-50" />
-                    Shop Link
+                  <label className={cn(setupLabelCls, "flex items-center gap-1.5")} htmlFor="shop-slug-input">
+                    <Link2 className="w-3.5 h-3.5 opacity-70" strokeWidth={1.75} />
+                    Customer link
                   </label>
                   {isSlugEdited && (
                     <button
                       type="button"
                       onClick={() => setIsSlugEdited(false)}
-                      className="text-[11px] font-semibold text-primary-blue hover:underline cursor-pointer"
+                      className="text-[12px] font-medium text-[#FB432C] hover:underline cursor-pointer"
                     >
                       Auto-generate
                     </button>
                   )}
                 </div>
-                <div className="flex items-center w-full h-[46.79px] rounded-[5.57px] border border-[#E2E8F0] bg-[#F8FAFC] focus-within:bg-white focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all overflow-hidden">
-                  <span className="pl-3 pr-0.5 text-[12px] font-mono font-semibold text-auth-slate-50 select-none shrink-0">
+                <div className={cn(
+                  "flex items-center w-full h-11 rounded-lg border transition-colors overflow-hidden",
+                  isDark
+                    ? "bg-[#232325] border-white/[0.10] focus-within:border-white/30"
+                    : "bg-white border-[#171717]/[0.12] focus-within:border-[#171717]/40"
+                )}>
+                  <span className={cn("pl-3.5 pr-0.5 text-[12px] font-mono select-none shrink-0", isDark ? "text-[#85858B]" : "text-[#737373]")}>
                     {publicDisplayHost}/
                   </span>
                   <input
@@ -2024,111 +1759,124 @@ export default function AdminDashboard() {
                         setShopSlugInput((prev) => finalizeSlugInput(prev));
                       }
                     }}
-                    className="flex-1 min-w-0 h-full pr-3 bg-transparent border-none outline-none font-mono text-[13px] font-bold text-black placeholder:text-auth-slate-20"
+                    className={cn("flex-1 min-w-0 h-full pr-3 bg-transparent border-none outline-none font-mono text-[13px] font-medium", isDark ? "text-[#EDEDED] placeholder:text-[#85858B]" : "text-[#171717] placeholder:text-[#737373]")}
                   />
                 </div>
-                <div className="min-h-[16px]">
+                <div className="min-h-[18px]">
                   {!hasValidShopName && !isSlugEdited ? (
-                    <p className="text-[11px] text-auth-slate-50 font-medium">
-                      Your simple customer link will appear here.
+                    <p className={cn("text-[12px]", isDark ? "text-[#85858B]" : "text-[#737373]")}>
+                      Your customer upload URL will appear here.
                     </p>
                   ) : slugAvailability.checking ? (
-                    <p className="text-[11px] text-auth-slate-50 font-medium">
-                      Checking link availability...
+                    <p className={cn("text-[12px]", isDark ? "text-[#85858B]" : "text-[#737373]")}>
+                      Checking availability...
                     </p>
                   ) : isSlugEdited && cleanedCustomForDisplay.length < MIN_SHOP_SLUG_LENGTH ? (
-                    <p className="text-[11px] text-amber-600 font-medium">
-                      Enter at least {MIN_SHOP_SLUG_LENGTH} characters (letters, numbers, or hyphens).
+                    <p className="text-[12px] text-amber-600">
+                      Use at least {MIN_SHOP_SLUG_LENGTH} characters (letters, numbers, hyphens).
                     </p>
                   ) : slugAvailability.isReserved ? (
-                    <p className="text-[11px] text-amber-600 font-medium">
-                      That name is a system page — your shop will use{" "}
-                      <span className="font-mono font-bold">{publicDisplayHost}/{previewSlug}</span>
+                    <p className="text-[12px] text-amber-600">
+                      Reserved name — will use <span className="font-mono font-medium">{publicDisplayHost}/{previewSlug}</span>
                     </p>
                   ) : slugAvailability.wasTaken ? (
-                    <p className="text-[11px] text-amber-600 font-medium">
-                      Already taken — your shop will use{" "}
-                      <span className="font-mono font-bold">{publicDisplayHost}/{previewSlug}</span>
+                    <p className="text-[12px] text-amber-600">
+                      Already taken — will use <span className="font-mono font-medium">{publicDisplayHost}/{previewSlug}</span>
                     </p>
                   ) : previewSlug ? (
-                    <p className="text-[11px] text-emerald-600 font-semibold">
+                    <p className={cn("text-[12px] font-medium", isDark ? "text-[#4CC38A]" : "text-[#16A34A]")}>
                       Available: <span className="font-mono">{publicDisplayHost}/{previewSlug}</span>
                     </p>
                   ) : null}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="+91 98765 43210"
-                  className="auth-input w-full h-[46.79px]"
-                  value={newShopData.phone}
-                  onChange={(e) => setNewShopData({ ...newShopData, phone: e.target.value.replace(/[^0-9+\s-]/g, "") })}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className={setupLabelCls} htmlFor="setup-phone">Phone number</label>
+                  <input
+                    id="setup-phone"
+                    type="tel"
+                    required
+                    placeholder="+91 98765 43210"
+                    className={setupInputCls}
+                    value={newShopData.phone}
+                    onChange={(e) => setNewShopData({ ...newShopData, phone: e.target.value.replace(/[^0-9+\s-]/g, "") })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className={setupLabelCls} htmlFor="setup-upi">UPI ID</label>
+                  <input
+                    id="setup-upi"
+                    type="text"
+                    required
+                    placeholder="shop@upi"
+                    className={cn(setupInputCls, "font-mono")}
+                    value={newShopData.upi_id}
+                    onChange={(e) => setNewShopData({ ...newShopData, upi_id: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">UPI Merchant ID</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="shop@upi"
-                  className="auth-input w-full h-[46.79px] font-mono"
-                  value={newShopData.upi_id}
-                  onChange={(e) => setNewShopData({ ...newShopData, upi_id: e.target.value })}
-                />
-              </div>
-              <div className="flex flex-col gap-[5.57px]">
-                <label className="text-[14.02px] font-bold tracking-[0.02em] text-auth-slate-90">Shop Location <span className="text-red-500 font-bold">*</span></label>
+
+              <div className="flex flex-col gap-1.5">
+                <label className={setupLabelCls}>
+                  Shop location <span className="text-[#FB432C]">*</span>
+                </label>
                 <LocationAutocomplete
                   value={newShopData.shop_location}
-                  onChange={(value, lat, lng) => setNewShopData({ 
-                    ...newShopData, 
-                    shop_location: value, 
-                    shop_lat: lat ?? null, 
-                    shop_lng: lng ?? null 
+                  onChange={(value, lat, lng) => setNewShopData({
+                    ...newShopData,
+                    shop_location: value,
+                    shop_lat: lat ?? null,
+                    shop_lng: lng ?? null
                   })}
                   placeholder="e.g., Rajamundry, Andhra Pradesh"
                   required
-                  className="h-[46.79px]"
+                  isDark={isDark}
+                  className="h-11 rounded-lg text-[14px] font-normal"
                 />
-                <p className="text-[11px] text-auth-slate-50 font-medium">This helps customers find your physical shop.</p>
+                <p className={cn("text-[12px]", isDark ? "text-[#85858B]" : "text-[#737373]")}>
+                  Shown to nearby customers looking for a print shop.
+                </p>
               </div>
             </div>
 
             {createShopError && (
-              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-[8px] flex items-start gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+              <div className={cn(
+                "p-3 border text-[13px] rounded-lg flex items-start gap-2 font-medium",
+                isDark
+                  ? "bg-[#E5484D]/10 border-[#E5484D]/25 text-[#E5484D]"
+                  : "bg-[#DC2626]/[0.06] border-[#DC2626]/20 text-[#DC2626]"
+              )}>
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={1.75} />
                 <span>{createShopError}</span>
               </div>
             )}
 
             <button
               disabled={creatingShop}
-              className="w-full h-[42.03px] btn-auth-primary text-[14.02px] tracking-tight mt-1"
+              className="w-full h-11 bg-[#FB432C] hover:bg-[#E03923] disabled:opacity-60 text-white rounded-lg text-[14px] font-medium transition-colors cursor-pointer"
             >
-              {creatingShop ? "Connecting..." : "Create Shop"}
+              {creatingShop ? "Creating shop..." : "Create shop"}
             </button>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-2 text-[12.27px] font-bold text-auth-slate-50 tracking-[0.01em] text-center w-full hover:text-black transition-colors"
+              className={cn("text-[13px] font-medium text-center w-full transition-colors cursor-pointer", isDark ? "text-[#A1A1A6] hover:text-[#EDEDED]" : "text-[#525252] hover:text-[#171717]")}
             >
-              Signing Out? <span className="text-black ml-1">Logout</span>
+              Signed in with the wrong account? <span className="underline underline-offset-2">Sign out</span>
             </button>
           </form>
+
+          <p className={cn("text-[12px]", isDark ? "text-[#85858B]" : "text-[#737373]")}>
+            Customer files auto-delete after 5 minutes for privacy.
+          </p>
         </div>
 
-        {/* Right Side (Image Gradient overlay) */}
-        <div className="hidden lg:block flex-1 relative min-h-screen">
-          <div className="absolute w-[265px] h-full left-[-135px] top-0 bg-gradient-to-l from-white/0 to-white z-10" />
-          <div className="absolute w-[265px] h-full left-[-135px] top-0 bg-gradient-to-l from-white/0 to-white z-20" />
-          <div className="absolute w-[265px] h-full left-[-151px] top-0 bg-gradient-to-l from-white/0 via-white/40 to-white z-30" />
+        <div className={cn("hidden lg:flex flex-1 relative min-h-screen border-l overflow-hidden", isDark ? "border-white/[0.08] bg-[#19191B]" : "border-[#171717]/[0.08] bg-[#F4F4F5]")}>
           <div
-            className="absolute inset-0 w-full h-full bg-cover bg-center"
+            className="absolute inset-0 w-full h-full bg-cover bg-center opacity-95"
             style={{ backgroundImage: "url('/login-image.png')" }}
           />
         </div>
@@ -2137,13 +1885,42 @@ export default function AdminDashboard() {
   }
 
 
+  const surfaceCard = isDark ? "bg-[#19191B] border-white/[0.08]" : "bg-white border-[#171717]/[0.08]";
+  const surfaceSubtle = isDark ? "bg-[#232325] border-white/[0.08]" : "bg-[#F4F4F5] border-[#171717]/[0.08]";
+  const modalCls = isDark
+    ? "bg-[#19191B] border border-white/[0.10] text-[#EDEDED] shadow-2xl"
+    : "bg-white border border-[#171717]/[0.10] text-[#171717] shadow-xl";
+  const inputCls = isDark
+    ? "bg-[#232325] border border-white/[0.10] text-[#EDEDED] placeholder:text-[#85858B] focus:border-white/30"
+    : "bg-white border border-[#171717]/[0.12] text-[#171717] placeholder:text-[#737373] focus:border-[#171717]/40";
+  const btnSecondaryCls = isDark
+    ? "bg-[#232325] border border-white/[0.10] text-[#EDEDED] hover:bg-white/[0.08]"
+    : "bg-white border border-[#171717]/[0.12] text-[#171717] hover:bg-[#F4F4F5]";
+  const btnPrimaryCls = isDark
+    ? "bg-[#EDEDED] text-[#111113] hover:bg-white"
+    : "bg-[#171717] text-white hover:bg-[#262626]";
+  const txtPrimary = isDark ? "text-[#EDEDED]" : "text-[#171717]";
+  const txtSecondary = isDark ? "text-[#A1A1A6]" : "text-[#525252]";
+  const txtMuted = isDark ? "text-[#85858B]" : "text-[#737373]";
+  const dividerCls = isDark ? "border-white/[0.08]" : "border-[#171717]/[0.08]";
+  const showColorOption = isShopOptionEnabled("show_color_mode");
+  const showDuplexOption = isShopOptionEnabled("show_duplex");
+  const showCopiesOption = isShopOptionEnabled("show_copies");
+  const allSpecOptionsOff = !showColorOption && !showDuplexOption && !showCopiesOption;
+
   return (
-    <div className="flex flex-col w-full h-screen overflow-hidden bg-[#F8FAFC] relative text-black">
+    <div
+      style={{ colorScheme: theme }}
+      className={cn(
+        "flex flex-col w-full h-screen overflow-hidden relative transition-colors",
+        isDark ? "bg-[#111113] text-[#EDEDED]" : "bg-[#FAFAFA] text-[#171717]"
+      )}
+    >
       {/* XEROX CONNECTKEY PRINT EDITOR */}
       {activePrintJob && printPreviewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-6 backdrop-blur-[2px]">
           <XeroxQPrintDialog
-            documentPath={printPreviewUrl} // Passing the actual URL for download in main.js
+            documentPath={printPreviewUrl}
             jobId={activePrintJob.id}
             shopId={shop.id}
             onClose={() => { setActivePrintJob(null); setPrintPreviewUrl(null); }}
@@ -2151,233 +1928,224 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* FULL SCREEN DECRYPTION LOADER (For PDF/DOCX bypassing the modal) */}
+      {/* FILE PREPARATION LOADER */}
       <AnimatePresence>
         {activePrintJob && isDecrypting && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-white/95 flex flex-col items-center justify-center p-6 backdrop-blur-2xl transition-all duration-500"
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className={cn(
+              "fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 backdrop-blur-sm",
+              isDark ? "bg-[#111113]/92 text-[#EDEDED]" : "bg-[#FAFAFA]/92 text-[#171717]"
+            )}
           >
-            {/* Central Multi-Layered Spinner */}
-            <div className="relative mb-8">
-              {/* Outer Pulsing Rings */}
-              <motion.div
-                animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0, 0.1] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute inset-[-40px] border border-[#FF591E]/20 rounded-full"
-              />
-
-              {/* Main Rotating Ring */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                className="w-20 h-20 rounded-full border-t-2 border-[#FF591E] shadow-[0_0_15px_rgba(255,89,30,0.2)]"
-              />
-
-              {/* Inner Icon with Pulse */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  animate={{ scale: [0.95, 1.05, 0.95] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <Printer className="w-7 h-7 text-[#FF591E]" />
-                </motion.div>
-              </div>
-
-              {/* The Scanning Line Effect */}
-              <motion.div
-                animate={{ top: ["0%", "100%", "0%"] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute left-0 right-0 h-[1.5px] bg-[#FF591E]/40 z-10"
-              />
+            <div className={cn("w-14 h-14 rounded-2xl border flex items-center justify-center mb-5", surfaceCard)}>
+              <RefreshCw className="w-6 h-6 text-[#FB432C] animate-spin" strokeWidth={1.75} />
             </div>
-
-            {/* Friendly Protocol Strings */}
-            <div className="text-center max-w-sm">
-              <motion.p
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="text-[18px] font-black text-black tracking-tight uppercase mb-1"
-              >
-                Getting your file ready yaar
-              </motion.p>
-              <div className="flex flex-col gap-1">
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-[10px] font-bold text-[#FF591E] uppercase tracking-widest"
-                >
-                  Secure Printing In Progress...
-                </motion.p>
-                <p className="text-[12px] font-medium text-auth-slate-50 leading-relaxed px-4">
-                  Wait a second, we're making sure your print is private and perfectly formatted for the hardware.
-                </p>
-              </div>
-            </div>
-
-            {/* Subtle Footer Decor */}
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-3 opacity-30">
-              <div className="h-[1px] w-8 bg-black/10" />
-              <span className="text-[9px] font-bold text-black uppercase tracking-[0.3em]">XeroxQ Shop</span>
-              <div className="h-[1px] w-8 bg-black/10" />
-            </div>
+            <p className="text-[16px] font-semibold tracking-tight mb-1">
+              Preparing document
+            </p>
+            <p className={cn("text-[13px] max-w-xs text-center", txtSecondary)}>
+              Opening {activePrintJob.file_name} for printing...
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* LOCATION NOTICE BAR - 30px compact bar at the very top */}
+      {/* LOCATION NOTICE BAR */}
       {!shop?.shop_location && (
-        <div className="shrink-0 w-full h-[30px] bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center">
-          <div className="w-full px-6 lg:px-[100px] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-3 h-3 text-white" />
-              <span className="text-[11px] font-bold text-white tracking-tight">Add your shop location to help customers find you</span>
+        <div className={cn(
+          "shrink-0 w-full py-1.5 border-b",
+          isDark ? "bg-[#FB432C]/15 border-[#FB432C]/25 text-[#EDEDED]" : "bg-[#FB432C]/[0.08] border-[#FB432C]/20 text-[#171717]"
+        )}>
+          <div className="w-full px-6 sm:px-10 lg:px-[72px] flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-[12px] font-medium">
+              <MapPin className="w-3.5 h-3.5 text-[#FB432C] shrink-0" strokeWidth={1.75} />
+              <span>Add your shop address so nearby customers can find your store.</span>
             </div>
             <button
+              type="button"
               onClick={() => setShowingSettings(true)}
-              className="text-[10px] font-bold text-white/90 hover:text-white underline underline-offset-2"
+              className="text-[12px] font-medium text-[#FB432C] hover:underline shrink-0 cursor-pointer"
             >
-              Update Settings
+              Add location
             </button>
           </div>
         </div>
       )}
 
-      {/* TOP HEADER - IDENTITY, ACTIONS */}
-      <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
-        <div className="w-full px-6 lg:px-[100px] py-[18px] lg:py-5">
-          {/* Single row: logo + name on left, icon buttons on right */}
+      {/* TOP HEADER */}
+      <div className={cn("shrink-0 relative w-full border-b z-30", isDark ? "bg-[#19191B] border-white/[0.08]" : "bg-white border-[#171717]/[0.08]")}>
+        <div className="w-full px-5 lg:px-10 py-3.5">
           <div className="flex items-center justify-between gap-3">
-            {/* Left: logo + shop name */}
-            <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-              <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-sm p-0.5 overflow-hidden">
-                <img src="/logo_color.png" alt="XeroxQ Logo" className="w-full h-full object-contain" />
+            {/* Left: logo + shop name + shop link stacked */}
+            <div className="flex items-center gap-3 min-w-0 pl-12 lg:pl-[50px]">
+              <div className={cn("w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 p-1 overflow-hidden", surfaceSubtle)}>
+                <img src="/logo_color.png" alt="XeroxQ" className="w-full h-full object-contain" />
               </div>
-              <div className="flex flex-col">
-                <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">{shop.name}</h1>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <button
-                    onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
-                    className={cn(
-                      "w-2 h-2 rounded-full transition-all",
-                      shop?.is_open !== false ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"
-                    )}
-                  />
-                  <span className="text-[9px] lg:text-[10px] font-bold text-[#7E8B9E] tracking-[0.05em] uppercase leading-none">
-                    {shop?.is_open !== false ? "Open" : "Closed"}
-                  </span>
-                </div>
+              <div className="flex flex-col justify-center gap-0.5 min-w-0">
+                <h1 className="text-[17px] lg:text-[18px] font-semibold leading-tight tracking-tight truncate">
+                  {shop.name}
+                </h1>
+                {shop?.slug && (
+                  <div className="flex items-center gap-1.5 text-[12px] font-mono min-w-0">
+                    <a
+                      href={qrUrl || `/${shop.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn("truncate max-w-[200px] sm:max-w-[300px] hover:underline leading-none", txtSecondary)}
+                      title={`Open ${publicDisplayHost}/${shop.slug}`}
+                    >
+                      {publicDisplayHost}/{shop.slug}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = qrUrl || `${window.location.origin}/${shop.slug}`;
+                        navigator.clipboard?.writeText(url);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 1800);
+                      }}
+                      className={cn("p-0.5 rounded transition-colors cursor-pointer shrink-0", txtMuted, isDark ? "hover:text-[#EDEDED] hover:bg-white/[0.08]" : "hover:text-[#171717] hover:bg-black/[0.05]")}
+                      title={copiedLink ? "Copied" : "Copy shop link"}
+                    >
+                      {copiedLink ? <Check className={cn("w-3 h-3", isDark ? "text-[#4CC38A]" : "text-[#16A34A]")} strokeWidth={1.75} /> : <Copy className="w-3 h-3" strokeWidth={1.75} />}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Right: action buttons — 50px right gap */}
+            {/* Right: controls (keeps Electron titleBarOverlay margin pr-12 lg:pr-[50px]) */}
             <div className="flex items-center gap-2 shrink-0 pr-12 lg:pr-[50px]">
-              {/* Quick Stats Bar Removed */}
-
-              {/* Live indicator - full text on desktop, hidden on mobile */}
-              <div className="hidden lg:flex items-center gap-2 px-3 h-[32px] bg-green-50 border border-green-100 rounded-[5.57px]">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Secure Printing Active</span>
-              </div>
-
-              {/* Bell / Alerts — mobile: small icon-only | desktop: icon + text */}
+              {/* Sound Alerts */}
               <button
+                type="button"
                 onClick={isSoundEnabled ? toggleSound : requestNotificationPermission}
                 className={cn(
-                  "h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border transition-all rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]",
+                  "h-9 w-9 lg:w-auto lg:px-3 border rounded-lg flex items-center justify-center lg:gap-1.5 text-[13px] font-medium transition-colors cursor-pointer",
                   isSoundEnabled
-                    ? "bg-orange-50 border-orange-100 text-[#FF591E]"
-                    : "bg-white border-[#E2E8F0] text-black hover:bg-[#F8FAFC]"
+                    ? (isDark ? "bg-[#FB432C]/15 border-[#FB432C]/30 text-[#FB432C]" : "bg-[#FB432C]/[0.08] border-[#FB432C]/25 text-[#FB432C]")
+                    : btnSecondaryCls
                 )}
-                title={isSoundEnabled ? "Alerts Active" : "Enable Sound Notifications"}
+                title={isSoundEnabled ? "Sound alerts enabled" : "Enable sound alerts"}
               >
-                {isSoundEnabled ? <Bell className="w-4 h-4 lg:w-[14px] lg:h-[14px]" /> : <BellOff className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />}
-                <span className="hidden lg:inline">{isSoundEnabled ? "Active" : "Alerts"}</span>
+                {isSoundEnabled ? <Bell className="w-4 h-4" strokeWidth={1.75} /> : <BellOff className="w-4 h-4" strokeWidth={1.75} />}
+                <span className="hidden lg:inline">{isSoundEnabled ? "Alerts on" : "Alerts"}</span>
               </button>
 
-              {/* Config — mobile: small icon-only | desktop: icon + text */}
-              <Dialog open={showingSettings} onOpenChange={setShowingSettings}>
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={cn("h-9 w-9 lg:w-auto lg:px-3 border rounded-lg flex items-center justify-center lg:gap-1.5 text-[13px] font-medium transition-colors cursor-pointer", btnSecondaryCls)}
+                title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+              >
+                {isDark ? <Sun className="w-4 h-4" strokeWidth={1.75} /> : <Moon className="w-4 h-4" strokeWidth={1.75} />}
+                <span className="hidden lg:inline">{isDark ? "Light" : "Dark"}</span>
+              </button>
+
+              {/* Settings Dialog */}
+              <Dialog
+                open={showingSettings}
+                onOpenChange={(open) => {
+                  setShowingSettings(open);
+                  if (!open) setConfirmFlushQueue(false);
+                }}
+              >
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
-                    title="Shop Settings"
+                    type="button"
+                    className={cn("h-9 w-9 lg:w-auto lg:px-3 border rounded-lg flex items-center justify-center lg:gap-1.5 text-[13px] font-medium transition-colors cursor-pointer", btnSecondaryCls)}
+                    title="Shop settings"
                   >
-                    <Settings className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
+                    <Settings className="w-4 h-4" strokeWidth={1.75} />
                     <span className="hidden lg:inline">Settings</span>
                   </button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl rounded-xl p-0 bg-white border border-[#E2E8F0] shadow-2xl overflow-hidden selection:bg-black selection:text-white">
-                  <div className="flex flex-col h-full max-h-[95vh]">
-                    <DialogHeader className="p-6 pb-3 bg-[#F8FAFC]/50 backdrop-blur-xl border-b border-[#E2E8F0] relative overflow-hidden">
-                      {/* Decorative Background Accent */}
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-black/[0.02] rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-
-                      <div className="flex items-center gap-3 relative z-10">
-                        <div className="w-10 h-10 bg-black rounded-[5.57px] flex items-center justify-center shadow-lg transform -rotate-3 transition-transform hover:rotate-0 shrink-0">
-                          <Settings className="w-5 h-5 text-white" />
+                <DialogContent className={cn("sm:max-w-2xl rounded-2xl p-0 overflow-hidden", modalCls)}>
+                  <div className="flex flex-col h-full max-h-[90vh]">
+                    <DialogHeader className={cn("px-6 py-4 border-b text-left", dividerCls)}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center shrink-0", surfaceSubtle)}>
+                          <Settings className="w-4 h-4" strokeWidth={1.75} />
                         </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-0">
-                            <Zap className="w-2.5 h-2.5 text-black animate-pulse" />
-                            
-                          </div>
-                          <DialogTitle className="text-[20px] font-black tracking-tighter text-black uppercase leading-none">Shop Settings</DialogTitle>
+                        <div>
+                          <DialogTitle className="text-[17px] font-semibold tracking-tight leading-snug">
+                            Shop settings
+                          </DialogTitle>
+                          <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+                            Manage payment details, upload options, pricing, and feedback.
+                          </DialogDescription>
                         </div>
                       </div>
                     </DialogHeader>
 
-                    <form onSubmit={handleUpdateSettings} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
-                      {/* Section 1: Terminal Identity */}
+                    <form onSubmit={handleUpdateSettings} className="flex-1 overflow-y-auto p-6 space-y-6">
+                      {/* Section 1: Shop & Location */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-black rounded-[4px] flex items-center justify-center">
-                            <Activity className="w-2.5 h-2.5 text-white" />
-                          </div>
-                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Shop & Printing Settings</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] relative transition-all hover:border-black/5">
+                        <h3 className={cn("text-[13px] font-semibold", txtPrimary)}>Shop details</h3>
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl border", surfaceSubtle)}>
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shopowner UPI ID</label>
+                            <label className={cn("text-[12px] font-medium", txtSecondary)}>UPI ID</label>
                             <input
                               type="text"
                               value={shop?.upi_id || ""}
                               onChange={(e) => setShop({ ...shop!, upi_id: e.target.value })}
-                              className="auth-input w-full h-[42px] px-3 font-mono text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white"
+                              className={cn("w-full h-10 px-3 font-mono text-[13px] rounded-lg outline-none transition-colors", inputCls)}
                               placeholder="shop@upi"
                             />
                           </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className={cn("text-[12px] font-medium", txtSecondary)}>Contact phone (for pre-orders)</label>
+                            <input
+                              type="text"
+                              value={shop?.contact_number || ""}
+                              onChange={(e) => setShop({ ...shop!, contact_number: e.target.value })}
+                              className={cn("w-full h-10 px-3 font-mono text-[13px] rounded-lg outline-none transition-colors", inputCls)}
+                              placeholder="+91 XXXXX XXXXX"
+                            />
+                          </div>
                           <div className="flex flex-col gap-1.5 md:col-span-2">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Location <span className="text-red-500 font-bold">*</span></label>
+                            <label className={cn("text-[12px] font-medium", txtSecondary)}>
+                              Shop location <span className="text-[#FB432C]">*</span>
+                            </label>
                             <LocationAutocomplete
                               value={shop?.shop_location || ""}
-                              onChange={(value, lat, lng) => setShop({ 
-                                ...shop!, 
-                                shop_location: value, 
-                                shop_lat: lat ?? undefined, 
-                                shop_lng: lng ?? undefined 
+                              onChange={(value, lat, lng) => setShop({
+                                ...shop!,
+                                shop_location: value,
+                                shop_lat: lat ?? undefined,
+                                shop_lng: lng ?? undefined
                               })}
                               placeholder="e.g., Rajamundry, Andhra Pradesh"
                               required
+                              isDark={isDark}
+                              className="h-10 rounded-lg text-[13px] font-normal"
                             />
-                            
+
                             <div className="flex items-center justify-between gap-2 mt-1">
-                              <span className="text-[9.5px] text-gray-500 font-bold uppercase tracking-wider ml-1">
-                                Coordinates: {shop?.shop_lat ? `${Number(shop.shop_lat).toFixed(4)}, ${Number(shop.shop_lng).toFixed(4)}` : 'Not set'}
+                              <span className={cn("text-[12px] tabular-nums", txtMuted)}>
+                                Coordinates: {shop?.shop_lat ? `${Number(shop.shop_lat).toFixed(4)}, ${Number(shop.shop_lng).toFixed(4)}` : "Not set"}
                               </span>
                               <button
                                 type="button"
                                 onClick={getCurrentLocation}
-                                className="h-7 px-3 bg-black hover:bg-black/90 text-white rounded-[5.57px] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                                disabled={isGettingLocation}
+                                className={cn("h-8 px-3 rounded-lg text-[12px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors", btnPrimaryCls)}
                               >
-                                <MapPin className="w-3 h-3 text-white" /> Pin Current Location
+                                <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                {isGettingLocation ? "Detecting..." : "Use current location"}
                               </button>
                             </div>
+                            {locationError && (
+                              <p className={cn("text-[12px]", isDark ? "text-[#E5484D]" : "text-[#DC2626]")}>{locationError}</p>
+                            )}
 
                             {shop?.shop_lat && shop?.shop_lng && (
-                              <div className="mt-2 h-[120px] rounded-[5.57px] overflow-hidden border border-[#E2E8F0] shadow-sm relative z-0">
+                              <div className={cn("mt-2 h-[120px] rounded-lg overflow-hidden border relative z-0", dividerCls)}>
                                 <LocationMap
                                   lat={Number(shop.shop_lat)}
                                   lng={Number(shop.shop_lng)}
@@ -2385,39 +2153,38 @@ export default function AdminDashboard() {
                                 />
                               </div>
                             )}
-                            <p className="text-[8px] font-bold text-auth-slate-50 uppercase tracking-[0.05em] ml-1 mt-1">Visible to customers for navigation and mapping</p>
                           </div>
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Contact (For Pre-orders)</label>
-                            <input
-                              type="text"
-                              value={shop?.contact_number || ""}
-                              onChange={(e) => setShop({ ...shop!, contact_number: e.target.value })}
-                              className="auth-input w-full h-[42px] px-3 font-mono text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white"
-                              placeholder="+91 XXXXX XXXXX"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-[9px] font-black tracking-[0.1em] text-auth-slate-50 uppercase ml-1">Shop Status</label>
+
+                          <div className="flex flex-col gap-1.5 md:col-span-2">
+                            <label className={cn("text-[12px] font-medium", txtSecondary)}>Accepting print jobs</label>
                             <button
                               type="button"
-                              onClick={() => setShop({ ...shop!, is_open: !shop?.is_open })}
+                              onClick={() => setShop({ ...shop!, is_open: shop?.is_open === false })}
                               className={cn(
-                                "flex items-center justify-between px-4 h-[42px] rounded-[5.57px] border transition-all duration-300 shadow-sm",
-                                shop?.is_open !== false ? "bg-white border-green-200 text-green-700" : "bg-white border-red-200 text-red-700"
+                                "flex items-center justify-between px-3.5 h-10 rounded-lg border transition-colors cursor-pointer",
+                                isDark ? "bg-[#19191B] border-white/[0.10]" : "bg-white border-[#171717]/[0.10]"
                               )}
                             >
                               <div className="flex items-center gap-2">
-                                <div className={cn("w-1.5 h-1.5 rounded-full", shop?.is_open !== false ? "bg-green-500 animate-pulse" : "bg-red-500")} />
-                                <span className="text-[11px] font-black uppercase tracking-wider">{shop?.is_open !== false ? "Online" : "Offline"}</span>
+                                <span className={cn(
+                                  "w-2 h-2 rounded-full",
+                                  shop?.is_open !== false
+                                    ? (isDark ? "bg-[#4CC38A]" : "bg-[#16A34A]")
+                                    : (isDark ? "bg-[#E5484D]" : "bg-[#DC2626]")
+                                )} />
+                                <span className="text-[13px] font-medium">
+                                  {shop?.is_open !== false ? "Open — customers can send files" : "Closed — uploads paused"}
+                                </span>
                               </div>
                               <div className={cn(
-                                "w-7 h-3.5 rounded-full relative transition-colors duration-500",
-                                shop?.is_open !== false ? "bg-black" : "bg-red-500"
+                                "w-9 h-5 rounded-full relative transition-colors",
+                                shop?.is_open !== false
+                                  ? (isDark ? "bg-[#4CC38A]" : "bg-[#16A34A]")
+                                  : (isDark ? "bg-white/20" : "bg-[#D4D4D8]")
                               )}>
                                 <div className={cn(
-                                  "absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all duration-500 shadow-sm",
-                                  shop?.is_open !== false ? "right-0.5" : "left-0.5"
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all",
+                                  shop?.is_open !== false ? "left-[18px]" : "left-0.5"
                                 )} />
                               </div>
                             </button>
@@ -2425,233 +2192,263 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Section 2: UI Logic */}
+                      {/* Section 2: Customer Upload Options */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-black rounded-[4px] flex items-center justify-center">
-                            <Palette className="w-2.5 h-2.5 text-white" />
-                          </div>
-                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Customer Interaction Settings</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 bg-white p-6 rounded-[5.57px] border border-[#E2E8F0] relative">
-                          <div className="absolute inset-3 border border-dashed border-black/[0.03] rounded-[5.57px] pointer-events-none" />
-
+                        <h3 className={cn("text-[13px] font-semibold", txtPrimary)}>Customer upload options</h3>
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-3 p-4 rounded-xl border", surfaceCard)}>
                           {[
-                            { label: "Require Name", sub: "Identity validation", key: "require_customer_name" },
-                            { label: "2-Digit Token", sub: "Access codes", key: "generate_token" },
-                            { label: "Copy Selector", sub: "Number of copies", key: "show_copies" },
-                            { label: "Color Options", sub: "B&W or Full Color", key: "show_color_mode" },
-                            { label: "Double-Sided Print", sub: "Both sides of paper", key: "show_duplex" },
-                            { label: "Accept Pre-orders", sub: "Home/Work Service", key: "accept_preorders" }
-                          ].map((toggle) => (
-                            <div key={toggle.key} className="flex items-center justify-between relative z-10 group/item">
-                              <div className="flex flex-col gap-0">
-                                <span className="text-[12px] font-black text-black uppercase tracking-tight">{toggle.label}</span>
-                                <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60 leading-none">{toggle.sub}</span>
+                            { label: "Require customer name", sub: "Show name input on upload page", key: "require_customer_name" },
+                            { label: "2-digit pickup code", sub: "Verify customer token before print", key: "generate_token" },
+                            { label: "Copy selector", sub: "Let customers pick copies", key: "show_copies" },
+                            { label: "Color option", sub: "Let customers pick B&W or Color", key: "show_color_mode" },
+                            { label: "Double-sided option", sub: "Show 1-sided / 2-sided switch", key: "show_duplex" },
+                            { label: "Accept pre-orders", sub: "Allow remote pickup orders", key: "accept_preorders" }
+                          ].map((toggle) => {
+                            const enabled = isShopOptionEnabled(toggle.key);
+                            return (
+                              <div key={toggle.key} className={cn("flex items-center justify-between gap-3 p-3 rounded-lg border", surfaceSubtle)}>
+                                <div className="flex flex-col">
+                                  <span className="text-[13px] font-medium">{toggle.label}</span>
+                                  <span className={cn("text-[11px]", txtMuted)}>{toggle.sub}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setShop({ ...shop!, [toggle.key]: !enabled })}
+                                  className={cn(
+                                    "w-9 h-5 rounded-full relative transition-colors shrink-0 cursor-pointer",
+                                    enabled ? "bg-[#FB432C]" : (isDark ? "bg-white/20" : "bg-[#D4D4D8]")
+                                  )}
+                                  aria-pressed={enabled}
+                                >
+                                  <div className={cn(
+                                    "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all",
+                                    enabled ? "left-[18px]" : "left-0.5"
+                                  )} />
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setShop({ ...shop!, [toggle.key]: !(shop?.[toggle.key as keyof Shop] !== false) })}
-                                className={cn(
-                                  "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
-                                  shop?.[toggle.key as keyof Shop] !== false ? "bg-black" : "bg-[#E2E8F0]"
-                                )}
-                              >
-                                <div className={cn(
-                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-500 shadow-lg",
-                                  shop?.[toggle.key as keyof Shop] !== false ? "right-0.5" : "left-0.5"
-                                )} />
-                              </button>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
-                      {/* Section 3: Billing & System Reset (Combined Row) */}
+                      {/* Section 3: Pricing & Queue Reset */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Amount & Billing */}
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Zap className="w-2.5 h-2.5 text-black" />
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.1em] text-black">Amount & Billing</h3>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col gap-1 p-2.5 border border-[#E2E8F0] rounded-[5.57px] bg-white shadow-sm">
-                              <span className="text-[8px] font-black text-auth-slate-50 uppercase tracking-[0.1em] ml-0.5">Mono (₹)</span>
+                        <div className="space-y-2.5">
+                          <h3 className={cn("text-[13px] font-semibold", txtPrimary)}>Per-page pricing</h3>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <div className={cn("flex flex-col gap-1 p-3 border rounded-xl", surfaceSubtle)}>
+                              <span className={cn("text-[11px] font-medium", txtSecondary)}>B&W page (₹)</span>
                               <div className="flex items-center gap-1.5">
-                                <div className="w-6 h-6 bg-black/5 rounded-[3px] flex items-center justify-center font-black text-black text-[10px]">₹</div>
+                                <span className={cn("text-[14px] font-medium", txtMuted)}>₹</span>
                                 <input
                                   type="number"
+                                  min={0}
+                                  max={1000}
                                   value={shop?.price_mono || 0}
                                   onChange={(e) => setShop({ ...shop!, price_mono: Number(e.target.value) })}
-                                  className="flex-1 bg-transparent border-none text-[16px] font-black text-black outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
+                                  className="flex-1 bg-transparent border-none text-[16px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
                                 />
                               </div>
                             </div>
-                            <div className="flex flex-col gap-1 p-2.5 border border-[#E2E8F0] rounded-[5.57px] bg-white shadow-sm">
-                              <span className="text-[8px] font-black text-auth-slate-50 uppercase tracking-[0.1em] ml-0.5">Color (₹)</span>
+                            <div className={cn("flex flex-col gap-1 p-3 border rounded-xl", surfaceSubtle)}>
+                              <span className={cn("text-[11px] font-medium", txtSecondary)}>Color page (₹)</span>
                               <div className="flex items-center gap-1.5">
-                                <div className="w-6 h-6 bg-black/5 rounded-[3px] flex items-center justify-center font-black text-black text-[10px]">₹</div>
+                                <span className={cn("text-[14px] font-medium", txtMuted)}>₹</span>
                                 <input
                                   type="number"
+                                  min={0}
+                                  max={1000}
                                   value={shop?.price_color || 0}
                                   onChange={(e) => setShop({ ...shop!, price_color: Number(e.target.value) })}
-                                  className="flex-1 bg-transparent border-none text-[16px] font-black text-black outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
+                                  className="flex-1 bg-transparent border-none text-[16px] font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
                                 />
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Emergency Flush */}
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Trash2 className="w-2.5 h-2.5 text-red-500" />
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.1em] text-red-600">Emergency Reset</h3>
+                        <div className="space-y-2.5">
+                          <h3 className={cn("text-[13px] font-semibold", isDark ? "text-[#E5484D]" : "text-[#DC2626]")}>Clear print queue</h3>
+                          <div className={cn(
+                            "p-3 border rounded-xl flex flex-col justify-between gap-2",
+                            isDark ? "bg-[#E5484D]/[0.08] border-[#E5484D]/25" : "bg-[#DC2626]/[0.04] border-[#DC2626]/20"
+                          )}>
+                            {!confirmFlushQueue ? (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmFlushQueue(true)}
+                                disabled={updatingSettings || jobs.length === 0}
+                                className="w-full h-9 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[13px] rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                Delete all queue jobs ({jobs.length})
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleFlushQueue}
+                                  disabled={updatingSettings}
+                                  className="flex-1 h-9 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[12px] rounded-lg cursor-pointer"
+                                >
+                                  Confirm delete all
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmFlushQueue(false)}
+                                  className={cn("h-9 px-3 rounded-lg text-[12px] font-medium cursor-pointer", btnSecondaryCls)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                            <p className={cn("text-[11px]", txtMuted)}>
+                              Permanently deletes all queued jobs and stored files.
+                            </p>
                           </div>
-                          <div className="p-3 border border-red-100 rounded-[5.57px] bg-red-50/20 flex flex-col justify-between h-[68px] relative overflow-hidden group">
-                            <button
-                              type="button"
-                              onClick={handleFlushQueue}
-                              disabled={updatingSettings || jobs.length === 0}
-                              className="w-full h-full bg-red-500 text-white font-black text-[11px] uppercase tracking-widest rounded-[4px] hover:bg-red-600 active:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-30"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Delete All Data
-                            </button>
-                          </div>
-                          <p className="text-[8px] text-red-900/30 font-bold uppercase tracking-tight text-center mt-1">Permanently delete all queue documents</p>
                         </div>
                       </div>
 
-                      {/* Section 4: Feedback System */}
+                      {/* Section 4: Customer Feedback */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-[4px] flex items-center justify-center">
-                            <span className="text-white text-[10px]">★</span>
-                          </div>
-                          <h3 className="text-[11px] font-black uppercase tracking-[0.1em] text-black">Customer Feedback</h3>
-                        </div>
-                        
-                        {/* Feedback Toggle */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px]">
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0">
-                              <span className="text-[12px] font-black text-black uppercase tracking-tight">Enable Feedback</span>
-                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">Collect after job completion</span>
+                        <h3 className={cn("text-[13px] font-semibold", txtPrimary)}>Customer feedback</h3>
+
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-3 p-4 rounded-xl border", surfaceSubtle)}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col">
+                              <span className="text-[13px] font-medium">Enable feedback</span>
+                              <span className={cn("text-[11px]", txtMuted)}>Ask customers to rate after pickup</span>
                             </div>
                             <button
                               type="button"
                               onClick={toggleShopFeedback}
                               className={cn(
-                                "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
-                                shop?.feedback_enabled !== false ? "bg-green-500" : "bg-[#E2E8F0]"
+                                "w-9 h-5 rounded-full relative transition-colors shrink-0 cursor-pointer",
+                                shop?.feedback_enabled !== false
+                                  ? (isDark ? "bg-[#4CC38A]" : "bg-[#16A34A]")
+                                  : (isDark ? "bg-white/20" : "bg-[#D4D4D8]")
                               )}
                             >
                               <div className={cn(
-                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-500 shadow-lg",
-                                shop?.feedback_enabled !== false ? "right-0.5" : "left-0.5"
+                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all",
+                                shop?.feedback_enabled !== false ? "left-[18px]" : "left-0.5"
                               )} />
                             </button>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0">
-                              <span className="text-[12px] font-black text-black uppercase tracking-tight">Custom Questions</span>
-                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">Add your own feedback</span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col">
+                              <span className="text-[13px] font-medium">Custom questions</span>
+                              <span className={cn("text-[11px]", txtMuted)}>Include your own rating questions</span>
                             </div>
                             <button
                               type="button"
                               onClick={toggleCustomFeedback}
                               disabled={shop?.feedback_enabled === false}
                               className={cn(
-                                "w-10 h-5 rounded-full relative transition-all duration-500 shrink-0 shadow-inner",
-                                shop?.custom_feedback_enabled ? "bg-black" : "bg-[#E2E8F0]",
-                                shop?.feedback_enabled === false && "opacity-50 cursor-not-allowed"
+                                "w-9 h-5 rounded-full relative transition-colors shrink-0 cursor-pointer",
+                                shop?.custom_feedback_enabled
+                                  ? "bg-[#FB432C]"
+                                  : (isDark ? "bg-white/20" : "bg-[#D4D4D8]"),
+                                shop?.feedback_enabled === false && "opacity-40 cursor-not-allowed"
                               )}
                             >
                               <div className={cn(
-                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-500 shadow-lg",
-                                shop?.custom_feedback_enabled ? "right-0.5" : "left-0.5"
+                                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all",
+                                shop?.custom_feedback_enabled ? "left-[18px]" : "left-0.5"
                               )} />
                             </button>
                           </div>
                         </div>
 
-                        {/* Manage Custom Questions */}
                         {shop?.custom_feedback_enabled && shop?.feedback_enabled !== false && (
-                          <div className="space-y-3 p-4 bg-white border border-[#E2E8F0] rounded-[5.57px]">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-black text-black uppercase">Custom Questions</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowFeedbackManager(true);
-                                  fetchCustomFeedbackQuestions();
-                                }}
-                                className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-[4px] hover:bg-black/80 transition-all"
-                              >
-                                Manage Questions
-                              </button>
-                            </div>
-                            <p className="text-[9px] text-auth-slate-50">{customFeedbackQuestions.length} custom question(s) active</p>
-                          </div>
-                        )}
-
-                        {/* View Feedback Responses */}
-                        <div className="p-4 bg-white border border-[#E2E8F0] rounded-[5.57px]">
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0">
-                              <span className="text-[12px] font-black text-black uppercase tracking-tight">View Responses</span>
-                              <span className="text-[9px] text-auth-slate-50 font-bold uppercase tracking-wider opacity-60">
-                                {feedbackResponses.length} response(s) collected
-                              </span>
+                          <div className={cn("flex items-center justify-between p-3.5 border rounded-xl", surfaceCard)}>
+                            <div>
+                              <p className="text-[13px] font-medium">Custom questions</p>
+                              <p className={cn("text-[12px]", txtMuted)}>{customFeedbackQuestions.length} active question(s)</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => {
-                                setShowFeedbackResponses(true);
-                                fetchFeedbackResponses();
-                                fetchFeedbackAnalytics();
+                                setFeedbackError(null);
+                                setConfirmDeleteQuestionId(null);
+                                setShowFeedbackManager(true);
+                                fetchCustomFeedbackQuestions();
                               }}
-                              className="px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0] text-black text-[10px] font-black uppercase rounded-[4px] hover:bg-black hover:text-white hover:border-black transition-all"
+                              className={cn("h-8 px-3 rounded-lg text-[12px] font-medium transition-colors cursor-pointer", btnPrimaryCls)}
                             >
-                              View All
+                              Manage questions
                             </button>
                           </div>
+                        )}
+
+                        <div className={cn("flex items-center justify-between p-3.5 border rounded-xl", surfaceCard)}>
+                          <div>
+                            <p className="text-[13px] font-medium">Feedback responses</p>
+                            <p className={cn("text-[12px] tabular-nums", txtMuted)}>{feedbackResponses.length} response(s) collected</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowFeedbackResponses(true);
+                              fetchFeedbackResponses();
+                              fetchFeedbackAnalytics();
+                            }}
+                            className={cn("h-8 px-3 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer", btnSecondaryCls)}
+                          >
+                            View responses
+                          </button>
                         </div>
                       </div>
                     </form>
 
-                    <DialogFooter className="p-6 bg-[#F8FAFC] border-t border-[#E2E8F0] flex flex-row items-center justify-between gap-4">
-                      <DialogClose asChild>
+                    <DialogFooter className={cn("px-6 py-4 border-t", surfaceSubtle, dividerCls)}>
+                      <div className="flex w-full items-center justify-between gap-3">
                         <button
                           type="button"
-                          className="h-12 px-8 bg-white border border-[#E2E8F0] text-black hover:bg-[#F1F5F9] active:bg-[#E2E8F0] rounded-[5.57px] text-[12px] font-black uppercase tracking-tight transition-all active:scale-95"
+                          onClick={handleLogout}
+                          className={cn(
+                            "h-10 px-4 rounded-lg border text-[13px] font-medium flex items-center gap-2 transition-colors cursor-pointer",
+                            isDark
+                              ? "border-[#E5484D]/30 text-[#E5484D] hover:bg-[#E5484D]/15"
+                              : "border-[#DC2626]/25 text-[#DC2626] hover:bg-[#DC2626]/[0.08]"
+                          )}
                         >
-                          Cancel
+                          <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                          <span>Log out</span>
                         </button>
-                      </DialogClose>
-                      <button
-                        type="submit"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleUpdateSettings(e as any);
-                        }}
-                        disabled={updatingSettings}
-                        className="flex-1 h-12 bg-black text-white hover:bg-black/90 active:bg-black/80 font-black text-[13px] uppercase tracking-tighter rounded-[5.57px] transition-all flex items-center justify-center shadow-xl active:scale-95 disabled:opacity-50"
-                      >
-                        {updatingSettings ? (
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span className="tracking-[0.1em]">Syncing...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span>Save</span>
-                            <ArrowUpRight className="w-4 h-4" />
-                          </div>
-                        )}
-                      </button>
+                        <div className="flex items-center gap-2.5">
+                          <DialogClose asChild>
+                            <button
+                              type="button"
+                              className={cn("h-10 px-5 rounded-lg text-[13px] font-medium border transition-colors cursor-pointer", btnSecondaryCls)}
+                            >
+                              Cancel
+                            </button>
+                          </DialogClose>
+                          <button
+                            type="submit"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleUpdateSettings(e as any);
+                            }}
+                            disabled={updatingSettings}
+                            className="h-10 px-5 bg-[#FB432C] hover:bg-[#E03923] disabled:opacity-50 text-white font-medium text-[13px] rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            {updatingSettings ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} />
+                                <span>Saving...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Save changes</span>
+                                <ArrowUpRight className="w-4 h-4" strokeWidth={1.75} />
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </DialogFooter>
                   </div>
                 </DialogContent>
@@ -2659,68 +2456,96 @@ export default function AdminDashboard() {
 
               {/* FEEDBACK MANAGER DIALOG */}
               <Dialog open={showFeedbackManager} onOpenChange={setShowFeedbackManager}>
-                <DialogContent className="sm:max-w-[600px] rounded-xl p-0 bg-white border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                  <DialogHeader className="p-6 pb-3 bg-gradient-to-r from-yellow-400 to-orange-500 border-b">
+                <DialogContent className={cn("sm:max-w-[560px] rounded-2xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto", modalCls)}>
+                  <DialogHeader className={cn("px-6 py-4 border-b text-left", dividerCls)}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                        <span className="text-xl">★</span>
+                      <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center", surfaceSubtle)}>
+                        <Star className="w-4 h-4 text-[#FB432C]" strokeWidth={1.75} />
                       </div>
                       <div>
-                        <DialogTitle className="text-[20px] font-black text-white">Manage Custom Questions</DialogTitle>
-                        <DialogDescription className="text-white/80 text-[12px]">
-                          Add your own feedback questions for customers
+                        <DialogTitle className="text-[17px] font-semibold tracking-tight">Manage custom questions</DialogTitle>
+                        <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+                          Add short rating questions shown after a customer submits a job.
                         </DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
 
-                  <div className="p-6 space-y-6">
-                    {/* Add New Question */}
-                    <div className="space-y-3 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Add New Question</h4>
+                  <div className="p-6 space-y-5">
+                    {feedbackError && (
+                      <div className={cn("p-3 rounded-lg border text-[13px] font-medium", isDark ? "bg-[#E5484D]/10 border-[#E5484D]/25 text-[#E5484D]" : "bg-[#DC2626]/[0.06] border-[#DC2626]/20 text-[#DC2626]")}>
+                        {feedbackError}
+                      </div>
+                    )}
+
+                    <div className={cn("space-y-3 p-4 rounded-xl border", surfaceSubtle)}>
+                      <h4 className="text-[13px] font-semibold">Add question</h4>
                       <input
                         type="text"
                         value={newQuestionText}
                         onChange={(e) => setNewQuestionText(e.target.value)}
-                        placeholder="e.g., How was our staff behavior?"
-                        className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10 focus:border-black/20"
+                        placeholder="e.g., How was the print quality?"
+                        className={cn("w-full h-10 px-3 rounded-lg text-[13px] outline-none", inputCls)}
                       />
                       <input
                         type="text"
                         value={newQuestionOptions}
                         onChange={(e) => setNewQuestionOptions(e.target.value)}
-                        placeholder="Options separated by commas"
-                        className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10 focus:border-black/20"
+                        placeholder="Comma-separated options (e.g., Poor, Fair, Good, Great)"
+                        className={cn("w-full h-10 px-3 rounded-lg text-[13px] outline-none", inputCls)}
                       />
                       <button
+                        type="button"
                         onClick={handleAddCustomQuestion}
                         disabled={addingQuestion || !newQuestionText.trim()}
-                        className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                        className={cn("w-full h-10 font-medium text-[13px] rounded-lg disabled:opacity-40 flex items-center justify-center gap-1.5 cursor-pointer", btnPrimaryCls)}
                       >
-                        {addingQuestion ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                        Add Question
+                        {addingQuestion ? <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.75} /> : <Plus className="w-4 h-4" strokeWidth={1.75} />}
+                        Add question
                       </button>
                     </div>
 
-                    {/* Existing Questions */}
-                    <div className="space-y-3">
-                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Active Questions ({customFeedbackQuestions.length})</h4>
+                    <div className="space-y-2.5">
+                      <h4 className="text-[13px] font-semibold">Active questions ({customFeedbackQuestions.length})</h4>
                       {customFeedbackQuestions.length === 0 ? (
-                        <p className="text-[13px] text-gray-500 text-center py-8">No custom questions yet. Add one above!</p>
+                        <p className={cn("text-[13px] text-center py-6", txtMuted)}>No custom questions yet.</p>
                       ) : (
                         <div className="space-y-2">
                           {customFeedbackQuestions.map((q, idx) => (
-                            <div key={q.id} className="flex items-center justify-between p-3 bg-white border border-[#E2E8F0] rounded-lg">
-                              <div>
-                                <p className="text-[14px] font-bold text-black">{idx + 1}. {q.question_text}</p>
-                                <p className="text-[11px] text-gray-500">{(Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]')).join(', ')}</p>
+                            <div key={q.id} className={cn("flex items-center justify-between gap-3 p-3 border rounded-xl", surfaceCard)}>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-medium truncate">{idx + 1}. {q.question_text}</p>
+                                <p className={cn("text-[12px] truncate", txtMuted)}>
+                                  {(Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]')).join(', ')}
+                                </p>
                               </div>
-                              <button
-                                onClick={() => handleDeleteCustomQuestion(q.id)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {confirmDeleteQuestionId === q.id ? (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCustomQuestion(q.id)}
+                                    className="h-7 px-2.5 bg-[#DC2626] text-white text-[12px] font-medium rounded-md cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteQuestionId(null)}
+                                    className={cn("h-7 px-2.5 text-[12px] font-medium rounded-md border cursor-pointer", btnSecondaryCls)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteQuestionId(q.id)}
+                                  className={cn("p-2 rounded-lg transition-colors cursor-pointer", txtMuted, "hover:text-[#DC2626]")}
+                                  title="Delete question"
+                                >
+                                  <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -2728,10 +2553,11 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <DialogFooter className="p-6 border-t">
+                  <DialogFooter className={cn("px-6 py-4 border-t", surfaceSubtle, dividerCls)}>
                     <button
+                      type="button"
                       onClick={() => setShowFeedbackManager(false)}
-                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg"
+                      className={cn("h-9 px-5 font-medium text-[13px] rounded-lg cursor-pointer", btnPrimaryCls)}
                     >
                       Done
                     </button>
@@ -2741,80 +2567,87 @@ export default function AdminDashboard() {
 
               {/* FEEDBACK RESPONSES DIALOG */}
               <Dialog open={showFeedbackResponses} onOpenChange={setShowFeedbackResponses}>
-                <DialogContent className="sm:max-w-[800px] rounded-xl p-0 bg-white border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                  <DialogHeader className="p-6 pb-3 bg-gradient-to-r from-green-500 to-emerald-600 border-b">
+                <DialogContent className={cn("sm:max-w-[720px] rounded-2xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto", modalCls)}>
+                  <DialogHeader className={cn("px-6 py-4 border-b text-left", dividerCls)}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                        <span className="text-xl">📊</span>
+                      <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center", surfaceSubtle)}>
+                        <MessageSquare className="w-4 h-4 text-[#FB432C]" strokeWidth={1.75} />
                       </div>
                       <div>
-                        <DialogTitle className="text-[20px] font-black text-white">Customer Feedback</DialogTitle>
-                        <DialogDescription className="text-white/80 text-[12px]">
-                          {feedbackAnalytics?.total_responses || feedbackResponses.length} responses • Avg Rating: {feedbackAnalytics?.avg_rating || 'N/A'}
+                        <DialogTitle className="text-[17px] font-semibold tracking-tight">Customer feedback</DialogTitle>
+                        <DialogDescription className={cn("text-[13px] tabular-nums", txtSecondary)}>
+                          {feedbackAnalytics?.total_responses || feedbackResponses.length} responses · Average rating {feedbackAnalytics?.avg_rating || "N/A"}
                         </DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
 
-                  <div className="p-6 space-y-6">
-                    {/* Analytics Summary */}
+                  <div className="p-6 space-y-5">
                     {feedbackAnalytics && (
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="p-4 bg-green-50 rounded-xl text-center">
-                          <p className="text-[24px] font-black text-green-600">{feedbackAnalytics.positive_count || 0}</p>
-                          <p className="text-[10px] font-bold text-green-700 uppercase">Positive</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className={cn("p-3.5 rounded-xl border text-center", surfaceSubtle)}>
+                          <p className={cn("text-[22px] font-semibold tabular-nums", isDark ? "text-[#4CC38A]" : "text-[#16A34A]")}>
+                            {feedbackAnalytics.positive_count || 0}
+                          </p>
+                          <p className={cn("text-[12px] font-medium", txtSecondary)}>Positive</p>
                         </div>
-                        <div className="p-4 bg-yellow-50 rounded-xl text-center">
-                          <p className="text-[24px] font-black text-yellow-600">{feedbackAnalytics.total_responses || feedbackResponses.length}</p>
-                          <p className="text-[10px] font-bold text-yellow-700 uppercase">Total</p>
+                        <div className={cn("p-3.5 rounded-xl border text-center", surfaceSubtle)}>
+                          <p className="text-[22px] font-semibold tabular-nums">
+                            {feedbackAnalytics.total_responses || feedbackResponses.length}
+                          </p>
+                          <p className={cn("text-[12px] font-medium", txtSecondary)}>Total</p>
                         </div>
-                        <div className="p-4 bg-red-50 rounded-xl text-center">
-                          <p className="text-[24px] font-black text-red-600">{feedbackAnalytics.negative_count || 0}</p>
-                          <p className="text-[10px] font-bold text-red-700 uppercase">Negative</p>
+                        <div className={cn("p-3.5 rounded-xl border text-center", surfaceSubtle)}>
+                          <p className={cn("text-[22px] font-semibold tabular-nums", isDark ? "text-[#E5484D]" : "text-[#DC2626]")}>
+                            {feedbackAnalytics.negative_count || 0}
+                          </p>
+                          <p className={cn("text-[12px] font-medium", txtSecondary)}>Negative</p>
                         </div>
                       </div>
                     )}
 
-                    {/* Responses List */}
-                    <div className="space-y-4">
-                      <h4 className="text-[12px] font-black uppercase tracking-wider text-black">Recent Responses</h4>
+                    <div className="space-y-3">
+                      <h4 className="text-[13px] font-semibold">Recent responses</h4>
                       {feedbackResponses.length === 0 ? (
-                        <p className="text-[13px] text-gray-500 text-center py-8">No feedback responses yet.</p>
+                        <p className={cn("text-[13px] text-center py-8", txtMuted)}>No feedback responses yet.</p>
                       ) : (
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
                           {feedbackResponses.map((response) => (
-                            <div key={response.id} className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                              <div className="flex items-center justify-between mb-3">
-                                <span className="text-[12px] font-bold text-black">{response.customer_name || 'Anonymous'}</span>
-                                <span className="text-[10px] text-gray-500">
+                            <div key={response.id} className={cn("p-4 rounded-xl border", surfaceSubtle)}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[13px] font-semibold">{response.customer_name || "Anonymous"}</span>
+                                <span className={cn("text-[12px] tabular-nums", txtMuted)}>
                                   {new Date(response.submitted_at).toLocaleDateString()}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 mb-3">
-                                {response.overall_rating && (
-                                  <>
-                                    {[...Array(5)].map((_, i) => (
-                                      <span key={i} className={i < response.overall_rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-                                    ))}
-                                  </>
-                                )}
-                              </div>
-                              {/* Individual Question Responses */}
+                              {response.overall_rating && (
+                                <div className="flex items-center gap-0.5 mb-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={cn(
+                                        "w-3.5 h-3.5",
+                                        i < response.overall_rating ? "text-[#FB432C] fill-[#FB432C]" : txtMuted
+                                      )}
+                                      strokeWidth={1.75}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                               {(response.default_responses || response.custom_responses) && (
-                                <div className="mt-3 space-y-1">
-                                  {Object.entries({...(response.default_responses || {}), ...(response.custom_responses || {})})
+                                <div className="mt-2 space-y-1">
+                                  {Object.entries({ ...(response.default_responses || {}), ...(response.custom_responses || {}) })
                                     .filter(([key]) => key !== 'overall_rating')
                                     .map(([key, value]) => (
                                       <div key={key} className="flex items-center gap-2 text-[12px]">
-                                        <span className="text-gray-500">{key}:</span>
-                                        <span className="font-medium text-black">{String(value)}</span>
+                                        <span className={txtMuted}>{key}:</span>
+                                        <span className="font-medium">{String(value)}</span>
                                       </div>
-                                    ))
-                                  }
+                                    ))}
                                 </div>
                               )}
                               {response.written_feedback && (
-                                <p className="text-[13px] text-gray-700 italic">"{response.written_feedback}"</p>
+                                <p className={cn("text-[13px] mt-2", txtSecondary)}>"{response.written_feedback}"</p>
                               )}
                             </div>
                           ))}
@@ -2823,10 +2656,11 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <DialogFooter className="p-6 border-t">
+                  <DialogFooter className={cn("px-6 py-4 border-t", surfaceSubtle, dividerCls)}>
                     <button
+                      type="button"
                       onClick={() => setShowFeedbackResponses(false)}
-                      className="h-12 px-8 bg-black text-white font-black text-[14px] uppercase rounded-lg"
+                      className={cn("h-9 px-5 font-medium text-[13px] rounded-lg cursor-pointer", btnPrimaryCls)}
                     >
                       Close
                     </button>
@@ -2834,31 +2668,31 @@ export default function AdminDashboard() {
                 </DialogContent>
               </Dialog>
 
-              {/* QR — mobile: small icon-only | desktop: icon + text */}
+              {/* QR Dialog */}
               <Dialog open={showQR} onOpenChange={setShowQR}>
                 <DialogTrigger asChild>
                   <button
-                    className="h-8 w-8 lg:h-[36px] lg:w-auto lg:px-3 border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center lg:gap-2 shadow-sm font-bold text-[12px]"
+                    type="button"
+                    className={cn("h-9 w-9 lg:w-auto lg:px-3 border rounded-lg flex items-center justify-center lg:gap-1.5 text-[13px] font-medium transition-colors cursor-pointer", btnSecondaryCls)}
                     title="Customer QR"
                   >
-                    <QrCode className="w-4 h-4 lg:w-[14px] lg:h-[14px]" />
-                    <span className="hidden lg:inline">QR</span>
+                    <QrCode className="w-4 h-4" strokeWidth={1.75} />
+                    <span className="hidden lg:inline">QR code</span>
                   </button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md rounded-[32px] p-8 bg-white border border-[#E2E8F0] shadow-2xl">
-                  <DialogHeader className="text-left mb-4">
-                    <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center mb-3 shadow-lg">
-                      <QrCode className="w-5 h-5 text-white" />
+                <DialogContent className={cn("sm:max-w-md rounded-2xl p-6", modalCls)}>
+                  <DialogHeader className="text-left mb-2">
+                    <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center mb-3", surfaceSubtle)}>
+                      <QrCode className="w-4 h-4" strokeWidth={1.75} />
                     </div>
-                    <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Customer Link</DialogTitle>
-                    <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-                      Scan this QR code to securely send your documents to the shop's print queue.
+                    <DialogTitle className="text-[17px] font-semibold tracking-tight">Customer upload QR</DialogTitle>
+                    <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+                      Customers scan this code or visit the link below to send files to your queue.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex flex-col items-center gap-4 mt-2">
-                    <div className="p-6 bg-white border border-[#E2E8F0] rounded-[24px] w-full flex justify-center shadow-inner group relative">
-                      <div className="absolute inset-4 border border-dashed border-black/5 rounded-[20px] group-hover:border-black/10 transition-colors" />
-                      <div id="admin-qr-container" className="smooth-qr relative z-10 p-2 bg-white rounded-xl transition-transform duration-500 group-hover:scale-105">
+                    <div className={cn("p-5 border rounded-xl w-full flex justify-center", surfaceSubtle)}>
+                      <div id="admin-qr-container" className="smooth-qr p-3 bg-white rounded-lg border border-[#171717]/[0.08]">
                         <style dangerouslySetInnerHTML={{ __html: `
                           .smooth-qr svg path:nth-of-type(2) {
                             shape-rendering: auto !important;
@@ -2871,7 +2705,7 @@ export default function AdminDashboard() {
                         {qrUrl ? (
                           <QRCodeSVG
                             value={qrUrl}
-                            size={200}
+                            size={196}
                             level="H"
                             includeMargin={false}
                             imageSettings={{
@@ -2884,108 +2718,142 @@ export default function AdminDashboard() {
                             }}
                           />
                         ) : (
-                          <div className="w-[200px] h-[200px] flex items-center justify-center text-slate-400">
+                          <div className="w-[196px] h-[196px] flex items-center justify-center text-[#737373] text-[13px]">
                             Generating...
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="w-full space-y-4">
-                      <div className="w-full flex flex-col gap-1.5">
-                        <span className="text-[10px] font-bold text-auth-slate-50 tracking-[0.1em] uppercase">Static Link Handle</span>
-                        <div className="bg-white px-4 py-3 rounded-[5.57px] text-[11px] font-mono font-bold text-black border border-[#E2E8F0] w-full text-center truncate shadow-sm">
+                    <div className="w-full space-y-3">
+                      <div className="w-full flex flex-col gap-1">
+                        <span className={cn("text-[12px] font-medium", txtSecondary)}>Shop link</span>
+                        <div className={cn("px-3.5 py-2.5 rounded-lg text-[12px] font-mono border w-full text-center truncate", surfaceSubtle)}>
                           {qrUrl}
                         </div>
                       </div>
 
-                      <div className="flex gap-3 pt-2">
+                      <div className="flex gap-2.5 pt-1">
                         <button
+                          type="button"
                           onClick={() => window.open(`/admin/poster?name=${encodeURIComponent(shop?.name || "")}&slug=${shop?.slug || ""}&upi=${shop?.upi_id || ""}`, '_blank')}
-                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                          className={cn("flex-1 h-9 rounded-lg text-[13px] font-medium border flex items-center justify-center gap-1.5 cursor-pointer", btnSecondaryCls)}
                         >
-                          <Printer className="w-3.5 h-3.5" /> Poster
+                          <Printer className="w-3.5 h-3.5" strokeWidth={1.75} /> Poster
                         </button>
                         <button
+                          type="button"
                           onClick={downloadQRAsImage}
-                          className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                          className={cn("flex-1 h-9 rounded-lg text-[13px] font-medium border flex items-center justify-center gap-1.5 cursor-pointer", btnSecondaryCls)}
                         >
-                          <Download className="w-3.5 h-3.5" /> Download
+                          <Download className="w-3.5 h-3.5" strokeWidth={1.75} /> Save PNG
                         </button>
-                        <button onClick={() => setShowQR(false)} className="flex-1 h-[40px] bg-black text-white hover:bg-black/90 rounded-[5.57px] text-[11px] font-bold transition-all flex items-center justify-center shadow-lg shadow-black/10 cursor-pointer">
-                          Dismiss
+                        <button
+                          type="button"
+                          onClick={() => setShowQR(false)}
+                          className={cn("flex-1 h-9 rounded-lg text-[13px] font-medium flex items-center justify-center cursor-pointer", btnPrimaryCls)}
+                        >
+                          Done
                         </button>
                       </div>
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
-
-              {/* Separator */}
-              <div className="h-6 w-[1px] bg-[#E2E8F0] mx-0.5" />
-
-              {/* Logout — icon only */}
-              <button
-                onClick={handleLogout}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
 
-        {/* SHOPKEEPER TRIAL & APPROVAL ALERT BANNER */}
+        {/* SHOPKEEPER TRIAL & APPROVAL BANNER */}
         {shop && !isShopApproved && (
-          <div className="w-full py-2.5 bg-orange-500 text-white border-t border-orange-600 shadow-sm">
-            <div className="w-full px-6 lg:px-[100px] flex items-center justify-between text-[12px] font-bold">
+          <div className={cn(
+            "w-full py-2 border-t",
+            isDark ? "bg-[#FB432C]/15 border-[#FB432C]/25 text-[#EDEDED]" : "bg-[#FB432C] border-[#FB432C] text-white"
+          )}>
+            <div className="w-full px-6 sm:px-10 lg:px-[72px] flex items-center justify-between gap-4 text-[12px] font-medium">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 shrink-0 text-white" />
-                <span className="text-white">
+                <ShieldCheck className={cn("w-4 h-4 shrink-0", isDark ? "text-[#FB432C]" : "text-white")} strokeWidth={1.75} />
+                <span>
                   {isTrialLimitReached
-                    ? `Trial Limit Reached (${filesProcessedCount}/3 Free Scans Used). Document printing is locked until Platform Admin approval.`
-                    : `New Shop Free Trial Active (${filesProcessedCount}/3 free scans used). Request Platform Admin approval for unlimited file sharing.`}
+                    ? `Free trial limit reached (${filesProcessedCount}/3 scans used). Printing is locked until admin approval.`
+                    : `Free trial active (${filesProcessedCount}/3 scans used). Request admin approval for unlimited printing.`}
                 </span>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setViewReadOnlyQueue(false);
                   setShowApprovalModal(true);
                 }}
-                className="px-3.5 py-1 rounded-[2px] text-[10px] font-extrabold uppercase tracking-wider bg-white text-orange-600 hover:bg-orange-50 transition-all shadow-sm shrink-0 cursor-pointer"
+                className={cn(
+                  "px-3 py-1 rounded-md text-[12px] font-medium shrink-0 cursor-pointer transition-colors",
+                  isDark ? "bg-[#FB432C] text-white hover:bg-[#E03923]" : "bg-white text-[#FB432C] hover:bg-white/90"
+                )}
               >
-                {isTrialLimitReached ? "View Approval Screen" : "Trial Details"}
+                {isTrialLimitReached ? "View approval" : "Trial details"}
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* SUB HEADER - ACTIVE QUEUE TITLE & SEARCH (STATIC) */}
-      <div className="shrink-0 w-full bg-[#F8FAFC]">
-        <div className="w-full px-6 lg:px-[100px] pt-6 pb-4">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <h2 className="text-[20px] font-bold tracking-tight text-black flex items-center gap-2">
-              <span className="gradient-text-startup">Active Queue</span>
-            </h2>
-            <div className="relative w-full lg:w-[260px] flex gap-2">
+      {/* SUB HEADER - QUEUE TITLE & SEARCH */}
+      <div className="shrink-0 w-full">
+        <div className="w-full px-6 sm:px-10 lg:px-[72px] pt-5 pb-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-[19px] font-semibold tracking-tight">Print queue</h2>
+              <span className={cn("px-2.5 py-0.5 rounded-md border text-[12px] font-medium tabular-nums", surfaceSubtle, txtSecondary)}>
+                {normalizedQuery ? `${filteredJobs.length} of ${stats.total} total` : `${stats.total} total`}
+              </span>
+            </div>
+            <div className="relative w-full sm:w-[320px] flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-auth-slate-50" />
+                <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none", txtMuted)} strokeWidth={1.75} />
                 <input
                   type="text"
-                  placeholder="Search by name..."
+                  placeholder="Search by customer, phone, or file..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="auth-input w-full h-[36px] bg-white pl-9 text-[12px]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && searchQuery) {
+                      setSearchQuery("");
+                    }
+                  }}
+                  className={cn("w-full h-9 rounded-lg pl-9 text-[13px] outline-none transition-colors", searchQuery ? "pr-8" : "pr-3", inputCls)}
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className={cn(
+                      "absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer",
+                      txtMuted,
+                      isDark ? "hover:text-[#EDEDED] hover:bg-white/[0.08]" : "hover:text-[#171717] hover:bg-black/[0.06]"
+                    )}
+                    title="Clear search"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  </button>
+                )}
               </div>
               <button
-                onClick={() => shop && fetchJobs(shop.id)}
-                className="h-[36px] w-[36px] flex items-center justify-center bg-white border border-[#E2E8F0] rounded-[5.57px] text-auth-slate-50 hover:text-black hover:border-black/20 transition-all shadow-sm group"
-                title="Refresh Queue"
+                type="button"
+                disabled={isRefreshing}
+                onClick={async () => {
+                  if (!shop) return;
+                  setIsRefreshing(true);
+                  try {
+                    await fetchJobs(shop.id);
+                  } finally {
+                    setTimeout(() => setIsRefreshing(false), 300);
+                  }
+                }}
+                className={cn("h-9 w-9 flex items-center justify-center rounded-lg border transition-colors cursor-pointer shrink-0 disabled:opacity-60", btnSecondaryCls)}
+                title="Refresh queue"
               >
-                <RefreshCw className="w-[14px] h-[14px] group-active:rotate-180 transition-transform duration-500" />
+                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -2993,161 +2861,237 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN BODY - RESPONSIVE QUEUE */}
-      <div className="flex-1 w-full px-6 lg:px-[100px] pb-3 flex flex-col overflow-y-auto scrollbar-thin">
+      <div className="flex-1 w-full px-6 sm:px-10 lg:px-[72px] pb-4 flex flex-col overflow-y-auto scrollbar-thin">
 
-        {/* ── EMPTY STATE ── */}
+        {/* EMPTY STATE */}
         {filteredJobs.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 py-24">
-            <img src="/hot-air-balloon.svg" alt="Queue Empty" className="w-40 h-40 drop-shadow-2xl" />
-            <div className="text-center space-y-1">
-              <p className="text-[20px] font-black text-black tracking-tight uppercase">Queue Empty</p>
-              <p className="text-[12px] font-bold text-[#7E8B9E] uppercase tracking-[0.15em] leading-relaxed max-w-xs">
-                The network is silent. Customer print jobs will appear here in real-time.
+          <div className={cn("flex-1 flex flex-col items-center justify-center gap-3 border rounded-xl py-16 px-6", surfaceCard)}>
+            <div className={cn("w-12 h-12 rounded-xl border flex items-center justify-center", surfaceSubtle)}>
+              {normalizedQuery ? (
+                <Search className={cn("w-5 h-5", txtMuted)} strokeWidth={1.75} />
+              ) : (
+                <Inbox className={cn("w-6 h-6", txtMuted)} strokeWidth={1.75} />
+              )}
+            </div>
+            <div className="text-center space-y-1 max-w-sm">
+              <p className="text-[16px] font-semibold tracking-tight">
+                {normalizedQuery ? "No matching jobs" : "Queue is empty"}
+              </p>
+              <p className={cn("text-[13px] leading-relaxed", txtSecondary)}>
+                {normalizedQuery
+                  ? `No print jobs match "${searchQuery.trim()}".`
+                  : "Files sent by customers from your QR link will appear here automatically."}
               </p>
             </div>
+            {normalizedQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className={cn("mt-1 h-8 px-3.5 rounded-lg border text-[12px] font-medium transition-colors cursor-pointer", btnSecondaryCls)}
+              >
+                Clear search
+              </button>
+            )}
           </div>
         )}
 
-        {/* ── MOBILE CARDS (shown below lg) ── */}
+        {/* MOBILE CARDS */}
         {filteredJobs.length > 0 && (
           <div className="flex flex-col gap-3 lg:hidden pb-6 overflow-y-auto scrollbar-thin">
             {filteredJobs.map((job) => {
-              const isExpired = new Date(job.expires_at) < currentTime;
-              const diff = new Date(job.expires_at).getTime() - currentTime.getTime();
-              const minsLeft = Math.floor(diff / 60000);
+              const jobAge = currentTime.getTime() - new Date(job.created_at).getTime();
+              const isNew = jobAge < 2 * 60 * 1000;
+              const isUnavailable = job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null;
+
               return (
-                <div key={job.id} className={cn(
-                  "bg-white border rounded-2xl shadow-sm p-4 flex flex-col gap-3",
-                  job.is_deleted_by_user ? "border-red-200 bg-red-50/30" : "border-[#E2E8F0]"
-                )}>
+                <div
+                  key={job.id}
+                  className={cn(
+                    "border rounded-xl p-4 flex flex-col gap-3 transition-colors",
+                    job.is_deleted_by_user
+                      ? (isDark ? "bg-[#E5484D]/[0.06] border-[#E5484D]/25" : "bg-[#DC2626]/[0.03] border-[#DC2626]/20")
+                      : surfaceCard
+                  )}
+                >
                   {/* Row 1: Customer + Status badge */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-black text-black tracking-widest uppercase">{job.customer_name || "ANONYMOUS"}</span>
-                        {(() => {
-                          const jobAge = new Date().getTime() - new Date(job.created_at).getTime();
-                          const isNew = jobAge < 2 * 60 * 1000; // 2 minutes
-                          return isNew ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-black uppercase tracking-wider rounded animate-pulse">
-                              NEW
-                            </span>
-                          ) : null;
-                        })()}
+                        <span className="text-[14px] font-semibold truncate">{job.customer_name || "Guest"}</span>
+                        {isNew && (
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[11px] font-medium",
+                            isDark ? "bg-[#4CC38A]/15 text-[#4CC38A]" : "bg-[#16A34A]/10 text-[#16A34A]"
+                          )}>
+                            New
+                          </span>
+                        )}
                       </div>
                       {job.customer_phone && (
-                        <span className="text-[10px] font-bold text-[#7E8B9E] mt-0.5">{job.customer_phone}</span>
+                        <span className={cn("text-[12px] tabular-nums mt-0.5", txtSecondary)}>{job.customer_phone}</span>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="shrink-0">
                       {job.is_deleted_by_user ? (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-[10px] font-black text-red-700 uppercase tracking-wider">
-                          <Trash2 className="w-3 h-3" /> Deleted by User
+                        <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 border rounded-md text-[11px] font-medium", isDark ? "bg-[#E5484D]/15 border-[#E5484D]/30 text-[#E5484D]" : "bg-[#DC2626]/10 border-[#DC2626]/25 text-[#DC2626]")}>
+                          <Trash2 className="w-3 h-3" strokeWidth={1.75} /> Deleted by customer
                         </span>
                       ) : (job.is_auto_deleted || (job.file_path === null && !job.is_deleted_by_user)) ? (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-full text-[10px] font-black text-purple-700 uppercase tracking-wider">
-                          <ShieldAlert className="w-3 h-3 text-purple-600" /> Deleted (5-Min Policy)
+                        <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 border rounded-md text-[11px] font-medium", surfaceSubtle, txtSecondary)}>
+                          <Clock className="w-3 h-3" strokeWidth={1.75} /> Expired (5m)
                         </span>
                       ) : job.status === "printed" ? (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full text-[10px] font-bold text-green-700 uppercase tracking-widest">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Completed
+                        <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-[11px] font-medium", isDark ? "bg-[#4CC38A]/15 border-[#4CC38A]/30 text-[#4CC38A]" : "bg-[#16A34A]/10 border-[#16A34A]/25 text-[#16A34A]")}>
+                          <span className={cn("w-1.5 h-1.5 rounded-full", isDark ? "bg-[#4CC38A]" : "bg-[#16A34A]")} /> Printed
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-[10px] font-bold text-[#FF591E] uppercase tracking-widest">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#FF591E] animate-pulse" /> To Be Printed
+                        <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-[11px] font-medium", isDark ? "bg-[#4CC38A]/15 border-[#4CC38A]/30 text-[#4CC38A]" : "bg-[#16A34A]/10 border-[#16A34A]/25 text-[#16A34A]")}>
+                          <span className={cn("w-1.5 h-1.5 rounded-full", isDark ? "bg-[#4CC38A]" : "bg-[#16A34A]")} /> Ready to print
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Row 2: File info */}
-                  <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2.5">
-                    <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-xl flex items-center justify-center shrink-0 shadow-xs relative">
-                      <FileText className="w-5 h-5 text-black" />
-                      <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider shadow-sm leading-none">
-                        {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
-                      </div>
+                  <div className={cn("flex items-center gap-3 border rounded-lg px-3 py-2.5", surfaceSubtle)}>
+                    <div className={cn("w-9 h-9 border rounded-lg flex items-center justify-center shrink-0 relative", surfaceCard)}>
+                      <FileText className="w-4 h-4" strokeWidth={1.75} />
+                      <span className="absolute -top-1.5 -right-1.5 bg-[#FB432C] text-[9px] font-semibold text-white px-1 py-0.5 rounded uppercase leading-none">
+                        {job.file_name.split('.').pop()?.substring(0, 4) || "FILE"}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[13px] text-black truncate">{job.file_name}</p>
-                      <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
+                      <p className="font-medium text-[13px] truncate">{job.file_name}</p>
+                      <p className={cn("text-[12px] tabular-nums", txtMuted)}>
+                        Received {new Date(job.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Row 3: Print detail tags — always shown */}
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[11px] font-black uppercase tracking-[0.12em] leading-relaxed">
-                      <span className={job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}>
-                        {job.preferences?.color ? 'Color' : 'B&W'}
-                      </span>
-                      <span className="text-[#D1D9E0] mx-1.5">·</span>
-                      <span className="text-[#2563EB]">{job.preferences?.doubleSided ? '2-Sided' : '1-Sided'}</span>
-                      <span className="text-[#D1D9E0] mx-1.5">·</span>
-                      <span className="text-[#16A34A]">{job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? 'Copy' : 'Copies'}</span>
-                      <span className="text-[#D1D9E0] mx-1.5">·</span>
-                      <span className="text-[#7C3AED]">{job.page_count || 1} {(job.page_count || 1) === 1 ? 'Page' : 'Pages'}</span>
-                    </p>
+                  {/* Row 3: Print specs */}
+                  <div className="flex flex-col gap-1.5">
+                    {(() => {
+                      const pages = job.page_count || 1;
+                      const fileExt = (job.file_name.split('.').pop()?.substring(0, 4) || "FILE").toUpperCase();
+                      const isColorSpec = !showColorOption
+                        ? (job.preferences?.detectedColor ?? job.preferences?.color ?? false)
+                        : Boolean(job.preferences?.color);
+                      if (allSpecOptionsOff) {
+                        return (
+                          <p className={cn("text-[13px] font-medium tabular-nums", txtSecondary)}>
+                            <span className={isColorSpec ? "text-[#FB432C] font-semibold" : txtPrimary}>
+                              {isColorSpec ? "Color" : "B&W"}
+                            </span>
+                            <span className="mx-1.5 opacity-40">·</span>
+                            <span className={txtPrimary}>{pages} {pages === 1 ? "page" : "pages"}</span>
+                            <span className="mx-1.5 opacity-40">·</span>
+                            <span>{fileExt}</span>
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className={cn("text-[12px] font-medium tabular-nums", txtSecondary)}>
+                          <span className={isColorSpec ? "text-[#FB432C] font-semibold" : txtPrimary}>
+                            {isColorSpec ? "Color" : "B&W"}
+                          </span>
+                          <span className="mx-1.5 opacity-40">·</span>
+                          {showDuplexOption && (
+                            <>
+                              <span>{job.preferences?.doubleSided ? "2-sided" : "1-sided"}</span>
+                              <span className="mx-1.5 opacity-40">·</span>
+                            </>
+                          )}
+                          {showCopiesOption && (
+                            <>
+                              <span>{job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? "copy" : "copies"}</span>
+                              <span className="mx-1.5 opacity-40">·</span>
+                            </>
+                          )}
+                          <span>{pages} {pages === 1 ? "page" : "pages"}</span>
+                        </p>
+                      );
+                    })()}
                     {job.is_preorder && job.customer_phone && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl mt-1">
-                        <Smartphone className="w-4 h-4 text-amber-600" />
-                        <span className="text-[14px] font-black text-black tracking-tight">{job.customer_phone}</span>
+                      <div className={cn("flex items-center gap-2 px-3 py-1.5 border rounded-lg text-[13px] font-medium tabular-nums", surfaceSubtle)}>
+                        <Smartphone className="w-3.5 h-3.5 text-[#FB432C]" strokeWidth={1.75} />
+                        <span>{job.customer_phone}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Row 4: Action buttons */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-[#F1F5F9]">
+                  <div className={cn("flex items-center gap-2 pt-2 border-t", dividerCls)}>
                     {job.status !== "printed" ? (
                       <>
                         <button
+                          type="button"
                           onClick={() => handlePrint(job)}
-                          className="flex-1 h-10 bg-black text-white rounded-xl text-[12px] font-bold transition-all hover:bg-black/90 flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
+                          disabled={isUnavailable}
+                          title={job.is_deleted_by_user ? "Deleted by customer" : isUnavailable ? "File expired after 5 minutes" : "Print document"}
+                          className={cn("flex-1 h-9 rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed", btnPrimaryCls)}
                         >
-                          <Printer className="w-3.5 h-3.5" /> Print
+                          <Printer className="w-3.5 h-3.5" strokeWidth={1.75} /> Print
                         </button>
                         <button
+                          type="button"
                           onClick={() => initiateVerification(job, 'complete')}
-                          className="h-10 w-10 bg-white border border-[#E2E8F0] text-black rounded-xl hover:bg-[#F8FAFC] transition-all flex items-center justify-center cursor-pointer"
-                          title="Complete"
+                          disabled={isUnavailable}
+                          className={cn(
+                            "h-9 w-9 border rounded-lg transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                            isDark
+                              ? "border-[#4CC38A]/30 bg-[#4CC38A]/10 text-[#4CC38A] hover:bg-[#4CC38A]/20"
+                              : "border-[#16A34A]/25 bg-[#16A34A]/[0.06] text-[#16A34A] hover:bg-[#16A34A]/15"
+                          )}
+                          title={isUnavailable ? "File unavailable" : "Mark completed"}
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4" strokeWidth={1.75} />
                         </button>
                       </>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => initiateVerification(job, 'reprint')}
-                        className="h-10 w-10 bg-white border border-green-200 text-green-700 rounded-xl hover:bg-green-50 transition-all flex items-center justify-center cursor-pointer"
+                        disabled={isUnavailable}
+                        className={cn(
+                          "h-9 px-3 border rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed",
+                          isDark
+                            ? "bg-[#4CC38A]/15 border-[#4CC38A]/30 text-[#4CC38A] hover:bg-[#4CC38A]/20"
+                            : "bg-[#16A34A]/10 border-[#16A34A]/25 text-[#16A34A] hover:bg-[#16A34A]/15"
+                        )}
                         title="Reprint"
                       >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-3.5 h-3.5" strokeWidth={1.75} /> Reprint
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => handleDownload(job)}
-                      disabled={activeDownloadId === job.id || job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null}
-                      className={cn(
-                        "h-10 flex-1 border rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer",
-                        (job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null)
-                          ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                          : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:border-black/20"
-                      )}
-                      title={(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) ? "File deleted" : "Download"}
+                      disabled={activeDownloadId === job.id || isUnavailable}
+                      className={cn("h-9 flex-1 border rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed", btnSecondaryCls)}
+                      title={isUnavailable ? "File unavailable" : "Download"}
                     >
-                      {activeDownloadId === job.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} /> : <Download className="w-3.5 h-3.5" strokeWidth={1.75} />}
                       {job.status !== "printed" && "Download"}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setDeleteConfirmJob(job)}
-                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-[#E2E8F0] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                      className={cn(
+                        "h-9 w-9 flex items-center justify-center rounded-lg border transition-colors cursor-pointer",
+                        isDark
+                          ? "border-[#E5484D]/30 bg-[#E5484D]/10 text-[#E5484D] hover:bg-[#E5484D]/20"
+                          : "border-[#DC2626]/25 bg-[#DC2626]/[0.06] text-[#DC2626] hover:bg-[#DC2626]/15"
+                      )}
+                      title="Delete"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" strokeWidth={1.75} />
                     </button>
                     {job.customer_phone && (
                       <a
                         href={`tel:${job.customer_phone}`}
-                        className="h-10 px-3 flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all text-[11px] font-bold uppercase cursor-pointer"
+                        className={cn("h-9 px-3 flex items-center justify-center gap-1.5 rounded-lg border text-[13px] font-medium transition-colors cursor-pointer", btnSecondaryCls)}
                       >
-                        <Smartphone className="w-4 h-4" /> Call
+                        <Smartphone className="w-3.5 h-3.5" strokeWidth={1.75} /> Call
                       </a>
                     )}
                   </div>
@@ -3157,11 +3101,10 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── DESKTOP TABLE (shown at lg+) ── */}
+        {/* DESKTOP TABLE */}
         {filteredJobs.length > 0 && (
-          <div className="hidden lg:flex flex-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex-col overflow-hidden mb-2">
+          <div className={cn("hidden lg:flex flex-1 border rounded-xl flex-col overflow-hidden mb-1", surfaceCard)}>
             <div className="flex-1 min-w-full relative h-full min-h-[300px]">
-
               <TableVirtuoso
                 style={{ height: '100%' }}
                 data={filteredJobs}
@@ -3171,166 +3114,204 @@ export default function AdminDashboard() {
                   )
                 }}
                 fixedHeaderContent={() => (
-                  <tr className="bg-[#F8FAFC]">
-                    <th className="py-4 pl-10 text-left text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[14%] border-b border-[#E2E8F0]">Customer</th>
-                    <th className="py-4 px-4 text-center text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] w-[22%] border-b border-[#E2E8F0]">File Information by Customer</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[26%] border-b border-[#E2E8F0]">Print Requirements</th>
-                    <th className="py-4 px-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[14%] border-b border-[#E2E8F0]">Print</th>
-                    <th className="py-4 pr-6 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7E8B9E] text-center w-[18%] border-b border-[#E2E8F0]">Useful Actions , Delete</th>
+                  <tr className={isDark ? "bg-[#232325]" : "bg-[#F4F4F5]"}>
+                    <th className={cn("py-3.5 pl-6 pr-3 text-left text-[13px] font-semibold tracking-tight w-[16%] border-b", txtPrimary, dividerCls)}>Customer Name</th>
+                    <th className={cn("py-3.5 px-4 text-left text-[13px] font-semibold tracking-tight w-[32%] border-b", txtPrimary, dividerCls)}>Uploaded Documents</th>
+                    <th className={cn("py-3.5 px-4 text-left text-[13px] font-semibold tracking-tight w-[25%] border-b", txtPrimary, dividerCls)}>
+                      <span>Print Specs</span>
+                      <span className={cn("ml-1.5 text-[11px] font-normal", txtMuted)}>
+                        ({allSpecOptionsOff ? "Auto color · pages · file" : "Color · pages · options"})
+                      </span>
+                    </th>
+                    <th className={cn("py-3.5 px-4 text-left text-[13px] font-semibold tracking-tight w-[11%] border-b", txtPrimary, dividerCls)}>Printing</th>
+                    <th className={cn("py-3.5 pl-4 pr-6 text-right text-[13px] font-semibold tracking-tight w-[16%] border-b", txtPrimary, dividerCls)}>Print Actions</th>
                   </tr>
                 )}
-                itemContent={(_index, job) => (
-                  <>
-                    <td className="py-5 pl-10 border-b border-[#E2E8F0] text-left">
-                      <div className="flex flex-col items-start">
-                        <div className="flex items-center justify-start gap-2 flex-wrap">
-                          <p title={job.customer_name || "ANONYMOUS"} className="font-black text-[12px] text-black tracking-widest uppercase leading-none">{job.customer_name || "ANONYMOUS"}</p>
-                          {(() => {
-                            const jobAge = new Date().getTime() - new Date(job.created_at).getTime();
-                            const isNew = jobAge < 2 * 60 * 1000; // 2 minutes
-                            return isNew ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-black uppercase tracking-wider rounded animate-pulse">
-                                NEW
-                              </span>
-                            ) : null;
-                          })()}
-                          {(job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null) && (
-                            <div className="relative group/tooltip inline-flex items-center">
-                              <div className={cn(
-                                "w-5 h-5 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-help shadow-xs shrink-0",
-                                job.is_deleted_by_user
-                                  ? "bg-red-100 text-red-600 border border-red-200"
-                                  : "bg-purple-100 text-purple-600 border border-purple-200"
-                              )}>
-                                {job.is_deleted_by_user ? (
-                                  <Trash2 className="w-3 h-3" />
-                                ) : (
-                                  <ShieldAlert className="w-3 h-3" />
-                                )}
-                              </div>
+                itemContent={(_index, job) => {
+                  const jobAge = currentTime.getTime() - new Date(job.created_at).getTime();
+                  const isNew = jobAge < 2 * 60 * 1000;
+                  const isUnavailable = job.is_deleted_by_user || job.is_auto_deleted || job.file_path === null;
 
-                              {/* Hover Tooltip */}
-                              <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:flex flex-col items-start z-50 pointer-events-none whitespace-nowrap">
-                                <div className="bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/10 tracking-tight">
-                                  {job.is_deleted_by_user 
-                                    ? "🗑️ Manually deleted by customer" 
-                                    : "🛡️ Auto-deleted after 5 mins (Software Privacy Policy)"}
-                                </div>
-                                <div className="w-2 h-2 bg-black rotate-45 -mt-1 ml-1.5" />
-                              </div>
-                            </div>
+                  return (
+                    <>
+                      <td className={cn("py-3.5 pl-6 pr-3 border-b text-left", dividerCls)}>
+                        <div className="flex flex-col items-start gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p title={job.customer_name || "Guest"} className="font-semibold text-[14px] truncate max-w-[140px]">
+                              {job.customer_name || "Guest"}
+                            </p>
+                            {isNew && (
+                              <span className={cn(
+                                "inline-flex items-center px-2 py-0.5 border text-[11px] font-medium rounded-md",
+                                isDark ? "bg-[#4CC38A]/15 border-[#4CC38A]/30 text-[#4CC38A]" : "bg-[#16A34A]/10 border-[#16A34A]/25 text-[#16A34A]"
+                              )}>
+                                New
+                              </span>
+                            )}
+                            {isUnavailable && (
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-medium rounded-md",
+                                job.is_deleted_by_user
+                                  ? (isDark ? "bg-[#E5484D]/15 border-[#E5484D]/30 text-[#E5484D]" : "bg-[#DC2626]/10 border-[#DC2626]/25 text-[#DC2626]")
+                                  : cn(surfaceSubtle, txtSecondary)
+                              )}>
+                                {job.is_deleted_by_user ? "Deleted" : "Expired (5m)"}
+                              </span>
+                            )}
+                          </div>
+                          {job.customer_phone && (
+                            <p className={cn("text-[12px] tabular-nums", txtMuted)}>
+                              {job.customer_phone}
+                            </p>
                           )}
                         </div>
-                        {job.customer_phone && (
-                          <p className="text-[11px] font-bold text-auth-slate-50 tracking-tight mt-1">
-                            {job.customer_phone}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-5 px-4 border-b border-[#E2E8F0]">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white border border-[#E2E8F0] rounded-xl flex items-center justify-center shrink-0 shadow-xs relative">
-                          <FileText className="w-5 h-5 text-black" />
-                          <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-[8px] font-black text-white px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider shadow-sm leading-none">
-                            {job.file_name.split('.').pop()?.substring(0, 4) || 'RAW'}
+                      </td>
+                      <td className={cn("py-3.5 px-4 border-b", dividerCls)}>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className={cn("w-10 h-10 border rounded-lg flex items-center justify-center shrink-0 relative", surfaceSubtle)}>
+                            <FileText className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                            <span className="absolute -top-1.5 -right-1.5 bg-[#FB432C] text-[9px] font-semibold text-white px-1.5 py-0.5 rounded uppercase leading-none">
+                              {job.file_name.split('.').pop()?.substring(0, 4) || "FILE"}
+                            </span>
                           </div>
-                        </div>
-                        <div className="min-w-0 relative group/filename">
-                          <p className="font-bold text-[13px] text-black truncate max-w-[200px]">{job.file_name}</p>
-                          <p className="text-[11px] text-[#7E8B9E] font-medium">Synced {new Date(job.created_at).toLocaleTimeString()}</p>
-                          {/* Full filename tooltip on hover */}
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/filename:flex z-50 pointer-events-none">
-                            <div className="bg-black text-white text-[11px] font-semibold px-3 py-2 rounded-lg shadow-2xl border border-white/10 whitespace-nowrap max-w-[320px] break-all">
-                              📄 {job.file_name}
+                          <div className="flex-1 min-w-0 relative group/filename">
+                            <p className="font-medium text-[14px] truncate">{job.file_name}</p>
+                            <p className={cn("text-[12px] tabular-nums mt-0.5", txtMuted)}>
+                              {new Date(job.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            </p>
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/filename:flex z-50 pointer-events-none">
+                              <div className={cn("text-[12px] font-medium px-2.5 py-1.5 rounded-lg border shadow-md whitespace-nowrap max-w-[380px] truncate", modalCls)}>
+                                {job.file_name}
+                              </div>
                             </div>
-                            <div className="absolute left-3 top-full w-2 h-2 bg-black rotate-45 -mt-1" />
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-5 px-4 border-b border-[#E2E8F0]">
-                      <div className="flex items-center justify-center rounded-[8px] border border-[#E2E8F0] overflow-hidden divide-x divide-[#E2E8F0]">
-                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
-                          <span className={`text-[11px] font-black uppercase tracking-tight ${job.preferences?.color ? 'text-[#E8512F]' : 'text-[#323A46]'}`}>
-                            {job.preferences?.color ? 'Color' : 'B&W'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
-                          <span className="text-[11px] font-black uppercase tracking-tight text-[#2563EB]">
-                            {job.preferences?.doubleSided ? '2-Side' : '1-Side'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
-                          <span className="text-[11px] font-black uppercase tracking-tight text-[#16A34A]">
-                            {job.preferences?.copies ?? 1}x
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-center px-3 py-2.5 flex-1 bg-white">
-                          <span className="text-[11px] font-black uppercase tracking-tight text-[#7C3AED]">
-                            {job.page_count || 1}p
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-5 px-4 text-center border-b border-[#E2E8F0]">
-                      {job.status !== "printed" ? (
-                        <button
-                          onClick={() => handlePrint(job)}
-                          className="h-[34px] px-4 bg-black text-white rounded-[5.57px] text-[10px] font-bold hover:bg-black/90 shadow-xl shadow-black/10 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto cursor-pointer"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/30" /> Print
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => initiateVerification(job, `reprint`)}
-                          className="h-[34px] px-4 bg-white border border-green-200 text-green-700 rounded-[5.57px] text-[10px] font-bold hover:bg-green-50 transition-all flex items-center gap-2 uppercase tracking-widest mx-auto cursor-pointer"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Print
-                        </button>
-                      )}
-                    </td>
-                    <td className="py-5 pr-6 text-right border-b border-[#E2E8F0]">
-                      <div className="flex items-center justify-end gap-2">
+                      </td>
+                      <td className={cn("py-3.5 px-4 border-b", dividerCls)}>
+                        {(() => {
+                          const pages = job.page_count || 1;
+                          const fileExt = (job.file_name.split('.').pop()?.substring(0, 4) || "FILE").toUpperCase();
+                          const isColorSpec = !showColorOption
+                            ? (job.preferences?.detectedColor ?? job.preferences?.color ?? false)
+                            : Boolean(job.preferences?.color);
+                          if (allSpecOptionsOff) {
+                            return (
+                              <div className={cn("inline-flex items-center rounded-lg border divide-x text-[13px] font-medium tabular-nums", dividerCls, surfaceSubtle)}>
+                                <span className={cn("px-3 py-1.5", dividerCls, isColorSpec ? "text-[#FB432C] font-semibold" : txtPrimary)}>
+                                  {isColorSpec ? "Color" : "B&W"}
+                                </span>
+                                <span className={cn("px-3 py-1.5", dividerCls, txtPrimary)}>
+                                  {pages} {pages === 1 ? "page" : "pages"}
+                                </span>
+                                <span className={cn("px-3 py-1.5", txtSecondary)}>
+                                  {fileExt}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className={cn("inline-flex items-center rounded-lg border divide-x text-[13px] font-medium tabular-nums", dividerCls, surfaceSubtle)}>
+                              <span className={cn("px-3 py-1.5", dividerCls, isColorSpec ? "text-[#FB432C] font-semibold" : txtPrimary)}>
+                                {isColorSpec ? "Color" : "B&W"}
+                              </span>
+                              {showDuplexOption && (
+                                <span className={cn("px-3 py-1.5", dividerCls, txtSecondary)}>
+                                  {job.preferences?.doubleSided ? "2-sided" : "1-sided"}
+                                </span>
+                              )}
+                              {showCopiesOption && (
+                                <span className={cn("px-3 py-1.5", dividerCls, txtSecondary)}>
+                                  {job.preferences?.copies ?? 1} {(job.preferences?.copies ?? 1) === 1 ? "copy" : "copies"}
+                                </span>
+                              )}
+                              <span className={cn("px-3 py-1.5", txtSecondary)}>
+                                {pages}p
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className={cn("py-3.5 px-4 text-left border-b", dividerCls)}>
                         {job.status !== "printed" ? (
                           <button
-                            onClick={() => initiateVerification(job, `complete`)}
-                            className="h-[34px] w-[34px] bg-white border border-black/10 text-black rounded-[5.57px] hover:bg-black/5 transition-all shadow-sm flex items-center justify-center cursor-pointer"
-                            title="Complete"
+                            type="button"
+                            onClick={() => handlePrint(job)}
+                            disabled={isUnavailable}
+                            title={job.is_deleted_by_user ? "Deleted by customer" : isUnavailable ? "File expired after 5 minutes" : "Print document"}
+                            className={cn("h-9 px-4 rounded-lg text-[13px] font-medium transition-colors inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed", btnPrimaryCls)}
                           >
-                            <CheckCircle2 className="w-4 h-4" />
+                            <Printer className="w-4 h-4" strokeWidth={1.75} />
+                            Print
                           </button>
                         ) : (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-100 rounded-[5.57px]">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">Completed</span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => initiateVerification(job, 'reprint')}
+                            disabled={isUnavailable}
+                            title={job.is_deleted_by_user ? "Deleted by customer" : isUnavailable ? "File expired after 5 minutes" : "Reprint document"}
+                            className={cn(
+                              "h-9 px-4 rounded-lg border text-[13px] font-medium transition-colors inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                              isDark ? "bg-[#4CC38A]/10 border-[#4CC38A]/25 text-[#4CC38A] hover:bg-[#4CC38A]/15" : "bg-[#16A34A]/[0.08] border-[#16A34A]/20 text-[#16A34A] hover:bg-[#16A34A]/15"
+                            )}
+                          >
+                            <Printer className="w-4 h-4" strokeWidth={1.75} />
+                            Reprint
+                          </button>
                         )}
-                        <button
-                          onClick={() => handleDownload(job)}
-                          disabled={activeDownloadId === job.id || job.is_deleted_by_user}
-                          className={cn(
-                            "h-[34px] px-3 border rounded-[5.57px] text-[10px] font-bold transition-all flex items-center gap-1.5 uppercase tracking-widest cursor-pointer",
-                            job.is_deleted_by_user
-                              ? "text-gray-300 border-gray-100 cursor-not-allowed"
-                              : "border-[#E2E8F0] text-[#7E8B9E] hover:text-black hover:bg-[#F8FAFC]"
+                      </td>
+                      <td className={cn("py-3.5 pl-4 pr-6 text-right border-b", dividerCls)}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {job.status !== "printed" ? (
+                            <button
+                              type="button"
+                              onClick={() => initiateVerification(job, 'complete')}
+                              disabled={isUnavailable}
+                              className={cn(
+                                "h-8 w-8 border rounded-lg transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                                isDark
+                                  ? "border-[#4CC38A]/30 bg-[#4CC38A]/10 text-[#4CC38A] hover:bg-[#4CC38A]/20"
+                                  : "border-[#16A34A]/25 bg-[#16A34A]/[0.06] text-[#16A34A] hover:bg-[#16A34A]/15"
+                              )}
+                              title={isUnavailable ? "File unavailable" : "Mark as printed"}
+                            >
+                              <CheckCircle2 className="w-4 h-4" strokeWidth={1.75} />
+                            </button>
+                          ) : (
+                            <span className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 h-8 border rounded-lg text-[12px] font-medium",
+                              isDark ? "bg-[#4CC38A]/15 border-[#4CC38A]/30 text-[#4CC38A]" : "bg-[#16A34A]/10 border-[#16A34A]/25 text-[#16A34A]"
+                            )}>
+                              Done
+                            </span>
                           )}
-                          title={job.is_deleted_by_user ? "File deleted by user" : "Download"}
-                        >
-                          {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                          {job.status !== "printed" && "Download"}
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmJob(job)}
-                          className="h-[34px] w-[34px] flex items-center justify-center rounded-[5.57px] text-[#7E8B9E] hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                )}
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(job)}
+                            disabled={activeDownloadId === job.id || isUnavailable}
+                            className={cn("h-8 px-2.5 border rounded-lg text-[12px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed", btnSecondaryCls)}
+                            title={isUnavailable ? "File unavailable" : "Download"}
+                          >
+                            {activeDownloadId === job.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} /> : <Download className="w-3.5 h-3.5" strokeWidth={1.75} />}
+                            {job.status !== "printed" && "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmJob(job)}
+                            className={cn(
+                              "h-8 w-8 border rounded-lg flex items-center justify-center transition-colors cursor-pointer",
+                              isDark
+                                ? "border-[#E5484D]/30 bg-[#E5484D]/10 text-[#E5484D] hover:bg-[#E5484D]/20"
+                                : "border-[#DC2626]/25 bg-[#DC2626]/[0.06] text-[#DC2626] hover:bg-[#DC2626]/15"
+                            )}
+                            title="Delete job"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  );
+                }}
               />
             </div>
           </div>
@@ -3338,43 +3319,63 @@ export default function AdminDashboard() {
       </div>
 
       {/* VERIFICATION CHALLENGE MODAL */}
-      <Dialog open={!!verifyingJobId} onOpenChange={(open) => !open && setVerifyingJobId(null)}>
-        <DialogContent className="sm:max-w-[420px] bg-white border border-[#E2E8F0] shadow-2xl p-8 rounded-[5.57px] overflow-hidden">
-          <DialogHeader className="text-left mb-6">
-            <div className="w-10 h-10 bg-black rounded-[5.57px] flex items-center justify-center mb-3 shadow-lg rotate-3 transition-transform hover:rotate-0 duration-500">
-              <ShieldCheck className="w-5 h-5 text-white" />
+      <Dialog
+        open={!!verifyingJobId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVerifyingJobId(null);
+            setTokenError(null);
+          }
+        }}
+      >
+        <DialogContent className={cn("sm:max-w-[400px] p-6 rounded-2xl overflow-hidden", modalCls)}>
+          <DialogHeader className="text-left mb-4">
+            <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center mb-3", surfaceSubtle)}>
+              <ShieldCheck className="w-4 h-4" strokeWidth={1.75} />
             </div>
-            <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Identify &amp; Authenticate</DialogTitle>
-            <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-              Verify the 2-digit code with the customer to complete this print job.
+            <DialogTitle className="text-[17px] font-semibold tracking-tight">Verify pickup code</DialogTitle>
+            <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+              Ask the customer for the 2-digit code shown on their upload confirmation.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="w-full space-y-6">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-black/5 rounded-[5.57px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <input
-                type="text"
-                maxLength={2}
-                placeholder="--"
-                autoFocus
-                value={tokenChallengeInput}
-                onChange={(e) => setTokenChallengeInput(e.target.value.replace(/\D/g, ``))}
-                onKeyDown={(e) => e.key === `Enter` && handleVerifyComplete()}
-                className="relative w-full h-[100px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] text-center text-[56px] font-black tracking-[0.2em] text-black focus:bg-white focus:ring-4 focus:ring-black/5 transition-all outline-none shadow-inner cursor-pointer"
-              />
-            </div>
+          <div className="w-full space-y-4">
+            <input
+              type="text"
+              maxLength={2}
+              placeholder="--"
+              autoFocus
+              value={tokenChallengeInput}
+              onChange={(e) => {
+                setTokenChallengeInput(e.target.value.replace(/\D/g, ""));
+                if (tokenError) setTokenError(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleVerifyComplete()}
+              className={cn("w-full h-20 rounded-xl text-center text-[36px] font-semibold tracking-[0.25em] tabular-nums outline-none transition-colors", inputCls)}
+            />
 
-            <div className="flex gap-3">
+            {tokenError && (
+              <p className={cn("text-[12px] font-medium", isDark ? "text-[#E5484D]" : "text-[#DC2626]")}>
+                {tokenError}
+              </p>
+            )}
+
+            <div className="flex gap-2.5">
               <button
-                onClick={() => { setVerifyingJobId(null); setTokenChallengeInput(``); }}
-                className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setVerifyingJobId(null);
+                  setTokenChallengeInput("");
+                  setTokenError(null);
+                }}
+                className={cn("flex-1 h-10 font-medium text-[13px] rounded-lg border transition-colors cursor-pointer", btnSecondaryCls)}
               >
-                Abort
+                Cancel
               </button>
               <button
+                type="button"
                 onClick={handleVerifyComplete}
-                className="flex-1 h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98] cursor-pointer"
+                className={cn("flex-1 h-10 font-medium text-[13px] rounded-lg transition-colors cursor-pointer", btnPrimaryCls)}
               >
                 Verify
               </button>
@@ -3385,129 +3386,135 @@ export default function AdminDashboard() {
 
       {/* DELETE CONFIRMATION DIALOG */}
       <Dialog open={!!deleteConfirmJob} onOpenChange={(open) => !open && setDeleteConfirmJob(null)}>
-        <DialogContent className="max-w-[420px] p-8 border border-[#E2E8F0] bg-white rounded-[5.57px] shadow-2xl">
-          <DialogHeader className="text-left mb-6">
-            <div className="w-10 h-10 bg-red-50 rounded-[5.57px] flex items-center justify-center mb-3 shadow-lg shadow-red-100/50">
-              <Trash2 className="w-5 h-5 text-red-500" />
+        <DialogContent className={cn("max-w-[400px] p-6 rounded-2xl", modalCls)}>
+          <DialogHeader className="text-left mb-4">
+            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-3", isDark ? "bg-[#E5484D]/15 text-[#E5484D]" : "bg-[#DC2626]/10 text-[#DC2626]")}>
+              <Trash2 className="w-4 h-4" strokeWidth={1.75} />
             </div>
-            <DialogTitle className="text-[20px] font-bold tracking-tight text-black">Delete Confirmation</DialogTitle>
-            <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-              This action will permanently delete the <span className="text-black font-bold">&quot;{deleteConfirmJob?.customer_name}&quot;</span> print job. This cannot be undone.
+            <DialogTitle className="text-[17px] font-semibold tracking-tight">Delete print job</DialogTitle>
+            <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+              This removes <span className={cn("font-medium", txtPrimary)}>{deleteConfirmJob?.file_name}</span> for{" "}
+              <span className={cn("font-medium", txtPrimary)}>{deleteConfirmJob?.customer_name || "Guest"}</span>. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-3 w-full pt-2">
+          <div className="flex gap-2.5 w-full pt-1">
             <button
+              type="button"
               onClick={() => setDeleteConfirmJob(null)}
-              className="flex-1 h-[40px] bg-white border border-[#E2E8F0] text-black font-bold text-[12px] rounded-[5.57px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
+              className={cn("flex-1 h-10 font-medium text-[13px] rounded-lg border transition-colors cursor-pointer", btnSecondaryCls)}
             >
-              Abort
+              Cancel
             </button>
             <button
+              type="button"
               disabled={isDeleting}
               onClick={() => deleteConfirmJob && handleDeleteJob(deleteConfirmJob)}
-              className="flex-1 h-[40px] bg-red-500 text-white font-bold text-[12px] rounded-[5.57px] hover:bg-red-600 shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
+              className="flex-1 h-10 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[13px] rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
-              {isDeleting ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                "Authorize Delete"
-              )}
+              {isDeleting ? <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.75} /> : "Delete job"}
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* DELETED SIGNAL MODAL */}
+      {/* EXPIRED / PURGED SIGNAL MODAL */}
       <Dialog open={!!purgedJob} onOpenChange={(open) => !open && setPurgedJob(null)}>
-        <DialogContent className="max-w-[420px] p-8 border border-[#E2E8F0] bg-white rounded-[32px] shadow-2xl">
-          <DialogHeader className="text-left mb-6">
-            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-amber-100/50">
-              <Clock className="w-5 h-5 text-amber-500" />
+        <DialogContent className={cn("max-w-[400px] p-6 rounded-2xl", modalCls)}>
+          <DialogHeader className="text-left mb-4">
+            <div className={cn("w-9 h-9 rounded-lg border flex items-center justify-center mb-3", surfaceSubtle)}>
+              <Clock className="w-4 h-4 text-[#FB432C]" strokeWidth={1.75} />
             </div>
-            <DialogTitle className="text-[20px] font-bold tracking-tight text-black">File Deleted</DialogTitle>
-            <DialogDescription className="font-bold tracking-[0.1em] text-auth-slate-50 text-[10px] uppercase leading-relaxed">
-              Files shared over 5 minutes ago are automatically deleted for privacy.
+            <DialogTitle className="text-[17px] font-semibold tracking-tight">File no longer available</DialogTitle>
+            <DialogDescription className={cn("text-[13px]", txtSecondary)}>
+              Files shared over 5 minutes ago are automatically removed from storage for customer privacy.
             </DialogDescription>
           </DialogHeader>
 
-          <button
-            onClick={() => setPurgedJob(null)}
-            className="w-full h-[40px] bg-black text-white font-bold text-[12px] rounded-[5.57px] hover:bg-black/90 shadow-xl shadow-black/10 transition-all active:scale-[0.98] cursor-pointer"
-          >
-            Understood
-          </button>
+          <div className="flex gap-2.5">
+            {purgedJob && (
+              <button
+                type="button"
+                onClick={() => {
+                  const target = purgedJob;
+                  setPurgedJob(null);
+                  handleDeleteJob(target);
+                }}
+                className={cn("flex-1 h-10 font-medium text-[13px] rounded-lg border transition-colors cursor-pointer", btnSecondaryCls)}
+              >
+                Remove entry
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPurgedJob(null)}
+              className={cn("flex-1 h-10 font-medium text-[13px] rounded-lg transition-colors cursor-pointer", btnPrimaryCls)}
+            >
+              Close
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* SHOPKEEPER APPROVAL REQUIRED MODAL SCREEN */}
-      <Dialog open={showApprovalModal} onOpenChange={(open) => {
-        if (!open && isTrialLimitReached) {
-          // If user dismisses while trial limit reached, enter read-only mode
-          // so the useEffect doesn't immediately reopen the modal
-          setViewReadOnlyQueue(true);
-        }
-        setShowApprovalModal(open);
-      }}>
-        <DialogContent className="sm:max-w-[480px] bg-white border border-[#E2E8F0] shadow-2xl p-8 rounded-2xl overflow-hidden selection:bg-black selection:text-white">
-          <DialogHeader className="text-left mb-6">
-            <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-amber-500/20">
-              <ShieldCheck className="w-6 h-6 text-white" />
+      <Dialog
+        open={showApprovalModal}
+        onOpenChange={(open) => {
+          if (!open && isTrialLimitReached) {
+            setViewReadOnlyQueue(true);
+          }
+          setShowApprovalModal(open);
+        }}
+      >
+        <DialogContent className={cn("sm:max-w-[460px] p-6 rounded-2xl overflow-hidden", modalCls)}>
+          <DialogHeader className="text-left mb-4">
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3", isDark ? "bg-[#FB432C]/15 text-[#FB432C]" : "bg-[#FB432C]/10 text-[#FB432C]")}>
+              <ShieldCheck className="w-5 h-5" strokeWidth={1.75} />
             </div>
-            <DialogTitle className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
-              Account Approval Required
+            <DialogTitle className="text-[18px] font-semibold tracking-tight">
+              Account approval required
             </DialogTitle>
-            <DialogDescription className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl text-[11px] uppercase tracking-wider mt-3">
-              🛑 Free Scan Trial Limit Reached ({filesProcessedCount}/3 Used)
+            <DialogDescription className={cn("text-[12px] font-medium px-3 py-2 rounded-lg border mt-2", isDark ? "bg-[#FB432C]/10 border-[#FB432C]/25 text-[#FB432C]" : "bg-[#FB432C]/[0.06] border-[#FB432C]/20 text-[#FB432C]")}>
+              Free trial limit reached ({filesProcessedCount}/3 scans used)
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5">
-            <p className="text-[13px] font-medium text-slate-600 leading-relaxed">
-              Your shop account is currently awaiting verification &amp; approval by the Platform Administrator. Printing and processing customer files is locked until approved.
+          <div className="space-y-4">
+            <p className={cn("text-[13px] leading-relaxed", txtSecondary)}>
+              Your shop is awaiting verification by the platform administrator. Printing and downloading files remain paused until your account is approved.
             </p>
 
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-              <div className="flex items-center justify-between text-[11px] font-bold">
-                <span className="text-slate-500 uppercase tracking-wider">Account Status</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-extrabold uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Pending Admin Approval
-                </span>
+            <div className={cn("p-3.5 border rounded-xl space-y-2 text-[13px]", surfaceSubtle)}>
+              <div className="flex items-center justify-between">
+                <span className={txtMuted}>Status</span>
+                <span className="font-medium text-[#FB432C]">Pending approval</span>
               </div>
-              <div className="flex items-center justify-between text-[11px] font-bold">
-                <span className="text-slate-500 uppercase tracking-wider">Shop Name</span>
-                <span className="text-slate-900 font-extrabold">{shop?.name || "Your Shop"}</span>
+              <div className="flex items-center justify-between">
+                <span className={txtMuted}>Shop</span>
+                <span className="font-medium">{shop?.name || "Your Shop"}</span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2.5 pt-2">
+            <div className="flex flex-col gap-2 pt-1">
               <button
+                type="button"
                 onClick={() => checkApprovalStatus(false)}
                 disabled={isCheckingApproval}
-                className="w-full h-12 bg-black text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl hover:bg-slate-900 shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-10 bg-[#FB432C] hover:bg-[#E03923] text-white font-medium text-[13px] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                {isCheckingApproval ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Checking Status...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Check Approval Status Now</span>
-                  </>
-                )}
+                <RefreshCw className={cn("w-4 h-4", isCheckingApproval && "animate-spin")} strokeWidth={1.75} />
+                <span>{isCheckingApproval ? "Checking status..." : "Check approval status"}</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setViewReadOnlyQueue(true);
                   setShowApprovalModal(false);
                 }}
-                className="w-full h-10 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                className={cn("w-full h-9 font-medium text-[13px] rounded-lg border transition-colors cursor-pointer", btnSecondaryCls)}
               >
-                View Queue (Read-Only Mode)
+                View queue (read-only)
               </button>
             </div>
           </div>
@@ -3515,12 +3522,13 @@ export default function AdminDashboard() {
       </Dialog>
 
       {/* IN-APP NOTIFICATION TOASTS */}
-      <div className="fixed bottom-6 right-4 sm:right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none items-end w-[calc(100vw-32px)] sm:w-auto max-w-[440px]">
+      <div className="fixed bottom-5 right-4 sm:right-6 z-[9999] flex flex-col gap-2 pointer-events-none items-end w-[calc(100vw-32px)] sm:w-auto max-w-[400px]">
         <AnimatePresence mode="popLayout">
           {notifications.map((notif) => (
             <XeroxQNotification
               key={notif.id}
               notification={notif}
+              isDark={isDark}
               onClose={(id) => setNotifications(prev => prev.filter(n => n.id !== id))}
             />
           ))}
@@ -3531,7 +3539,15 @@ export default function AdminDashboard() {
 }
 
 // --- SUB-COMPONENT: TOAST NOTIFICATION ---
-function XeroxQNotification({ notification, onClose }: { notification: Notification, onClose: (id: string) => void }) {
+function XeroxQNotification({
+  notification,
+  isDark,
+  onClose
+}: {
+  notification: Notification;
+  isDark: boolean;
+  onClose: (id: string) => void;
+}) {
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; });
 
@@ -3540,61 +3556,72 @@ function XeroxQNotification({ notification, onClose }: { notification: Notificat
     return () => clearTimeout(timer);
   }, [notification.id]);
 
-  const isNewJob = notification.type === `new_job`;
-  const isError = notification.type === `error`;
-  const isSuccess = notification.type === `success`;
+  const isNewJob = notification.type === "new_job";
+  const isError = notification.type === "error";
+  const isSuccess = notification.type === "success";
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, x: 50, scale: 0.95 }}
+      initial={{ opacity: 0, x: 32, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 50, scale: 0.9, transition: { duration: 0.2 } }}
-      className="pointer-events-auto w-full sm:w-[380px] bg-white/95 backdrop-blur-xl border border-[#E2E8F0] shadow-lg rounded-lg p-4 relative overflow-hidden font-sans group transition-all"
+      exit={{ opacity: 0, x: 32, scale: 0.98, transition: { duration: 0.18 } }}
+      className={cn(
+        "pointer-events-auto w-full sm:w-[360px] border rounded-xl p-3.5 relative overflow-hidden shadow-lg",
+        isDark ? "bg-[#19191B] border-white/[0.12] text-[#EDEDED]" : "bg-white border-[#171717]/[0.10] text-[#171717]"
+      )}
     >
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3">
         <div className={cn(
-          "w-9 h-9 rounded-md flex items-center justify-center shrink-0 shadow-xs mt-0.5 transition-transform group-hover:scale-105",
-          isNewJob ? "bg-black text-white" : isError ? "bg-red-100 text-red-600" : isSuccess ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-700"
+          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+          isNewJob
+            ? "bg-[#FB432C] text-white"
+            : isError
+              ? (isDark ? "bg-[#E5484D]/15 text-[#E5484D]" : "bg-[#DC2626]/10 text-[#DC2626]")
+              : isSuccess
+                ? (isDark ? "bg-[#4CC38A]/15 text-[#4CC38A]" : "bg-[#16A34A]/10 text-[#16A34A]")
+                : (isDark ? "bg-[#232325] text-[#A1A1A6]" : "bg-[#F4F4F5] text-[#525252]")
         )}>
           {isNewJob ? (
-            <Printer className="w-4 h-4 text-white" />
+            <Printer className="w-4 h-4" strokeWidth={1.75} />
           ) : isSuccess ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4" strokeWidth={1.75} />
           ) : isError ? (
-            <ShieldCheck className="w-4 h-4 text-red-600" />
+            <AlertCircle className="w-4 h-4" strokeWidth={1.75} />
           ) : (
-            <Activity className="w-4 h-4 text-slate-700" />
+            <Activity className="w-4 h-4" strokeWidth={1.75} />
           )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col text-left">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <span className="text-[13px] font-black text-slate-900 leading-snug break-words">
-              {isNewJob ? "New Print Job Received" : notification.message}
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <span className="text-[13px] font-semibold leading-snug break-words">
+              {isNewJob ? "New print job" : notification.message}
             </span>
-            <span className="text-[10px] font-bold text-slate-500 shrink-0 bg-slate-100 px-2 py-0.5 rounded-md">
-              {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            <span className={cn("text-[11px] tabular-nums shrink-0", isDark ? "text-[#85858B]" : "text-[#737373]")}>
+              {notification.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           </div>
-          <p className="text-[12px] font-semibold text-slate-700 leading-normal break-words">
-            {isNewJob ? notification.message.replace('Incoming Document: ', '') : notification.subMessage}
+          <p className={cn("text-[12px] leading-snug break-words", isDark ? "text-[#A1A1A6]" : "text-[#525252]")}>
+            {isNewJob ? notification.message.replace("Incoming Document: ", "") : notification.subMessage}
           </p>
           {isNewJob && notification.subMessage && (
-            <p className="text-[11px] font-semibold text-slate-600 leading-normal break-words mt-1.5 bg-slate-50 p-2 rounded-md border border-slate-100">
+            <p className={cn("text-[11px] break-words mt-1.5 px-2 py-1 rounded-md border", isDark ? "bg-[#232325] border-white/[0.06] text-[#A1A1A6]" : "bg-[#F4F4F5] border-[#171717]/[0.06] text-[#525252]")}>
               {notification.subMessage}
             </p>
           )}
         </div>
 
         <button
+          type="button"
           onClick={() => onClose(notification.id)}
-          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-black hover:bg-slate-100 rounded-md transition-all shrink-0 -mt-1 -mr-1 cursor-pointer"
+          className={cn(
+            "w-6 h-6 flex items-center justify-center rounded-md transition-colors shrink-0 cursor-pointer",
+            isDark ? "text-[#85858B] hover:text-[#EDEDED] hover:bg-white/[0.08]" : "text-[#737373] hover:text-[#171717] hover:bg-[#F4F4F5]"
+          )}
           title="Dismiss"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-3.5 h-3.5" strokeWidth={1.75} />
         </button>
       </div>
 
@@ -3603,8 +3630,8 @@ function XeroxQNotification({ notification, onClose }: { notification: Notificat
         animate={{ width: "0%" }}
         transition={{ duration: 5, ease: "linear" }}
         className={cn(
-          "absolute bottom-0 left-0 right-0 h-[3px]",
-          isNewJob ? "bg-gradient-to-r from-orange-500 to-amber-500" : isError ? "bg-red-500" : isSuccess ? "bg-emerald-500" : "bg-black"
+          "absolute bottom-0 left-0 right-0 h-[2px]",
+          isNewJob ? "bg-[#FB432C]" : isError ? "bg-[#DC2626]" : isSuccess ? "bg-[#16A34A]" : (isDark ? "bg-white/40" : "bg-[#171717]")
         )}
       />
     </motion.div>

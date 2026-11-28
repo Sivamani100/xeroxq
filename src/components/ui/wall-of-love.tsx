@@ -96,22 +96,22 @@ export default function WallOfLoveSection() {
   const columns = [0, 1, 2];
 
   return (
-    <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
+    <section className="py-24 bg-[#FAFAFA] dark:bg-[#111113] border-t border-[#171717]/[0.08] dark:border-white/[0.08] overflow-hidden">
       <div className="mx-auto w-full max-w-[1280px] px-6">
-        <div className="text-center space-y-4 mb-20">
-          <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
-             <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
-             <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">User Stories</span>
+        <div className="text-center space-y-4 mb-16">
+          <div className="inline-flex items-center gap-2 px-3.5 h-7 rounded-full bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-5 mx-auto">
+             <div className="w-1.5 h-1.5 rounded-full bg-[#FB432C]" />
+             <span className="text-[11px] font-semibold text-[#525252] dark:text-[#A1A1A6] uppercase tracking-wider leading-none">User Stories</span>
           </div>
-          <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
+          <h2 className="text-[36px] md:text-[48px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-tight mb-4">
             Hear from Xerox Shop Owners in AP
           </h2>
-          <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+          <p className="text-base md:text-lg font-normal text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-2xl mx-auto">
             See how xerox shop owners across Andhra Pradesh are growing their business and saving time with XeroxQ.
           </p>
         </div>
 
-        <motion.div 
+        <motion.div
           key={isExpanded ? "expanded" : "collapsed"}
           initial="hidden"
           whileInView="visible"
@@ -119,7 +119,7 @@ export default function WallOfLoveSection() {
           variants={{
             visible: {
               transition: {
-                staggerChildren: 0.1
+                staggerChildren: 0.08
               }
             }
           }}
@@ -134,27 +134,27 @@ export default function WallOfLoveSection() {
                     <motion.div
                       key={testimonial.name}
                       variants={{
-                        hidden: { opacity: 0, y: 20 },
-                        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+                        hidden: { opacity: 0, y: 16 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.45 } }
                       }}
                     >
-                      <Card className="border-gray-100 bg-[#F8FAFC]/50 hover:bg-white hover:shadow-xl hover:shadow-black/[0.02] transition-all duration-300 group">
-                        <CardContent className="p-6 md:p-8 space-y-6">
-                          <blockquote className="text-sm md:text-base font-medium text-black leading-relaxed italic">
-                            "{testimonial.quote}"
+                      <Card className="border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] hover:border-[#FB432C]/40 transition-colors group">
+                        <CardContent className="p-6 md:p-7 space-y-5">
+                          <blockquote className="text-sm md:text-[15px] font-normal text-[#171717] dark:text-[#EDEDED] leading-relaxed">
+                            &ldquo;{testimonial.quote}&rdquo;
                           </blockquote>
-                          
-                          <div className="flex items-center gap-4 pt-6 border-t border-black/5">
-                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+
+                          <div className="flex items-center gap-3.5 pt-5 border-t border-[#171717]/[0.06] dark:border-white/[0.06]">
+                            <Avatar className="h-10 w-10 border border-[#171717]/[0.08] dark:border-white/[0.10]">
                               <AvatarImage src={testimonial.image} alt={testimonial.name} />
-                              <AvatarFallback className="bg-black text-white text-[10px] font-black">{testimonial.name[0]}</AvatarFallback>
+                              <AvatarFallback className="bg-[#FB432C] text-white text-xs font-semibold">{testimonial.name[0]}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-bold text-black tracking-tight flex items-center gap-1.5">
+                              <div className="text-sm font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight flex items-center gap-1.5">
                                 {testimonial.name}
-                                <ArrowUpRight className="w-3 h-3 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <ArrowUpRight className="w-3.5 h-3.5 text-[#FB432C] opacity-0 group-hover:opacity-100 transition-opacity" />
                               </div>
-                              <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{testimonial.role}</div>
+                              <div className="text-[11px] font-medium text-[#737373] dark:text-[#85858B]">{testimonial.role}</div>
                             </div>
                           </div>
                         </CardContent>
@@ -166,16 +166,18 @@ export default function WallOfLoveSection() {
           </div>
 
           {!isExpanded && testimonials.length > 3 && (
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-8 z-10" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#FAFAFA] via-[#FAFAFA]/80 dark:from-[#111113] dark:via-[#111113]/80 to-transparent flex items-end justify-center pb-6 z-10 pointer-events-none" />
           )}
         </motion.div>
 
-        <div className="mt-12 flex justify-center">
+        <div className="mt-10 flex justify-center">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
-              "group relative flex items-center gap-3 px-8 h-12 bg-black text-white rounded-full font-medium text-sm transition-all duration-300 shadow-xl shadow-black/20 hover:bg-[#FB432C] hover:scale-[1.02] active:scale-[0.98]",
-              isExpanded && "bg-[#FB432C] text-white border-transparent shadow-brand-primary/20 hover:bg-black"
+              "group relative flex items-center gap-2.5 px-7 h-11 rounded-full font-semibold text-sm transition-colors cursor-pointer",
+              isExpanded
+                ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113]"
+                : "bg-[#FB432C] hover:bg-[#E03923] text-white"
             )}
           >
             {isExpanded ? (

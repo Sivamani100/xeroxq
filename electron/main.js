@@ -184,36 +184,53 @@ function cleanupTempFolder() {
   }
 }
 
-// Set Windows App User Model ID so Windows taskbar uses XeroxQ name & custom icon
-if (process.platform === 'win32') {
-  app.setAppUserModelId('com.xeroxq.desktop');
-}
-
 let mainWindow;
 
-// Returns the correct desktop app icon based on logo_color.png and build/icon.ico
-function getIcon() {
-  const icoPath = path.join(__dirname, '../build/icon.ico');
-  const logoColorPath = path.join(__dirname, '../public/logo_color.png');
-  const pngPath = path.join(__dirname, '../public/icon.png');
-
-  if (process.platform === 'win32' && fs.existsSync(icoPath)) {
-    return icoPath;
+// Resolve real filesystem paths (preferring app.asar.unpacked when packaged so Windows native APIs work)
+function resolveAppAsset(relPath) {
+  const unpackedCandidate = process.resourcesPath
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', relPath)
+    : null;
+  if (unpackedCandidate && fs.existsSync(unpackedCandidate)) {
+    return unpackedCandidate;
   }
-  if (fs.existsSync(logoColorPath)) return logoColorPath;
-  if (fs.existsSync(pngPath)) return pngPath;
-  if (fs.existsSync(icoPath)) return icoPath;
+  return path.join(__dirname, '..', relPath);
+}
 
-  return logoColorPath;
+// Returns a valid NativeImage (preferring 512x512 PNG because nativeImage decodes PNG cleanly on Windows/macOS/Linux)
+function getAppIcon() {
+  const candidates = [
+    resolveAppAsset('build/icon.png'),
+    resolveAppAsset('public/logo_color.png'),
+    resolveAppAsset('public/icon.png'),
+    resolveAppAsset('build/icon.ico'),
+  ];
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+    try {
+      const img = nativeImage.createFromPath(candidate);
+      if (img && !img.isEmpty()) {
+        return { path: candidate, image: img };
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  const fallbackPath = resolveAppAsset('build/icon.ico');
+  return { path: fallbackPath, image: null };
+}
+
+function getIcon() {
+  return getAppIcon().path;
 }
 
 // Update icon dynamically when system theme changes
 nativeTheme.on('updated', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    const iconPath = getIcon();
-    const icon = nativeImage.createFromPath(iconPath);
-    if (!icon.isEmpty()) {
-      mainWindow.setIcon(icon);
+    const { image } = getAppIcon();
+    if (image && !image.isEmpty()) {
+      mainWindow.setIcon(image);
     }
   }
 });
@@ -244,8 +261,7 @@ function attachNavigationGuards(win) {
 }
 
 function createWindow() {
-  const iconPath = getIcon();
-  const appIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null;
+  const { path: iconPath, image: appIcon } = getAppIcon();
 
   mainWindow = new BrowserWindow({
     title: 'XeroxQ',
@@ -313,13 +329,6 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
-  // Dynamically swap the taskbar/window icon when the system theme changes
-  nativeTheme.on('updated', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setIcon(getIcon());
-    }
-  });
 }
 
 function isSafeExternalUrl(urlStr) {
@@ -366,11 +375,10 @@ ipcMain.handle('open-studio-window', async (_event, params) => {
       return { success: false, error: 'Untrusted document source blocked' };
     }
 
-    const iconPath = getIcon();
-    const studioIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null;
+    const { path: iconPath, image: studioIcon } = getAppIcon();
     const studioWin = new BrowserWindow({
       title: 'XeroxQ Studio',
-      icon: studioIcon || iconPath,
+      icon: (studioIcon && !studioIcon.isEmpty()) ? studioIcon : iconPath,
       width: 1280,
       height: 900,
       minWidth: 1000,

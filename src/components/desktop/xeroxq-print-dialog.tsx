@@ -16,6 +16,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '@/lib/supabase';
+import { detectDocumentBoundsFromImage } from '@/lib/image-auto-crop';
+import { ThemeToggle } from '@/lib/theme';
 
 // Disable default CSS for react-pdf to prevent conflicts
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -427,6 +429,33 @@ export default function XeroxQPrintDialog({
     commitCropRef.current = commitCrop;
   });
 
+  const autoDetectCropInStudio = () => {
+    const imgElement = document.getElementById('laboratory-preview-image') as HTMLImageElement | null;
+    if (!imgElement || !imgElement.complete) {
+      setIsCropMode(true);
+      return;
+    }
+    try {
+      const analysis = detectDocumentBoundsFromImage(imgElement);
+      if (analysis.wasAutoCropped) {
+        const l = Math.round(analysis.rect.x * imgRect.w);
+        const r = Math.max(0, Math.round((1 - analysis.rect.x - analysis.rect.width) * imgRect.w));
+        const t = Math.round(analysis.rect.y * imgRect.h);
+        const b = Math.max(0, Math.round((1 - analysis.rect.y - analysis.rect.height) * imgRect.h));
+        setCropRect({ l, r, t, b });
+        setIsCropMode(true);
+        setAppliedSettingsMessage('Smart Edges Detected — Adjust or Confirm Crop');
+      } else {
+        setIsCropMode(true);
+        setAppliedSettingsMessage('Drag Handles to Crop');
+      }
+    } catch {
+      setIsCropMode(true);
+      setAppliedSettingsMessage('Drag Handles to Crop');
+    }
+    setTimeout(() => setAppliedSettingsMessage(null), 3000);
+  };
+
   // Smart Presets Handler
   const applyPreset = (presetName: string) => {
     setActivePreset(presetName);
@@ -449,7 +478,11 @@ export default function XeroxQPrintDialog({
         setExposure(105);
         setSaturation(100);
         setImgRect(prev => ({ ...prev, x: 0, y: 0 }));
-        setAppliedSettingsMessage('Applied ID Card Optimization');
+        if (isImage && !croppedDataUrl) {
+          autoDetectCropInStudio();
+        } else {
+          setAppliedSettingsMessage('Applied ID Card Optimization');
+        }
         break;
       case 'vivid':
         setBrightness(105);
@@ -1052,24 +1085,25 @@ export default function XeroxQPrintDialog({
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-white text-[#0F172A] z-[99999] flex flex-col font-sans select-none overflow-hidden">
-      
+    <div className="fixed inset-0 w-screen h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] z-[99999] flex flex-col font-sans select-none overflow-hidden">
+
       {/* Studio Header Bar */}
-      <header className="h-[48px] border-b border-[#E2E8F0] bg-white px-5 flex items-center justify-between shrink-0 z-30">
+      <header className="h-[48px] border-b border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] px-5 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-[6px] flex items-center justify-center p-0.5 shadow-sm overflow-hidden shrink-0">
+          <div className="w-7 h-7 rounded-[6px] flex items-center justify-center p-0.5 overflow-hidden shrink-0">
             <img src="/logo_color.png" alt="XeroxQ Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="font-black text-[14px] text-slate-900 tracking-tight">XeroxQ Studio</span>
+          <span className="font-semibold text-[14px] text-[#171717] dark:text-[#EDEDED] tracking-tight">XeroxQ Studio</span>
         </div>
 
         <div className="flex items-center gap-2 pr-32">
+          <ThemeToggle compact showLabel={false} />
           <button
             onClick={() => setShowShortcutsModal(true)}
-            className="h-[32px] w-[32px] flex items-center justify-center bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-[6px] text-black hover:border-black/20 transition-all cursor-pointer shadow-xs"
+            className="h-[32px] w-[32px] flex items-center justify-center bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] rounded-[6px] text-[#171717] dark:text-[#EDEDED] transition-colors cursor-pointer"
             title="Keyboard Shortcuts (?)"
           >
-            <HelpCircle className="w-4 h-4 text-black" />
+            <HelpCircle className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -1078,23 +1112,23 @@ export default function XeroxQPrintDialog({
       <div className="flex-1 flex overflow-hidden relative">
 
         {/* LEFT LABORATORY CONTROL SIDEBAR */}
-        <div className="w-[280px] xl:w-[310px] bg-white border-r border-slate-200/80 flex flex-col shrink-0 relative z-30 shadow-xs">
-          
+        <div className="w-[280px] xl:w-[310px] bg-white dark:bg-[#19191B] border-r border-[#171717]/[0.08] dark:border-white/[0.08] flex flex-col shrink-0 relative z-30">
+
           <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-thin">
-            
+
             {/* Paper Size & Orientation & Alignment */}
             <div className="space-y-3">
-               <label className="text-[11px] font-bold text-slate-500 ml-0.5">Canvas Layout & Paper</label>
-               
+               <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] ml-0.5">Canvas Layout &amp; Paper</label>
+
                {/* Paper Size Switcher */}
-               <div className="bg-slate-100/80 p-1 rounded-xl grid grid-cols-4 gap-1 border border-slate-200/60">
+               <div className="bg-[#F4F4F5] dark:bg-[#232325] p-1 rounded-xl grid grid-cols-4 gap-1 border border-[#171717]/[0.06] dark:border-white/[0.06]">
                   {(['A4', 'Legal', 'A3', 'Letter'] as const).map(s => (
                     <button
                       key={s}
                       onClick={() => { setPaperSize(s); pushHistory(); }}
                       className={cn(
-                        "py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                        paperSize === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                        "py-1.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer",
+                        paperSize === s ? "bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                       )}
                     >
                       {s}
@@ -1102,12 +1136,12 @@ export default function XeroxQPrintDialog({
                   ))}
                </div>
 
-               <div className="bg-slate-100/80 p-1 rounded-xl grid grid-cols-2 gap-1 border border-slate-200/60">
+               <div className="bg-[#F4F4F5] dark:bg-[#232325] p-1 rounded-xl grid grid-cols-2 gap-1 border border-[#171717]/[0.06] dark:border-white/[0.06]">
                   <button
                     onClick={() => { setOrientation('portrait'); pushHistory(); }}
                     className={cn(
-                      "h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                      orientation === 'portrait' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                      "h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer",
+                      orientation === 'portrait' ? "bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                     )}
                   >
                      <Layout className="w-3.5 h-3.5" /> Portrait
@@ -1115,8 +1149,8 @@ export default function XeroxQPrintDialog({
                   <button
                     onClick={() => { setOrientation('landscape'); pushHistory(); }}
                     className={cn(
-                      "h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                      orientation === 'landscape' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                      "h-9 flex items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer",
+                      orientation === 'landscape' ? "bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                     )}
                   >
                      <Layout className="w-3.5 h-3.5 rotate-90" /> Landscape
@@ -1126,14 +1160,14 @@ export default function XeroxQPrintDialog({
                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
                   <button
                     onClick={() => { setImgRect(prev => ({ ...prev, x: 0 })); pushHistory(); }}
-                    className="h-8 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                    className="h-8 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] rounded-xl text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED] transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     title="Center Horizontally"
                   >
                      <AlignCenter className="w-3 h-3" /> Center X
                   </button>
                   <button
                     onClick={() => { setImgRect(prev => ({ ...prev, y: 0 })); pushHistory(); }}
-                    className="h-8 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                    className="h-8 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] rounded-xl text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED] transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     title="Center Vertically"
                   >
                      <AlignCenter className="w-3 h-3 rotate-90" /> Center Y
@@ -1153,7 +1187,7 @@ export default function XeroxQPrintDialog({
                       setImgRect(prev => ({ ...prev, x: 0, y: 0, w: targetW, h: targetH }));
                       pushHistory();
                     }}
-                    className="h-8 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                    className="h-8 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] rounded-xl text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED] transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     title="Fit Page"
                   >
                      <Maximize className="w-3 h-3" /> Fit Page
@@ -1161,28 +1195,28 @@ export default function XeroxQPrintDialog({
                </div>
             </div>
 
-            <div className="h-px bg-slate-200/70 w-full" />
+            <div className="h-px bg-[#171717]/[0.08] dark:bg-white/[0.08] w-full" />
 
             {/* Brightness & Exposure */}
             <div className="grid grid-cols-2 gap-3">
                <div className="space-y-2">
                  <div className="flex justify-between items-center">
-                   <label className="text-[11px] font-bold text-slate-500">Brightness</label>
-                   <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{brightness}%</span>
+                   <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Brightness</label>
+                   <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{brightness}%</span>
                  </div>
                  <div className="flex items-center gap-2">
-                   <Sun className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                   <input type="range" min="0" max="200" value={brightness} onChange={(e) => setBrightness(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                   <Sun className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                   <input type="range" min="0" max="200" value={brightness} onChange={(e) => setBrightness(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                  </div>
                </div>
                <div className="space-y-2">
                  <div className="flex justify-between items-center">
-                   <label className="text-[11px] font-bold text-slate-500">Exposure</label>
-                   <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{exposure}%</span>
+                   <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Exposure</label>
+                   <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{exposure}%</span>
                  </div>
                  <div className="flex items-center gap-2">
-                   <Sparkles className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                   <input type="range" min="0" max="250" value={exposure} onChange={(e) => setExposure(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                   <Sparkles className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                   <input type="range" min="0" max="250" value={exposure} onChange={(e) => setExposure(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                  </div>
                </div>
             </div>
@@ -1191,93 +1225,93 @@ export default function XeroxQPrintDialog({
             <div className="grid grid-cols-2 gap-3">
                <div className="space-y-2">
                  <div className="flex justify-between items-center">
-                   <label className="text-[11px] font-bold text-slate-500">Contrast</label>
-                   <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{contrast}%</span>
+                   <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Contrast</label>
+                   <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{contrast}%</span>
                  </div>
                  <div className="flex items-center gap-2">
-                   <Contrast className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                   <input type="range" min="0" max="200" value={contrast} onChange={(e) => setContrast(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                   <Contrast className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                   <input type="range" min="0" max="200" value={contrast} onChange={(e) => setContrast(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                  </div>
                </div>
                <div className="space-y-2">
                  <div className="flex justify-between items-center">
-                   <label className="text-[11px] font-bold text-slate-500">Threshold</label>
-                   <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{threshold === 0 ? "Off" : threshold}</span>
+                   <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Threshold</label>
+                   <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{threshold === 0 ? "Off" : threshold}</span>
                  </div>
                  <div className="flex items-center gap-2">
-                   <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                   <input type="range" min="0" max="200" value={threshold} onChange={(e) => setThreshold(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                   <Layers className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                   <input type="range" min="0" max="200" value={threshold} onChange={(e) => setThreshold(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                  </div>
                </div>
             </div>
 
-            <div className="h-px bg-slate-200/70 w-full" />
+            <div className="h-px bg-[#171717]/[0.08] dark:bg-white/[0.08] w-full" />
 
             {/* Hue & Saturation */}
             <div className="space-y-2">
                <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-bold text-slate-500">Hue & Saturation</label>
-                  <div className="flex gap-2 text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                  <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Hue &amp; Saturation</label>
+                  <div className="flex gap-2 text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">
                      <span>H: {hue}°</span>
                      <span>S: {saturation}%</span>
                   </div>
                </div>
                <div className="flex items-center gap-2 mb-1.5">
-                 <Droplet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                 <input type="range" min="0" max="360" value={hue} onChange={(e) => setHue(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                 <Droplet className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                 <input type="range" min="0" max="360" value={hue} onChange={(e) => setHue(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                </div>
                <div className="flex items-center gap-2">
                  <div className="w-3.5 h-3.5 shrink-0" />
-                 <input type="range" min="0" max="200" value={saturation} onChange={(e) => setSaturation(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                 <input type="range" min="0" max="200" value={saturation} onChange={(e) => setSaturation(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                </div>
             </div>
 
             {/* Content Scaling (PDF) */}
             <div className="space-y-2">
                <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-bold text-slate-500">PDF Scale</label>
-                  <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{contentScale}%</span>
+                  <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">PDF Scale</label>
+                  <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{contentScale}%</span>
                </div>
                <div className="flex items-center gap-2">
-                 <Maximize className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                 <input type="range" min="50" max="200" value={contentScale} onChange={(e) => setContentScale(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" />
+                 <Maximize className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                 <input type="range" min="50" max="200" value={contentScale} onChange={(e) => setContentScale(parseInt(e.target.value))} onMouseUp={() => pushHistory()} onTouchEnd={() => pushHistory()} className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer" />
                </div>
             </div>
 
-            <div className="h-px bg-slate-200/70 w-full" />
+            <div className="h-px bg-[#171717]/[0.08] dark:bg-white/[0.08] w-full" />
 
             {/* Rotation & Angle Control Section */}
             <div className="space-y-2">
                <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-                     <RotateCcw className="w-3.5 h-3.5 text-slate-700" /> Rotation Angle
+                  <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] flex items-center gap-1.5">
+                     <RotateCcw className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" /> Rotation Angle
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{rotation}°</span>
+                  <span className="text-[10px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] bg-[#F4F4F5] dark:bg-[#232325] px-1.5 py-0.5 rounded">{rotation}°</span>
                </div>
-               
+
                <div className="flex items-center gap-2 mb-2">
-                  <RotateCcw className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="360" 
-                    value={rotation} 
-                    onChange={(e) => setRotation(parseInt(e.target.value))} 
-                    onMouseUp={() => pushHistory()} 
-                    onTouchEnd={() => pushHistory()} 
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-black cursor-pointer" 
+                  <RotateCcw className="w-3.5 h-3.5 text-[#737373] dark:text-[#85858B] shrink-0" />
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    value={rotation}
+                    onChange={(e) => setRotation(parseInt(e.target.value))}
+                    onMouseUp={() => pushHistory()}
+                    onTouchEnd={() => pushHistory()}
+                    className="w-full h-1.5 bg-[#E4E4E7] dark:bg-[#232325] rounded-lg appearance-none accent-[#FB432C] cursor-pointer"
                   />
                </div>
 
                {/* Presets & Fine-Tune Steppers */}
-               <div className="bg-slate-100/80 p-1 rounded-xl grid grid-cols-4 gap-1 border border-slate-200/60">
+               <div className="bg-[#F4F4F5] dark:bg-[#232325] p-1 rounded-xl grid grid-cols-4 gap-1 border border-[#171717]/[0.06] dark:border-white/[0.06]">
                   {[0, 90, 180, 270].map(deg => (
                      <button
                        key={deg}
                        onClick={() => { setRotation(deg); pushHistory(); }}
                        className={cn(
-                         "py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                         rotation === deg ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                         "py-1.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer",
+                         rotation === deg ? "bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                        )}
                      >
                         {deg}°
@@ -1288,13 +1322,13 @@ export default function XeroxQPrintDialog({
 
             {/* Quick Transform Grid */}
             <div className="grid grid-cols-3 gap-1.5">
-               <button onClick={() => { setInvert(!invert); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-bold transition-all cursor-pointer", invert ? "bg-black text-white border-black shadow-xs" : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900")}>
+               <button onClick={() => { setInvert(!invert); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-semibold transition-colors cursor-pointer", invert ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] border-[#171717] dark:border-[#EDEDED]" : "bg-[#F4F4F5] dark:bg-[#232325] border-[#171717]/[0.08] dark:border-white/[0.08] text-[#171717] dark:text-[#EDEDED] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E]")}>
                  Invert
                </button>
-               <button onClick={() => { setMirrorH(!mirrorH); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-bold transition-all cursor-pointer", mirrorH ? "bg-blue-600 text-white border-blue-600 shadow-xs" : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900")}>
+               <button onClick={() => { setMirrorH(!mirrorH); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-semibold transition-colors cursor-pointer", mirrorH ? "bg-[#FB432C] text-white border-[#FB432C]" : "bg-[#F4F4F5] dark:bg-[#232325] border-[#171717]/[0.08] dark:border-white/[0.08] text-[#171717] dark:text-[#EDEDED] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E]")}>
                  Mirror H
                </button>
-               <button onClick={() => { setMirrorV(!mirrorV); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-bold transition-all cursor-pointer", mirrorV ? "bg-blue-600 text-white border-blue-600 shadow-xs" : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900")}>
+               <button onClick={() => { setMirrorV(!mirrorV); pushHistory(); }} className={cn("h-9 flex items-center justify-center gap-1 rounded-xl border text-[11px] font-semibold transition-colors cursor-pointer", mirrorV ? "bg-[#FB432C] text-white border-[#FB432C]" : "bg-[#F4F4F5] dark:bg-[#232325] border-[#171717]/[0.08] dark:border-white/[0.08] text-[#171717] dark:text-[#EDEDED] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E]")}>
                  Mirror V
                </button>
             </div>
@@ -1302,23 +1336,36 @@ export default function XeroxQPrintDialog({
             {/* IMAGE CROP ENGINE SECTION */}
             <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                   <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-                      <Crop className="w-3.5 h-3.5 text-slate-900" /> Crop Image Tool
+                   <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] flex items-center gap-1.5">
+                      <Crop className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" /> Crop Image Tool
                    </label>
-                   {croppedDataUrl && <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">Cropped</span>}
+                   {croppedDataUrl && <span className="text-[10px] font-semibold text-[#16A34A] dark:text-[#4CC38A] bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 px-2 py-0.5 rounded-full border border-[#16A34A]/20 dark:border-[#4CC38A]/25">Cropped</span>}
                 </div>
-                
-                <button 
-                  onClick={commitCrop} 
-                  disabled={rotation !== 0}
-                  className={cn("w-full h-10 flex items-center justify-center gap-2 rounded-xl border transition-all font-bold text-[12px] shadow-sm cursor-pointer", 
-                    isCropMode ? "bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20 animate-pulse" : "bg-slate-900 text-white border-slate-900 hover:bg-black",
-                    rotation !== 0 && "opacity-50 cursor-not-allowed"
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={commitCrop}
+                    disabled={rotation !== 0}
+                    className={cn("flex-1 h-10 flex items-center justify-center gap-2 rounded-xl border transition-colors font-semibold text-[12px] cursor-pointer",
+                      isCropMode ? "bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113] border-[#16A34A] dark:border-[#4CC38A]" : "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] border-[#171717] dark:border-[#EDEDED] hover:opacity-90",
+                      rotation !== 0 && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                     <Crop className="w-3.5 h-3.5" />
+                     {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm & Apply Crop" : "Crop Image Mode")}
+                  </button>
+                  {isImage && !isCropMode && rotation === 0 && (
+                    <button
+                      type="button"
+                      onClick={autoDetectCropInStudio}
+                      title="Auto-detect Aadhaar / ID / Document edges"
+                      className="h-10 px-3 flex items-center justify-center gap-1.5 rounded-xl bg-[#FB432C]/10 hover:bg-[#FB432C]/20 text-[#FB432C] border border-[#FB432C]/20 text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
+                    >
+                      <ScanLine className="w-3.5 h-3.5" />
+                      <span>Auto</span>
+                    </button>
                   )}
-                >
-                   <Crop className="w-3.5 h-3.5" /> 
-                   {rotation !== 0 ? "Reset Rotation to Crop" : (isCropMode ? "Confirm & Apply Crop" : "Crop Image Mode")}
-                </button>
+                </div>
 
                 {/* Live Crop Selection Stats Card */}
                 {isCropMode && (
@@ -1351,9 +1398,9 @@ export default function XeroxQPrintDialog({
                 )}
 
                 {(isCropMode || croppedDataUrl) && (
-                   <button 
+                   <button
                      onClick={resetCrop}
-                     className="w-full h-8 bg-white border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-xl text-[10px] font-bold text-slate-600 transition-all cursor-pointer"
+                     className="w-full h-8 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#DC2626]/10 hover:text-[#DC2626] dark:hover:bg-[#E5484D]/15 dark:hover:text-[#E5484D] rounded-xl text-[10px] font-semibold text-[#525252] dark:text-[#A1A1A6] transition-colors cursor-pointer"
                    >
                      Reset Original Uncropped Image
                    </button>
@@ -1365,83 +1412,83 @@ export default function XeroxQPrintDialog({
         </div>
 
         {/* === ULTRA-WIDE CONTINUOUS PREVIEW CANVAS === */}
-        <div className="flex-1 bg-[#F8FAFC] relative flex flex-col overflow-hidden">
-          
+        <div className="flex-1 bg-[#F4F4F5] dark:bg-[#111113] relative flex flex-col overflow-hidden">
+
           {/* Studio Top Control Overlay Bar */}
           <div className="absolute top-4 left-6 right-6 flex items-center justify-between z-[100] pointer-events-none">
             {appliedSettingsMessage && (
-              <div className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase tracking-wider rounded-[5.57px] shadow-lg animate-in fade-in slide-in-from-top duration-300 pointer-events-auto">
-                ✨ {appliedSettingsMessage}
+              <div className="px-3 py-1.5 bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] text-[10px] font-semibold uppercase tracking-wider rounded-md pointer-events-auto">
+                {appliedSettingsMessage}
               </div>
             )}
           </div>
 
-          {/* Studio Bottom Floating Tools Bar (Sleek Figma Minimal Pill) */}
-          <div className="absolute bottom-5 right-6 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-[#E2E8F0] px-2.5 h-[32px] rounded-full shadow-sm z-[100] transition-all">
-             <button 
-               onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} 
-               className="h-6 w-6 flex items-center justify-center hover:bg-[#F1F5F9] rounded-full text-black transition-all active:scale-90 cursor-pointer"
+          {/* Studio Bottom Floating Tools Bar */}
+          <div className="absolute bottom-5 right-6 flex items-center gap-1 bg-white/95 dark:bg-[#19191B]/95 backdrop-blur-md border border-[#171717]/[0.10] dark:border-white/[0.10] px-2.5 h-[32px] rounded-full z-[100]">
+             <button
+               onClick={() => setZoom(z => Math.max(0.2, z - 0.1))}
+               className="h-6 w-6 flex items-center justify-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] rounded-full text-[#171717] dark:text-[#EDEDED] transition-colors active:scale-90 cursor-pointer"
                title="Zoom Out"
              >
                 <Minus className="w-3 h-3" />
              </button>
-             <button 
-               onClick={() => setZoom(0.8)} 
-               className="w-10 text-center hover:bg-[#F1F5F9] py-0.5 rounded transition-colors cursor-pointer"
+             <button
+               onClick={() => setZoom(0.8)}
+               className="w-10 text-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] py-0.5 rounded transition-colors cursor-pointer"
                title="Click to Reset Zoom (80%)"
              >
-                <span className="text-[10px] font-extrabold text-black tabular-nums">{Math.round(zoom * 100)}%</span>
+                <span className="text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">{Math.round(zoom * 100)}%</span>
              </button>
-             <button 
-               onClick={() => setZoom(z => Math.min(3.0, z + 0.1))} 
-               className="h-6 w-6 flex items-center justify-center hover:bg-[#F1F5F9] rounded-full text-black transition-all active:scale-90 cursor-pointer"
+             <button
+               onClick={() => setZoom(z => Math.min(3.0, z + 0.1))}
+               className="h-6 w-6 flex items-center justify-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] rounded-full text-[#171717] dark:text-[#EDEDED] transition-colors active:scale-90 cursor-pointer"
                title="Zoom In"
              >
                 <Plus className="w-3 h-3" />
              </button>
-             
-             <div className="w-px h-3.5 bg-[#E2E8F0] mx-1" />
 
-             <button 
-                onClick={handleUndo} 
+             <div className="w-px h-3.5 bg-[#171717]/[0.10] dark:bg-white/[0.10] mx-1" />
+
+             <button
+                onClick={handleUndo}
                 disabled={!canUndo}
-                className="h-6 w-6 flex items-center justify-center hover:bg-[#F1F5F9] rounded-full text-black transition-all active:scale-90 disabled:opacity-25 cursor-pointer"
+                className="h-6 w-6 flex items-center justify-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] rounded-full text-[#171717] dark:text-[#EDEDED] transition-colors active:scale-90 disabled:opacity-25 cursor-pointer"
                 title="Undo (Ctrl+Z)"
              >
                 <Undo2 className="w-3 h-3" />
              </button>
-             <button 
-                onClick={handleRedo} 
+             <button
+                onClick={handleRedo}
                 disabled={!canRedo}
-                className="h-6 w-6 flex items-center justify-center hover:bg-[#F1F5F9] rounded-full text-black transition-all active:scale-90 disabled:opacity-25 cursor-pointer"
+                className="h-6 w-6 flex items-center justify-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] rounded-full text-[#171717] dark:text-[#EDEDED] transition-colors active:scale-90 disabled:opacity-25 cursor-pointer"
                 title="Redo (Ctrl+Y)"
              >
                 <Redo2 className="w-3 h-3" />
              </button>
 
-             <div className="w-px h-3.5 bg-[#E2E8F0] mx-1" />
+             <div className="w-px h-3.5 bg-[#171717]/[0.10] dark:bg-white/[0.10] mx-1" />
 
-             <button 
+             <button
                 onClick={() => {
                   setIsScaleMode(s => !s);
-                  setAppliedSettingsMessage(!isScaleMode ? 'Figma Scale Tool (K) Active' : 'Select Tool (V) Active');
+                  setAppliedSettingsMessage(!isScaleMode ? 'Scale Tool (K) Active' : 'Select Tool (V) Active');
                   setTimeout(() => setAppliedSettingsMessage(null), 2500);
                 }}
                 className={cn(
-                  "h-6 px-2 flex items-center gap-1 rounded-full text-[9px] font-black uppercase transition-all cursor-pointer",
-                  isScaleMode ? "bg-blue-600 text-white shadow-sm" : "hover:bg-[#F1F5F9] text-slate-700"
+                  "h-6 px-2 flex items-center gap-1 rounded-full text-[9px] font-semibold uppercase transition-colors cursor-pointer",
+                  isScaleMode ? "bg-[#FB432C] text-white" : "hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#525252] dark:text-[#A1A1A6]"
                 )}
-                title="Figma Scale Tool (HotKey: K)"
+                title="Scale Tool (HotKey: K)"
              >
                 <Maximize className="w-2.5 h-2.5" />
                 <span>{isScaleMode ? "K: Scaling" : "V: Select"}</span>
              </button>
 
-             <div className="w-px h-3.5 bg-[#E2E8F0] mx-1" />
+             <div className="w-px h-3.5 bg-[#171717]/[0.10] dark:bg-white/[0.10] mx-1" />
 
-             <button 
-                onClick={() => { setZoom(0.8); setRotation(0); }} 
-                className="h-6 w-6 flex items-center justify-center hover:bg-[#F1F5F9] rounded-full text-black transition-all active:rotate-180 duration-500 cursor-pointer" 
+             <button
+                onClick={() => { setZoom(0.8); setRotation(0); }}
+                className="h-6 w-6 flex items-center justify-center hover:bg-[#F4F4F5] dark:hover:bg-[#232325] rounded-full text-[#171717] dark:text-[#EDEDED] transition-all active:rotate-180 duration-500 cursor-pointer"
                 title="Reset View & Rotation"
              >
                 <RotateCcw className="w-3 h-3" />
@@ -1449,15 +1496,9 @@ export default function XeroxQPrintDialog({
           </div>
 
           {/* Continuous Scroll Surface */}
-          <div 
+          <div
             ref={previewContainerRef}
-            className="flex-1 overflow-auto relative custom-scrollbar p-12 touch-none"
-            style={{ 
-              backgroundImage: 'linear-gradient(45deg, #E2E8F0 25%, transparent 25%, transparent 75%, #E2E8F0 75%, #E2E8F0), linear-gradient(45deg, #E2E8F0 25%, transparent 25%, transparent 75%, #E2E8F0 75%, #E2E8F0)',
-              backgroundSize: '20px 20px',
-              backgroundPosition: '0 0, 10px 10px',
-              backgroundColor: '#F8FAFC'
-            }}
+            className="flex-1 overflow-auto relative custom-scrollbar p-12 touch-none bg-[#EAECEF] dark:bg-[#111113]"
           >
             <div 
               className="max-w-max mx-auto space-y-0 pb-24 h-full"
@@ -1910,19 +1951,19 @@ export default function XeroxQPrintDialog({
         </div>
 
         {/* === HARDWARE OUTPUT SIDEBAR (RIGHT) === */}
-        <div className="w-[300px] xl:w-[325px] bg-white border-l border-slate-200/80 flex flex-col shrink-0 relative z-30 shadow-xs">
-          
+        <div className="w-[300px] xl:w-[325px] bg-white dark:bg-[#19191B] border-l border-[#171717]/[0.08] dark:border-white/[0.08] flex flex-col shrink-0 relative z-30">
+
           <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin">
 
             {/* HARDWARE OUTPUT SELECTOR */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-500 ml-0.5">Hardware Output</label>
+                <label className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] ml-0.5">Hardware Output</label>
                 <button
                   onClick={fetchPrinters}
                   disabled={printersLoading}
                   title="Refresh printer list"
-                  className="h-6 w-6 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-900 transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                  className="h-6 w-6 flex items-center justify-center rounded-lg border border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#525252] dark:text-[#A1A1A6] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors disabled:opacity-40 cursor-pointer"
                 >
                   <RefreshCw className={`w-3 h-3 ${printersLoading ? 'animate-spin' : ''}`} />
                 </button>
@@ -1930,12 +1971,12 @@ export default function XeroxQPrintDialog({
               <select
                 value={selectedPrinter}
                 onChange={e => setSelectedPrinter(e.target.value)}
-                className="w-full h-11 bg-slate-50 border border-slate-200/90 rounded-xl text-[12px] font-bold text-slate-900 px-3.5 hover:border-slate-300 focus:border-black outline-none transition-all cursor-pointer shadow-2xs appearance-none"
+                className="w-full h-11 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-xl text-[12px] font-semibold text-[#171717] dark:text-[#EDEDED] px-3.5 focus:border-[#FB432C] outline-none transition-colors cursor-pointer appearance-none"
               >
                 {printersLoading ? (
                   <option value="" disabled>Scanning for printers…</option>
                 ) : printers.length === 0 ? (
-                  <option value="" disabled>No printers found — click ↻ to retry</option>
+                  <option value="" disabled>No printers found — click refresh to retry</option>
                 ) : (
                   printers.map((p) => (
                     <option key={p.name} value={p.name}>
@@ -1945,40 +1986,40 @@ export default function XeroxQPrintDialog({
                 )}
               </select>
               {!printersLoading && printers.length === 0 && (
-                <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                  Connect a printer and click ↻ above to refresh
+                <p className="text-[10.5px] font-medium text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/25 rounded-lg px-2.5 py-1.5">
+                  Connect a printer and click refresh above to scan
                 </p>
               )}
             </div>
 
             {/* COPIES STEPPER */}
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500 ml-1">Copies</span>
+            <div className="flex items-center justify-between bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-2xl p-3.5">
+              <span className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] ml-1">Copies</span>
               <div className="flex items-center gap-3">
-                <button onClick={() => setCopies(Math.max(1, copies - 1))} className="h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 font-extrabold shadow-2xs hover:bg-slate-100 active:scale-95 transition-all cursor-pointer">
+                <button onClick={() => setCopies(Math.max(1, copies - 1))} className="h-8 w-8 flex items-center justify-center rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED] font-semibold hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] active:scale-95 transition-colors cursor-pointer">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[15px] font-mono font-bold text-slate-900 w-6 text-center tabular-nums">{copies}</span>
-                <button onClick={() => setCopies(copies + 1)} className="h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 font-extrabold shadow-2xs hover:bg-slate-100 active:scale-95 transition-all cursor-pointer">
+                <span className="text-[15px] font-mono font-semibold text-[#171717] dark:text-[#EDEDED] w-6 text-center tabular-nums">{copies}</span>
+                <button onClick={() => setCopies(copies + 1)} className="h-8 w-8 flex items-center justify-center rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED] font-semibold hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] active:scale-95 transition-colors cursor-pointer">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
             {/* PAGE RANGE SELECTOR */}
-            <div className="space-y-3 bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl shadow-2xs">
-              <label className="text-[11px] font-bold text-slate-900 flex items-center justify-between">
+            <div className="space-y-3 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] p-3.5 rounded-2xl">
+              <label className="text-[11px] font-semibold text-[#171717] dark:text-[#EDEDED] flex items-center justify-between">
                 <span>Page Range</span>
-                <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{effectivePages} pages selected</span>
+                <span className="text-[10px] font-semibold text-[#FB432C] bg-[#FB432C]/10 px-2 py-0.5 rounded-full">{effectivePages} pages selected</span>
               </label>
-              <div className="bg-slate-200/70 p-1 rounded-xl grid grid-cols-4 gap-1 border border-slate-200/60">
+              <div className="bg-[#E4E4E7]/70 dark:bg-[#19191B] p-1 rounded-xl grid grid-cols-4 gap-1">
                 {(['all', 'odd', 'even', 'custom'] as const).map(m => (
                   <button
                     key={m}
                     onClick={() => setPageRangeMode(m)}
                     className={cn(
-                      "py-1.5 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer",
-                      pageRangeMode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                      "py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer",
+                      pageRangeMode === m ? "bg-white dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED]" : "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
                     )}
                   >
                     {m}
@@ -1991,32 +2032,32 @@ export default function XeroxQPrintDialog({
                   placeholder="e.g. 1-3, 5, 8-10"
                   value={customRangeInput}
                   onChange={e => setCustomRangeInput(e.target.value)}
-                  className="w-full h-9 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-900 px-3 outline-none focus:border-black transition-all shadow-2xs"
+                  className="w-full h-9 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-xl text-[11px] font-medium text-[#171717] dark:text-[#EDEDED] px-3 outline-none focus:border-[#FB432C] transition-colors"
                 />
               )}
             </div>
 
             {/* REAL-TIME COST CALCULATOR PANEL */}
-            <div className="space-y-3 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl shadow-sm">
+            <div className="space-y-3 bg-[#16A34A]/10 dark:bg-[#4CC38A]/10 border border-[#16A34A]/20 dark:border-[#4CC38A]/25 p-4 rounded-2xl">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
-                  <IndianRupee className="w-3.5 h-3.5 text-emerald-600" /> Billing Calculator
+                <label className="text-[11px] font-semibold text-[#171717] dark:text-[#EDEDED] flex items-center gap-1.5">
+                  <IndianRupee className="w-3.5 h-3.5 text-[#16A34A] dark:text-[#4CC38A]" /> Billing Calculator
                 </label>
-                <span className="text-[18px] font-black text-emerald-600 tabular-nums">₹{estimatedCost}</span>
+                <span className="text-[18px] font-semibold text-[#16A34A] dark:text-[#4CC38A] tabular-nums">₹{estimatedCost}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-emerald-900">
-                <div className="flex items-center justify-between bg-white/90 p-2 rounded-xl border border-emerald-200/60 shadow-2xs">
-                  <span>B&W Rate:</span>
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED]">
+                <div className="flex items-center justify-between bg-white dark:bg-[#19191B] p-2 rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08]">
+                  <span>B&amp;W Rate:</span>
                   <div className="flex items-center gap-1">
                     <span>₹</span>
-                    <input type="number" min="1" max="100" value={bwRate} onChange={e => setBwRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-emerald-400 font-bold outline-none" />
+                    <input type="number" min="1" max="100" value={bwRate} onChange={e => setBwRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-[#16A34A] dark:border-[#4CC38A] font-semibold outline-none" />
                   </div>
                 </div>
-                <div className="flex items-center justify-between bg-white/90 p-2 rounded-xl border border-emerald-200/60 shadow-2xs">
+                <div className="flex items-center justify-between bg-white dark:bg-[#19191B] p-2 rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08]">
                   <span>Color Rate:</span>
                   <div className="flex items-center gap-1">
                     <span>₹</span>
-                    <input type="number" min="1" max="200" value={colorRate} onChange={e => setColorRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-emerald-400 font-bold outline-none" />
+                    <input type="number" min="1" max="200" value={colorRate} onChange={e => setColorRate(Math.max(1, parseInt(e.target.value) || 1))} className="w-8 text-center bg-transparent border-b border-[#16A34A] dark:border-[#4CC38A] font-semibold outline-none" />
                   </div>
                 </div>
               </div>
@@ -2026,20 +2067,20 @@ export default function XeroxQPrintDialog({
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => setSides('simplex')}
-                className={cn("flex flex-col items-center justify-center gap-1 py-3.5 px-2 rounded-2xl border transition-all cursor-pointer", sides === 'simplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100")}>
+                className={cn("flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-2xl border transition-colors cursor-pointer", sides === 'simplex' ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] border-[#171717] dark:border-[#EDEDED]" : "bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E]")}>
                 <FileText className="w-4 h-4" />
                 <div className="text-center">
-                  <div className="text-[11px] font-bold">Single Side</div>
-                  <div className={cn("text-[9px] font-bold", sides === 'simplex' ? "text-white/70" : "text-slate-400")}>Single Scan</div>
+                  <div className="text-[11px] font-semibold">Single Side</div>
+                  <div className={cn("text-[9.5px] font-medium", sides === 'simplex' ? "opacity-75" : "text-[#737373] dark:text-[#85858B]")}>One Side</div>
                 </div>
               </button>
               <button
                 onClick={() => setSides('duplex')}
-                className={cn("flex flex-col items-center justify-center gap-1 py-3.5 px-2 rounded-2xl border transition-all cursor-pointer", sides === 'duplex' ? "bg-black text-white border-black shadow-lg shadow-black/10" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100")}>
+                className={cn("flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-2xl border transition-colors cursor-pointer", sides === 'duplex' ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] border-[#171717] dark:border-[#EDEDED]" : "bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] border-[#171717]/[0.08] dark:border-white/[0.08] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E]")}>
                 <BookOpen className="w-4 h-4" />
                 <div className="text-center">
-                  <div className="text-[11px] font-bold">Double Side</div>
-                  <div className={cn("text-[9px] font-bold", sides === 'duplex' ? "text-white/70" : "text-slate-400")}>Double Scan</div>
+                  <div className="text-[11px] font-semibold">Double Side</div>
+                  <div className={cn("text-[9.5px] font-medium", sides === 'duplex' ? "opacity-75" : "text-[#737373] dark:text-[#85858B]")}>Both Sides</div>
                 </div>
               </button>
             </div>
@@ -2048,32 +2089,32 @@ export default function XeroxQPrintDialog({
             <div className="grid grid-cols-1 gap-2">
               <button
                 onClick={() => setColorMode(colorMode === 'color' ? 'monochrome' : 'color')}
-                className={cn("flex flex-col items-center justify-center gap-0.5 py-3.5 px-3 rounded-2xl border transition-all cursor-pointer", colorMode === 'color' ? "bg-orange-500 text-white border-orange-500" : "bg-slate-900 text-white border-slate-900")}>
+                className={cn("flex flex-col items-center justify-center gap-0.5 py-3 px-3 rounded-2xl border transition-colors cursor-pointer", colorMode === 'color' ? "bg-[#FB432C] text-white border-[#FB432C]" : "bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] border-[#171717]/[0.10] dark:border-white/[0.10]")}>
                 <Droplet className="w-4 h-4" />
                 <div className="text-center">
-                  <div className="text-[12px] font-bold">{colorMode === 'color' ? 'Full Color' : 'Monochrome'}</div>
-                  <div className="text-[9.5px] font-bold text-white/80">{colorMode === 'color' ? 'Vibrant Print' : 'Black & White'}</div>
+                  <div className="text-[12px] font-semibold">{colorMode === 'color' ? 'Full Color' : 'Black & White'}</div>
+                  <div className="text-[10px] font-medium opacity-80">{colorMode === 'color' ? 'Vibrant Print' : 'Monochrome'}</div>
                 </div>
               </button>
             </div>
           </div>
 
           {/* RIGHT FOOTER ACTION */}
-          <div className="p-4 border-t border-slate-200/80 bg-slate-50/80 backdrop-blur-sm flex flex-col gap-3 relative z-40">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+          <div className="p-4 border-t border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#FAFAFA] dark:bg-[#141416] flex flex-col gap-3 relative z-40">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">
               <span>Total Spool Size</span>
-              <span className="text-slate-900 font-bold">{(copies * effectivePages)} Pages</span>
+              <span className="text-[#171717] dark:text-[#EDEDED] font-semibold">{(copies * effectivePages)} Pages</span>
             </div>
             {printError && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                <X className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                <p className="text-[10px] font-bold text-red-700 leading-tight">{printError}</p>
+              <div className="flex items-center gap-2 bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border border-[#DC2626]/20 dark:border-[#E5484D]/25 rounded-xl px-3 py-2">
+                <X className="w-3.5 h-3.5 text-[#DC2626] dark:text-[#E5484D] shrink-0" />
+                <p className="text-[10.5px] font-semibold text-[#DC2626] dark:text-[#E5484D] leading-tight">{printError}</p>
               </div>
             )}
             <button
               onClick={handlePrint}
               disabled={status !== 'idle' || !selectedPrinter || printersLoading}
-              className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold text-[14px] rounded-2xl transition-all flex items-center justify-center gap-2.5 shadow-xl shadow-black/15 disabled:opacity-50 cursor-pointer transform active:scale-[0.99]"
+              className="w-full h-11 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-[13.5px] rounded-xl transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer active:scale-[0.99]"
             >
               {status === 'printing' ? <RefreshCw className="w-4 h-4 animate-spin" /> : status === 'success' ? <CheckCircle2 className="w-4 h-4" /> : status === 'error' ? <X className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
               <span>{status === 'printing' ? 'Spooling...' : status === 'success' ? 'Sent!' : status === 'error' ? 'Print Failed' : 'Print Document'}</span>
@@ -2101,27 +2142,27 @@ export default function XeroxQPrintDialog({
 
       {/* BAKE LOADING OVERLAY */}
       {isBaking && (
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 hover:cursor-wait">
+        <div className="absolute inset-0 bg-[#FAFAFA]/95 dark:bg-[#111113]/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center hover:cursor-wait">
           <div className="flex flex-col items-center gap-6 w-full max-w-sm p-10">
-            <RefreshCw className="w-12 h-12 text-black animate-spin" />
+            <RefreshCw className="w-10 h-10 text-[#FB432C] animate-spin" />
             <div className="text-center space-y-2">
-              <h2 className="text-[20px] font-bold text-black tracking-tight leading-none">Baking High-Fidelity Mesh</h2>
-              <p className="text-[#7E8B9E] text-[10px] font-bold tracking-[0.1em] uppercase">Applying Hardware Protocol Targets</p>
+              <h2 className="text-[20px] font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none">Preparing Print Pages</h2>
+              <p className="text-[#737373] dark:text-[#85858B] text-[11px] font-semibold tracking-wider uppercase">Applying Print Settings</p>
 
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <div className="bg-[#F8FAFC] p-3 rounded-[5.57px] border border-[#E2E8F0] flex flex-col items-center">
-                  <span className="text-[9px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] mb-1">Color Mode</span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-black">{colorMode === 'monochrome' ? 'B&W (Baked)' : 'Full Color'}</span>
+                <div className="bg-white dark:bg-[#19191B] p-3 rounded-lg border border-[#171717]/[0.08] dark:border-white/[0.08] flex flex-col items-center">
+                  <span className="text-[10px] font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider mb-1">Color Mode</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#171717] dark:text-[#EDEDED]">{colorMode === 'monochrome' ? 'B&W' : 'Full Color'}</span>
                 </div>
-                <div className="bg-[#F8FAFC] p-3 rounded-[5.57px] border border-[#E2E8F0] flex flex-col items-center">
-                  <span className="text-[9px] font-bold text-[#7E8B9E] uppercase tracking-[0.1em] mb-1">Duplex Layer</span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-black">{sides === 'duplex' ? 'Double Side' : 'Single Side'}</span>
+                <div className="bg-white dark:bg-[#19191B] p-3 rounded-lg border border-[#171717]/[0.08] dark:border-white/[0.08] flex flex-col items-center">
+                  <span className="text-[10px] font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider mb-1">Sides</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#171717] dark:text-[#EDEDED]">{sides === 'duplex' ? 'Double Side' : 'Single Side'}</span>
                 </div>
               </div>
 
               {sides === 'duplex' && (
-                <div className="bg-orange-50 p-3 rounded-[5.57px] border border-orange-200 mt-3 animate-pulse">
-                  <p className="text-[10px] font-bold text-[#FF591E] uppercase tracking-[0.05em]">Note: Ensure "Two-sided" is checked in the next window.</p>
+                <div className="bg-amber-500/15 p-3 rounded-lg border border-amber-500/25 mt-3">
+                  <p className="text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">Note: Ensure &quot;Two-sided&quot; is checked in the printer window.</p>
                 </div>
               )}
             </div>
@@ -2131,14 +2172,14 @@ export default function XeroxQPrintDialog({
 
       {/* GLOBAL SUCCESS TRANSMISSION OVERLAY */}
       {status === 'success' && (
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-[100] flex flex-col items-center justify-center animate-in fade-in duration-700">
-          <div className="w-16 h-16 bg-[#059669] rounded-[16px] flex items-center justify-center mb-6 shadow-xl shadow-[#059669]/20 animate-bounce">
-            <CheckCircle2 className="w-8 h-8 text-white" strokeWidth={3} />
+        <div className="absolute inset-0 bg-[#FAFAFA]/95 dark:bg-[#111113]/95 backdrop-blur-md z-[100] flex flex-col items-center justify-center">
+          <div className="w-14 h-14 bg-[#16A34A] dark:bg-[#4CC38A] rounded-2xl flex items-center justify-center mb-5">
+            <CheckCircle2 className="w-7 h-7 text-white dark:text-[#111113]" strokeWidth={2.5} />
           </div>
-          <h2 className="text-[24px] font-bold text-black tracking-tight leading-none mb-2">Spool Successful</h2>
-          <p className="text-[#7E8B9E] text-[10px] font-bold tracking-[0.1em] uppercase">Transmission Protocol Finalized</p>
+          <h2 className="text-[22px] font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none mb-2">Sent to Printer</h2>
+          <p className="text-[#737373] dark:text-[#85858B] text-[11px] font-semibold tracking-wider uppercase">Transmission Complete</p>
           {appliedSettingsMessage && (
-            <p className="text-[12px] font-bold text-emerald-600 uppercase tracking-[0.05em] mt-4 bg-emerald-50 border border-green-200 px-4 py-2 rounded-lg animate-in fade-in slide-in-from-bottom duration-300">
+            <p className="text-[12px] font-semibold text-[#16A34A] dark:text-[#4CC38A] mt-4 bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 border border-[#16A34A]/20 dark:border-[#4CC38A]/25 px-4 py-2 rounded-lg">
               {appliedSettingsMessage}
             </p>
           )}
@@ -2147,19 +2188,19 @@ export default function XeroxQPrintDialog({
 
       {/* KEYBOARD SHORTCUTS CHEAT-SHEET MODAL */}
       {showShortcutsModal && (
-        <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 bg-black text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 bg-[#171717] dark:bg-[#232325] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-[#3568FF]" />
-                <h3 className="text-[14px] font-extrabold uppercase tracking-wider">XeroxQ Hotkey Shortcuts</h3>
+                <HelpCircle className="w-4 h-4 text-[#FB432C]" />
+                <h3 className="text-[14px] font-semibold tracking-tight">XeroxQ Keyboard Shortcuts</h3>
               </div>
               <button onClick={() => setShowShortcutsModal(false)} className="hover:opacity-75 transition-opacity cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 space-y-2.5 max-h-[70vh] overflow-y-auto">
               {[
                 { key: 'Ctrl + Z', label: 'Undo step back' },
                 { key: 'Ctrl + Y', label: 'Redo step forward' },
@@ -2171,19 +2212,19 @@ export default function XeroxQPrintDialog({
                 { key: '0', label: 'Reset all Laboratory adjustments' },
                 { key: '?', label: 'Toggle this Shortcuts Guide' },
               ].map(item => (
-                <div key={item.key} className="flex items-center justify-between p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                  <span className="text-[11px] font-bold text-black uppercase tracking-tight">{item.label}</span>
-                  <kbd className="px-2.5 py-1 bg-white border border-[#E2E8F0] text-black font-extrabold text-[11px] rounded shadow-sm">
+                <div key={item.key} className="flex items-center justify-between p-2.5 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-lg">
+                  <span className="text-[12px] font-medium text-[#171717] dark:text-[#EDEDED]">{item.label}</span>
+                  <kbd className="px-2.5 py-1 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[#171717] dark:text-[#EDEDED] font-semibold text-[11px] rounded">
                     {item.key}
                   </kbd>
                 </div>
               ))}
             </div>
 
-            <div className="px-6 py-3 bg-[#F8FAFC] border-t border-[#E2E8F0] text-right">
+            <div className="px-6 py-3 bg-[#F4F4F5] dark:bg-[#232325] border-t border-[#171717]/[0.08] dark:border-white/[0.08] text-right">
               <button
                 onClick={() => setShowShortcutsModal(false)}
-                className="px-4 py-1.5 bg-black text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider hover:bg-black/90 transition-all cursor-pointer"
+                className="px-4 py-1.5 bg-[#FB432C] hover:bg-[#E03923] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
               >
                 Got It
               </button>

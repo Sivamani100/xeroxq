@@ -15,7 +15,7 @@ export default function CookiePolicy() {
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-[#FB432C] selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white">
       <SiteHeader />
       
       <main className="pt-32 pb-16">
@@ -25,21 +25,21 @@ export default function CookiePolicy() {
             <aside className="hidden lg:block lg:col-span-3 sticky top-32">
               <div className="space-y-10">
                  <div className="flex flex-col gap-3 text-left">
-                    <span className="text-[10px] font-black text-black uppercase tracking-[0.2em] mb-3">Cookie Navigation</span>
+                    <span className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] mb-3">Cookie Navigation</span>
                     {sections.map((section, i) => (
-                      <a key={section.title} href={`#section-${i}`} className="text-[11px] font-black text-[#64748B] hover:text-black transition-colors flex items-center gap-2 uppercase tracking-widest">
-                         <div className="w-1 h-1 bg-[#E2E8F0] rounded-full" /> {section.title}
+                      <a key={section.title} href={`#section-${i}`} className="text-[11px] font-black text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors flex items-center gap-2 uppercase tracking-widest">
+                         <div className="w-1 h-1 bg-[#171717]/[0.20] dark:bg-white/[0.25] rounded-full" /> {section.title}
                       </a>
                     ))}
                  </div>
                  
-                 <div className="p-6 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-4">
-                    <div className="w-10 h-10 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center shadow-sm">
-                       <ShieldCheck className="w-5 h-5 text-black" />
+                 <div className="p-6 bg-white dark:bg-[#19191B] rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08] space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center shadow-sm">
+                       <ShieldCheck className="w-5 h-5 text-[#171717] dark:text-[#EDEDED]" />
                     </div>
                     <div className="space-y-2">
-                       <h4 className="text-xs font-black text-black tracking-tight leading-none uppercase">Privacy-Centric</h4>
-                       <p className="text-[11px] text-[#64748B] font-medium leading-relaxed italic">
+                       <h4 className="text-xs font-black text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none uppercase">Privacy-Centric</h4>
+                       <p className="text-[11px] text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed italic">
                           "Zero third-party tracking logic. Essential ephemeral state management only."
                        </p>
                     </div>
@@ -55,26 +55,26 @@ export default function CookiePolicy() {
                 className="space-y-12"
               >
                  <div className="space-y-6">
-                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-black/5 rounded-md border border-black/5">
-                      <Cookie className="w-3.5 h-3.5 text-black" />
-                      <span className="text-[10px] font-black tracking-[0.1em] text-black uppercase">Transparency Declaration</span>
+                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] rounded-md border border-[#171717]/[0.10] dark:border-white/[0.10]">
+                      <Cookie className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+                      <span className="text-[10px] font-black tracking-[0.1em] text-[#171717] dark:text-[#EDEDED] uppercase">Transparency Declaration</span>
                    </div>
-                   <h1 className="text-5xl lg:text-7xl font-bold text-black tracking-tighter leading-[0.95] uppercase">Cookie Policy</h1>
+                   <h1 className="text-5xl lg:text-7xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tighter leading-[0.95] uppercase">Cookie Policy</h1>
                    <div className="flex items-center gap-8 pt-4">
                       <div className="flex flex-col">
-                         <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest leading-none mb-2">LAST REVISION</span>
-                         <span className="text-[11px] font-black text-black uppercase tracking-widest">APR 04, 2026</span>
+                         <span className="text-[10px] font-black text-[#737373] dark:text-[#85858B] uppercase tracking-widest leading-none mb-2">LAST REVISION</span>
+                         <span className="text-[11px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest">APR 04, 2026</span>
                       </div>
-                      <div className="w-[1px] h-10 bg-[#E2E8F0]" />
+                      <div className="w-[1px] h-10 bg-[#171717]/[0.12] dark:bg-white/[0.12]" />
                       <div className="flex flex-col">
-                         <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest leading-none mb-2">PROTOCOL ID</span>
-                         <span className="text-[11px] font-black text-black uppercase tracking-widest">v2.1-STABLE</span>
+                         <span className="text-[10px] font-black text-[#737373] dark:text-[#85858B] uppercase tracking-widest leading-none mb-2">PROTOCOL ID</span>
+                         <span className="text-[11px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest">v2.1-STABLE</span>
                       </div>
                    </div>
                 </div>
 
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-xl text-[#475569] font-medium leading-relaxed mb-16">
+                <div className="prose prose-slate dark:prose-invert max-w-none">
+                  <p className="text-xl text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed mb-16">
                     XeroxQ uses essential data storage technology to provide a high-fidelity print experience. We believe in total transparency regarding how and why we use cookies.
                   </p>
                   
@@ -89,8 +89,8 @@ export default function CookiePolicy() {
                         transition={{ delay: i * 0.05 }}
                         className="scroll-mt-32"
                       >
-                        <h3 className="text-xl font-bold text-black tracking-tight mb-4 uppercase">{section.title}</h3>
-                        <p className="text-[#64748B] font-medium text-sm leading-relaxed italic opacity-80">"{section.content}"</p>
+                        <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4 uppercase">{section.title}</h3>
+                        <p className="text-[#525252] dark:text-[#A1A1A6] font-medium text-sm leading-relaxed italic">"{section.content}"</p>
                       </motion.section>
                     ))}
                   </div>
@@ -101,7 +101,7 @@ export default function CookiePolicy() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6 }}
-                  className="mt-24 p-12 bg-black rounded-xl border border-white/10 relative overflow-hidden text-center group shadow-2xl"
+                  className="mt-24 p-12 bg-[#171717] dark:bg-[#19191B] rounded-xl border border-white/[0.08] relative overflow-hidden text-center group shadow-2xl"
                 >
                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.03] blur-[100px] rounded-full" />
                    <div className="relative z-10 flex flex-col items-center gap-8">
@@ -111,9 +111,9 @@ export default function CookiePolicy() {
                       </div>
                       <div className="space-y-3">
                          <h4 className="text-2xl font-bold text-white tracking-tight leading-none uppercase">Encryption of Choice.</h4>
-                         <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto italic opacity-70">"Essential state management is required for optimal node physicalization."</p>
+                         <p className="text-sm text-[#A1A1A6] font-medium max-w-sm mx-auto italic">"Essential state management is required for optimal node physicalization."</p>
                       </div>
-                      <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="h-11 px-8 bg-white hover:bg-[#F8FAFC] text-black font-black text-[10px] uppercase tracking-widest rounded-lg shadow-2xl transition-all active:scale-95">
+                      <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="h-11 px-8 bg-white hover:bg-[#F4F4F5] text-[#171717] font-black text-[10px] uppercase tracking-widest rounded-lg shadow-2xl transition-all active:scale-95">
                          ACCEPT PROTOCOL COOKIES
                       </button>
                    </div>

@@ -104,7 +104,7 @@ function StarRating({
                 "h-8 w-8 transition-colors",
                 filled
                   ? "fill-amber-400 stroke-amber-400"
-                  : "fill-transparent stroke-black/20"
+                  : "fill-transparent stroke-[#171717]/20 dark:stroke-white/25"
               )}
               strokeWidth={1.5}
             />
@@ -333,8 +333,8 @@ export function FeedbackSheet({
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
                     isSelected
-                      ? "border-[#FB432C]/40 bg-gradient-to-br from-[#FB432C]/15 to-[#FF591E]/15 text-[#FB432C] shadow-sm"
-                      : "border-black/10 bg-white/70 text-[#1A1A2E]/70 hover:border-black/20 hover:text-[#1A1A2E]"
+                      ? "border-[#FB432C]/40 bg-[#FB432C]/15 text-[#FB432C]"
+                      : "border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] hover:border-[#171717]/20 dark:hover:border-white/20 hover:text-[#171717] dark:hover:text-[#EDEDED]"
                   )}
                 >
                   {opt}
@@ -364,8 +364,8 @@ export function FeedbackSheet({
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
                     isSelected
-                      ? "border-[#3568FF]/40 bg-[#3568FF]/10 text-[#3568FF]"
-                      : "border-black/10 bg-white/70 text-[#1A1A2E]/70 hover:border-black/20 hover:text-[#1A1A2E]"
+                      ? "border-[#FB432C]/40 bg-[#FB432C]/15 text-[#FB432C]"
+                      : "border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] hover:border-[#171717]/20 dark:hover:border-white/20 hover:text-[#171717] dark:hover:text-[#EDEDED]"
                   )}
                 >
                   {opt}
@@ -384,17 +384,17 @@ export function FeedbackSheet({
             onChange={(e) => setResponse(q.state_key, e.target.value)}
             placeholder="Write your answer…"
             rows={2}
-            className="resize-none rounded-xl border-black/10 bg-white/60 text-sm placeholder:text-black/30 focus:border-[#3568FF] focus:ring-1 focus:ring-[#3568FF]/30"
+            className="resize-none rounded-xl border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] text-sm placeholder:text-[#737373] dark:placeholder:text-[#85858B] focus:border-[#FB432C] focus:ring-1 focus:ring-[#FB432C]/30"
           />
         );
     }
 
     return (
       <div key={q.state_key} className="space-y-2">
-        <label className="block text-sm font-semibold text-[#1A1A2E]">
+        <label className="block text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">
           {q.question_text}
           {q.is_required && (
-            <span className="ml-1 text-red-500" aria-hidden>
+            <span className="ml-1 text-[#DC2626] dark:text-[#E5484D]" aria-hidden>
               *
             </span>
           )}
@@ -407,7 +407,7 @@ export function FeedbackSheet({
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="text-xs font-medium text-red-500"
+              className="text-xs font-medium text-[#DC2626] dark:text-[#E5484D]"
             >
               {err}
             </motion.p>
@@ -419,19 +419,19 @@ export function FeedbackSheet({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-[28px] border border-black/[0.06] bg-white/90 p-0 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:max-w-lg">
+      <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden rounded-[20px] border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED] p-0 shadow-[0_24px_64px_rgba(0,0,0,0.24)] sm:max-w-lg">
         {/* Header */}
-        <DialogHeader className="flex-row items-center justify-between border-b border-black/[0.06] px-6 py-4">
-          <DialogTitle className="text-base font-bold text-[#1A1A2E]">
+        <DialogHeader className="flex-row items-center justify-between border-b border-[#171717]/[0.08] dark:border-white/[0.08] px-6 py-4">
+          <DialogTitle className="text-base font-semibold text-[#171717] dark:text-[#EDEDED]">
             {shop.custom_feedback_title || "Share Your Feedback"}
           </DialogTitle>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close feedback"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/[0.05] text-black/50 transition-colors hover:bg-black/10 hover:text-black"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] transition-colors hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] hover:text-[#171717] dark:hover:text-[#EDEDED]"
           >
-            <X className="h-4 w-4" strokeWidth={2.5} />
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </DialogHeader>
 
@@ -439,15 +439,15 @@ export function FeedbackSheet({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-[#3568FF]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#FB432C]" />
             </div>
           ) : (
             <div className="space-y-5">
               {questions.length === 0 ? (
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-[#1A1A2E]">
+                  <label className="block text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">
                     How was your printing experience?
-                    <span className="ml-1 text-red-500" aria-hidden>
+                    <span className="ml-1 text-[#DC2626] dark:text-[#E5484D]" aria-hidden>
                       *
                     </span>
                   </label>
@@ -463,7 +463,7 @@ export function FeedbackSheet({
                     }}
                   />
                   {errors.fallback_rating && (
-                    <p className="text-xs font-medium text-red-500">
+                    <p className="text-xs font-medium text-[#DC2626] dark:text-[#E5484D]">
                       {errors.fallback_rating}
                     </p>
                   )}
@@ -473,10 +473,10 @@ export function FeedbackSheet({
               )}
 
               {/* Optional written feedback */}
-              <div className="space-y-2 pt-2 border-t border-black/[0.06]">
-                <label className="block text-sm font-semibold text-[#1A1A2E]">
+              <div className="space-y-2 pt-2 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+                <label className="block text-sm font-semibold text-[#171717] dark:text-[#EDEDED]">
                   Additional Comments{" "}
-                  <span className="text-xs font-normal text-[#6B7280]">
+                  <span className="text-xs font-normal text-[#737373] dark:text-[#85858B]">
                     (Optional)
                   </span>
                 </label>
@@ -485,7 +485,7 @@ export function FeedbackSheet({
                   onChange={(e) => setWrittenFeedback(e.target.value)}
                   placeholder="Share anything that stood out or can be improved…"
                   rows={2}
-                  className="resize-none rounded-xl border-black/10 bg-white/60 text-sm placeholder:text-black/30 focus:border-[#3568FF] focus:ring-1 focus:ring-[#3568FF]/30"
+                  className="resize-none rounded-xl border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] text-sm placeholder:text-[#737373] dark:placeholder:text-[#85858B] focus:border-[#FB432C] focus:ring-1 focus:ring-[#FB432C]/30"
                 />
               </div>
             </div>
@@ -498,7 +498,7 @@ export function FeedbackSheet({
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-4 rounded-xl bg-red-50/80 px-4 py-2.5 text-sm font-medium text-red-600"
+                className="mt-4 rounded-xl bg-[#DC2626]/10 dark:bg-[#E5484D]/15 px-4 py-2.5 text-sm font-medium text-[#DC2626] dark:text-[#E5484D]"
               >
                 {submitError}
               </motion.p>
@@ -507,18 +507,15 @@ export function FeedbackSheet({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-black/[0.06] px-6 py-4">
+        <div className="border-t border-[#171717]/[0.08] dark:border-white/[0.08] px-6 py-4">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting || loading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(251,67,44,0.35)] transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{
-              background: "linear-gradient(135deg,#FB432C 0%,#FF591E 100%)",
-            }}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FB432C] hover:bg-[#E03923] px-5 py-3 text-sm font-semibold text-white transition-colors disabled:opacity-60"
           >
             {submitting && (
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />
             )}
             {submitting ? "Submitting…" : "Submit Feedback"}
           </button>

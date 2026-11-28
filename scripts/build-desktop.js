@@ -32,6 +32,22 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function removeDirSafe(targetPath) {
+  if (!fs.existsSync(targetPath)) return;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      if (process.platform === "win32") {
+        execSync(`cmd /c "if exist "${targetPath}" rd /s /q "${targetPath}""`, { stdio: "ignore" });
+      }
+      if (!fs.existsSync(targetPath)) return;
+      fs.rmSync(targetPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      if (!fs.existsSync(targetPath)) return;
+    } catch (_) {
+      sleepSync(250 * attempt);
+    }
+  }
+}
+
 function moveDirSafe(from, to) {
   let lastErr;
   for (let attempt = 1; attempt <= 5; attempt++) {
@@ -115,15 +131,10 @@ function main() {
 
   try {
     stashServerRoutes();
-    // 1. Wipe stale .next cache (dev/types from previous runs cause phantom TS errors)
-    //    Use execSync with rd /s /q to bypass OneDrive handle-locking on Windows
-    try {
-      if (process.platform === "win32") {
-        execSync(`rd /s /q "${path.join(rootDir, ".next")}"`, { stdio: "ignore" });
-      } else {
-        fs.rmSync(path.join(rootDir, ".next"), { recursive: true, force: true });
-      }
-    } catch (_) { /* already gone – fine */ }
+    // 1. Clear only isolated desktop build cache (.next-desktop) and static export dir (out)
+    //    NEVER delete `.next` so an active `next dev` server isn't corrupted mid-session.
+    removeDirSafe(path.join(rootDir, ".next-desktop"));
+    removeDirSafe(path.join(rootDir, "out"));
     // 2. Export static frontend for Electron (`out/`)
     run("npx next build", { ...process.env, BUILD_DESKTOP: "true" });
 

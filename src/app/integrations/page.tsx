@@ -55,16 +55,16 @@ function SlackIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function Integrations() {
   const integrations = [
-    { name: "Google Drive", category: "Storage", icon: Cloud, color: "text-blue-500", desc: "Print documents directly from your cloud storage with one-click XeroxQ sync." },
-    { name: "Slack", category: "Workflow", icon: SlackIcon, color: "text-purple-500", desc: "Trigger print jobs and receive delivery alerts directly in your team channels." },
-    { name: "GitHub", category: "Developer", icon: GithubIcon, color: "text-black", desc: "Automate technical documentation printing with our GitHub Action integration." },
-    { name: "DocuSign", category: "Legal", icon: Lock, color: "text-blue-600", desc: "Seamlessly transition from digital signature to physical archive with secure bridging." },
+    { name: "Google Drive", category: "Storage", icon: Cloud, color: "text-blue-500 dark:text-blue-400", desc: "Print documents directly from your cloud storage with one-click XeroxQ sync." },
+    { name: "Slack", category: "Workflow", icon: SlackIcon, color: "text-purple-500 dark:text-purple-400", desc: "Trigger print jobs and receive delivery alerts directly in your team channels." },
+    { name: "GitHub", category: "Developer", icon: GithubIcon, color: "text-[#171717] dark:text-[#EDEDED]", desc: "Automate technical documentation printing with our GitHub Action integration." },
+    { name: "DocuSign", category: "Legal", icon: Lock, color: "text-blue-600 dark:text-blue-400", desc: "Seamlessly transition from digital signature to physical archive with secure bridging." },
     { name: "Dropbox", category: "Storage", icon: BoxIcon, color: "text-blue-400", desc: "Enterprise-grade storage syncing for large-scale document delivery." },
-    { name: "Microsoft 365", category: "Office", icon: Briefcase, color: "text-red-500", desc: "Send Word and Excel files directly to the XeroxQ mesh from your web browser." }
+    { name: "Microsoft 365", category: "Office", icon: Briefcase, color: "text-red-500 dark:text-red-400", desc: "Send Word and Excel files directly to the XeroxQ mesh from your web browser." }
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white">
       <SiteHeader />
       
       <main className="pt-32 pb-16">
@@ -75,10 +75,10 @@ export default function Integrations() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md shadow-sm mb-6"
+              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-md shadow-sm mb-6"
             >
-              <Puzzle className="w-3.5 h-3.5 text-black" />
-              <span className="text-[10px] font-black tracking-[0.2em] text-black uppercase">XeroxQ Connect Hub</span>
+              <Puzzle className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+              <span className="text-[10px] font-black tracking-[0.2em] text-[#171717] dark:text-[#EDEDED] uppercase">XeroxQ Connect Hub</span>
             </motion.div>
             
             <div className="space-y-6 max-w-4xl mx-auto">
@@ -86,7 +86,7 @@ export default function Integrations() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="text-[64px] lg:text-[100px] font-bold text-black tracking-tighter leading-[0.85] uppercase"
+                className="text-[64px] lg:text-[100px] font-bold text-[#171717] dark:text-[#EDEDED] tracking-tighter leading-[0.85] uppercase"
               >
                 Integrate Your <br className="hidden lg:block" /> Document Workflow.
               </motion.h1>
@@ -94,7 +94,7 @@ export default function Integrations() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-2xl text-[#64748B] font-medium max-w-2xl mx-auto leading-relaxed"
+                className="text-2xl text-[#525252] dark:text-[#A1A1A6] font-medium max-w-2xl mx-auto leading-relaxed"
               >
                 Bridge the digital and physical worlds. Sync your existing tools with the XeroxQ decentralized mesh in minutes.
               </motion.p>
@@ -106,18 +106,18 @@ export default function Integrations() {
                transition={{ duration: 0.8, delay: 0.3 }}
                className="max-w-md mx-auto relative group"
             >
-               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8] group-hover:text-black transition-colors" />
+               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#737373] dark:text-[#85858B] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED] transition-colors" />
                <input 
                   type="text" 
                   placeholder="Search 100+ native hooks..." 
-                  className="w-full h-14 pl-12 pr-6 bg-white border border-[#E2E8F0] rounded-xl text-sm font-bold placeholder:text-[#94A3B8] focus:border-black/5 focus:shadow-xl transition-all outline-none" 
+                  className="w-full h-14 pl-12 pr-6 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border border-[#171717]/[0.12] dark:border-white/[0.12] rounded-xl text-sm font-bold focus:border-[#171717]/30 dark:focus:border-white/30 focus:shadow-xl transition-all outline-none" 
                />
             </motion.div>
           </div>
         </section>
 
         {/* Integration Grid */}
-        <section className="py-16 border-y border-[#E2E8F0] bg-[#F8FAFC]">
+        <section className="py-16 border-y border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#F4F4F5]/60 dark:bg-[#111113]">
            <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {integrations.map((int, i) => (
                 <motion.div 
@@ -126,17 +126,17 @@ export default function Integrations() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08 }}
-                  className="p-8 bg-white border border-[#E2E8F0] rounded-xl hover:shadow-2xl hover:bg-[#F8FAFC] transition-all group text-left cursor-pointer"
+                  className="p-8 bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl hover:shadow-2xl hover:bg-[#F4F4F5]/60 dark:hover:bg-[#232325] transition-all group text-left cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-8">
-                     <div className={`w-12 h-12 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
+                     <div className={`w-12 h-12 rounded-lg bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
                         <int.icon className={`w-6 h-6 ${int.color}`} />
                      </div>
-                     <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.2em]">{int.category}</span>
+                     <span className="text-[10px] font-black text-[#737373] dark:text-[#85858B] uppercase tracking-[0.2em]">{int.category}</span>
                   </div>
-                  <h3 className="text-xl font-bold text-black tracking-tight mb-3 uppercase leading-none">{int.name}</h3>
-                  <p className="text-sm text-[#64748B] font-medium leading-relaxed mb-8 italic opacity-80">"{int.desc}"</p>
-                  <button className="text-[10px] font-black text-black flex items-center gap-2 border-b border-black/5 hover:border-black transition-all pb-1 uppercase tracking-widest">
+                  <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight mb-3 uppercase leading-none">{int.name}</h3>
+                  <p className="text-sm text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed mb-8 italic opacity-90">"{int.desc}"</p>
+                  <button className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] flex items-center gap-2 border-b border-[#171717]/10 dark:border-white/10 hover:border-[#171717] dark:hover:border-white transition-all pb-1 uppercase tracking-widest">
                      Activate Hook <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </motion.div>
@@ -152,18 +152,18 @@ export default function Integrations() {
           transition={{ duration: 0.8 }}
           className="py-20 px-6 text-center"
         >
-           <div className="max-w-[1280px] mx-auto p-12 bg-black rounded-xl relative overflow-hidden group">
+           <div className="max-w-[1280px] mx-auto p-12 bg-[#171717] dark:bg-[#19191B] border border-white/[0.08] text-white rounded-xl relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-96 h-96 bg-white opacity-[0.03] blur-[120px] rounded-full" />
               <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
                  <div className="text-left space-y-4 max-w-xl">
                     <h2 className="text-4xl font-bold text-white tracking-tighter leading-none uppercase">High-Fidelity Bridge.</h2>
-                    <p className="text-sm text-slate-400 font-medium leading-relaxed italic opacity-80">"Leverage the Protocol API and SDKs for custom physicalization logic across the decentralized mesh."</p>
+                    <p className="text-sm text-[#A1A1A6] font-medium leading-relaxed italic opacity-90">"Leverage the Protocol API and SDKs for custom physicalization logic across the decentralized mesh."</p>
                  </div>
                  <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <button className="h-11 px-8 bg-white text-black hover:bg-white/90 font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl shadow-white/5">
+                    <button className="h-11 px-8 bg-white text-[#171717] hover:bg-[#FB432C] hover:text-white font-black text-[10px] uppercase tracking-widest rounded-lg transition-all shadow-xl shadow-white/5">
                        DOCUMENTATION
                     </button>
-                    <button className="h-11 px-8 border border-white/20 hover:bg-white/5 text-white font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                    <button className="h-11 px-8 border border-white/20 hover:bg-white/10 text-white font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
                        CORE SANDBOX
                     </button>
                  </div>

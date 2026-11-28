@@ -47,8 +47,10 @@ import {
   Star,
   Plus,
   Trash2,
-  HardDrive
+  HardDrive,
+  X
 } from "lucide-react";
+import { ThemeToggle } from "@/lib/theme";
 
 import {
   Dialog,
@@ -163,6 +165,7 @@ export default function PlatformAdminDashboard() {
 
   const [isAddingBlog, setIsAddingBlog]   = useState(false);
   const [isAddingNews, setIsAddingNews]   = useState(false);
+  const [statusNotice, setStatusNotice]   = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [confirmModal, setConfirmModal]   = useState<{
     open: boolean;
     title: string;
@@ -176,6 +179,12 @@ export default function PlatformAdminDashboard() {
     confirmText: "Yes, Proceed",
     onConfirm: async () => {},
   });
+
+  useEffect(() => {
+    if (!statusNotice) return;
+    const t = setTimeout(() => setStatusNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [statusNotice]);
 
   // ── Auth check ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -356,7 +365,7 @@ export default function PlatformAdminDashboard() {
           await fetchData();
           setConfirmModal(prev => ({ ...prev, open: false }));
         } catch (err) {
-          alert("Action failed. Check console for details.");
+          setStatusNotice({ type: "error", text: "Action failed. Check console for details." });
         }
       }
     });
@@ -424,7 +433,7 @@ export default function PlatformAdminDashboard() {
       await fetchData();
     } catch (err: any) {
       console.error("[Platform Admin] Approve shop notice:", err);
-      alert(err?.message || "Failed to approve shop");
+      setStatusNotice({ type: "error", text: err?.message || "Failed to approve shop" });
       await fetchData();
     } finally {
       setActionShopId(null);
@@ -466,7 +475,7 @@ export default function PlatformAdminDashboard() {
       await fetchData();
     } catch (err: any) {
       console.error("[Platform Admin] Reject shop notice:", err);
-      alert(err?.message || "Failed to reject shop");
+      setStatusNotice({ type: "error", text: err?.message || "Failed to reject shop" });
       await fetchData();
     } finally {
       setActionShopId(null);
@@ -530,7 +539,7 @@ export default function PlatformAdminDashboard() {
     
     if (error) {
       console.error('Error toggling global feedback:', error);
-      alert('Failed to update setting');
+      setStatusNotice({ type: "error", text: "Failed to update setting" });
     } else {
       setFeedbackGlobalEnabled(newValue);
     }
@@ -554,26 +563,33 @@ export default function PlatformAdminDashboard() {
     
     if (error) {
       console.error('Error adding question:', error);
-      alert('Failed to add question');
+      setStatusNotice({ type: "error", text: "Failed to add question" });
     } else {
       setNewDefaultQuestion("");
       await fetchDefaultQuestions();
     }
   };
 
-  const handleDeleteDefaultQuestion = async (id: string) => {
-    if (!confirm('Delete this default question?')) return;
-    
-    const { error } = await supabase
-      .from('feedback_questions_default')
-      .update({ is_active: false })
-      .eq('id', id);
-    
-    if (error) {
-      alert('Failed to delete question');
-    } else {
-      await fetchDefaultQuestions();
-    }
+  const handleDeleteDefaultQuestion = (id: string) => {
+    setConfirmModal({
+      open: true,
+      title: "Delete default question?",
+      description: "This will deactivate the question across shops using default feedback templates.",
+      confirmText: "Yes, Delete",
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('feedback_questions_default')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (error) {
+          setStatusNotice({ type: "error", text: "Failed to delete question" });
+        } else {
+          await fetchDefaultQuestions();
+        }
+        setConfirmModal(prev => ({ ...prev, open: false }));
+      },
+    });
   };
 
   // Load feedback data when tab is active
@@ -615,23 +631,26 @@ export default function PlatformAdminDashboard() {
   // ── Not authorized ─────────────────────────────────────────────────────────
   if (authChecked && !isAuthorized) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex items-center justify-center relative">
+        <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-30">
+          <ThemeToggle compact />
+        </div>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] p-12 text-center max-w-md mx-4"
+          className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-10 text-center max-w-md mx-4"
         >
-          <div className="w-20 h-20 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-6">
-            <ShieldAlert className="w-10 h-10 text-red-500" />
+          <div className="w-16 h-16 rounded-full bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border border-[#DC2626]/20 dark:border-[#E5484D]/25 flex items-center justify-center mx-auto mb-5">
+            <ShieldAlert className="w-8 h-8 text-[#DC2626] dark:text-[#E5484D]" />
           </div>
-          <h1 className="text-2xl font-black text-black mb-3 tracking-tight">Access Denied</h1>
-          <p className="text-auth-slate-50 text-sm mb-6">
+          <h1 className="text-2xl font-semibold text-[#171717] dark:text-[#EDEDED] mb-2 tracking-tight">Access Denied</h1>
+          <p className="text-[#525252] dark:text-[#A1A1A6] text-sm mb-6">
             This area is restricted to authorized XeroxQ executives only.<br />
-            You are signed in as <span className="text-black font-bold">{ceoEmail}</span>
+            You are signed in as <span className="text-[#171717] dark:text-[#EDEDED] font-semibold">{ceoEmail}</span>
           </p>
           <button
             onClick={() => router.replace("/")}
-            className="px-6 py-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-[5.57px] font-bold transition-all"
+            className="px-6 py-2.5 bg-[#DC2626] dark:bg-[#E5484D] hover:opacity-90 text-white rounded-xl font-semibold text-sm transition-opacity cursor-pointer"
           >
             Return to Home
           </button>
@@ -642,32 +661,32 @@ export default function PlatformAdminDashboard() {
 
   if (!authChecked || (isAuthorized && loading)) {
     return (
-       <div className="min-h-screen bg-[#F8FAFC]">
+       <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED]">
           {/* Skeleton Header */}
-          <div className="w-full bg-white border-b border-[#E2E8F0] h-[81px]">
+          <div className="w-full bg-white dark:bg-[#19191B] border-b border-[#171717]/[0.08] dark:border-white/[0.08] h-[76px]">
              <div className="w-full px-6 lg:px-[100px] py-4 flex items-center justify-between h-full">
                 <div className="flex items-center gap-3">
-                   <div className="w-[40px] h-[40px] rounded-[5.57px] bg-[#E2E8F0] animate-pulse" />
+                   <div className="w-[40px] h-[40px] rounded-xl bg-[#F4F4F5] dark:bg-[#232325] animate-pulse" />
                    <div className="flex flex-col gap-2">
-                      <div className="w-[140px] h-[20px] bg-[#E2E8F0] animate-pulse rounded" />
-                      <div className="w-[90px] h-[12px] bg-[#E2E8F0] animate-pulse rounded" />
+                      <div className="w-[140px] h-[20px] bg-[#F4F4F5] dark:bg-[#232325] animate-pulse rounded" />
+                      <div className="w-[90px] h-[12px] bg-[#F4F4F5] dark:bg-[#232325] animate-pulse rounded" />
                    </div>
                 </div>
              </div>
           </div>
-          
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-81px)] gap-4">
-             <div className="w-12 h-12 rounded-[5.57px] bg-black flex items-center justify-center">
+
+          <div className="flex flex-col items-center justify-center h-[calc(100vh-76px)] gap-4">
+             <div className="w-12 h-12 rounded-xl bg-[#FB432C] flex items-center justify-center">
                  <Loader2 className="w-6 h-6 text-white animate-spin" />
              </div>
-             <p className="text-sm font-bold text-auth-slate-50 uppercase tracking-widest">Loading Command Center...</p>
+             <p className="text-sm font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider">Loading Command Center...</p>
              {/* Content Tab Modals */}
         <Dialog open={isAddingBlog} onOpenChange={setIsAddingBlog}>
-          <DialogContent className="sm:max-w-[600px] bg-white rounded-3xl p-8 border-none shadow-2xl">
+          <DialogContent className="sm:max-w-[600px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-8">
             <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Publish New Article</DialogTitle>
-              <DialogDescription className="text-[13px] font-medium text-gray-500 italic">
-                Draft a new thought leadership piece for the XeroxQ blog.
+              <DialogTitle className="text-xl font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">Publish New Article</DialogTitle>
+              <DialogDescription className="text-[13px] text-[#525252] dark:text-[#A1A1A6]">
+                Draft a new article for the XeroxQ blog.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={async (e) => {
@@ -687,17 +706,17 @@ export default function PlatformAdminDashboard() {
                 setIsAddingBlog(false);
                 fetchData();
               } catch (err) {
-                alert("Publish failed.");
+                setStatusNotice({ type: "error", text: "Publish failed." });
               }
             }} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Article Title</Label>
-                  <Input name="title" required placeholder="The Future of Printing..." className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                  <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Article Title</Label>
+                  <Input name="title" required placeholder="The Future of Printing..." className="h-11 rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-black">Category</Label>
-                  <select name="category" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm outline-none" required>
+                  <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Category</Label>
+                  <select name="category" className="w-full h-11 bg-white dark:bg-[#232325] border border-[#171717]/[0.12] dark:border-white/[0.12] text-[#171717] dark:text-[#EDEDED] rounded-xl px-4 text-sm outline-none" required>
                     <option value="Network">Network</option>
                     <option value="Security">Security</option>
                     <option value="Innovation">Innovation</option>
@@ -706,16 +725,16 @@ export default function PlatformAdminDashboard() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Excerpt (Short Summary)</Label>
-                <Input name="excerpt" required placeholder="A brief hook for the reader..." className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Excerpt (Short Summary)</Label>
+                <Input name="excerpt" required placeholder="A brief hook for the reader..." className="h-11 rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Full Article Content (Markdown)</Label>
-                <Textarea name="content" required placeholder="Write your masterpiece here..." className="min-h-[200px] bg-gray-50 border-gray-100 rounded-xl" />
+                <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Full Article Content (Markdown)</Label>
+                <Textarea name="content" required placeholder="Write your article here..." className="min-h-[200px] rounded-xl" />
               </div>
-              <button 
-                type="submit" 
-                className="w-full h-14 bg-black hover:bg-[#FB432C] text-white font-black text-[12px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-sm rounded-xl transition-colors"
               >
                 Publish Live
               </button>
@@ -724,10 +743,10 @@ export default function PlatformAdminDashboard() {
         </Dialog>
 
         <Dialog open={isAddingNews} onOpenChange={setIsAddingNews}>
-          <DialogContent className="sm:max-w-[500px] bg-white rounded-3xl p-8 border-none shadow-2xl">
+          <DialogContent className="sm:max-w-[500px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-8">
             <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Push Platform Update</DialogTitle>
-              <DialogDescription className="text-[13px] font-medium text-gray-500 italic">
+              <DialogTitle className="text-xl font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">Push Platform Update</DialogTitle>
+              <DialogDescription className="text-[13px] text-[#525252] dark:text-[#A1A1A6]">
                 Broadcast a quick update or notice to the XeroxQ network.
               </DialogDescription>
             </DialogHeader>
@@ -744,28 +763,28 @@ export default function PlatformAdminDashboard() {
                 setIsAddingNews(false);
                 fetchData();
               } catch (err) {
-                alert("News push failed.");
+                setStatusNotice({ type: "error", text: "News push failed." });
               }
             }} className="space-y-5">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Headline</Label>
-                <Input name="title" required placeholder="System Maintenance..." className="h-12 bg-gray-50 border-gray-100 rounded-xl" />
+                <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Headline</Label>
+                <Input name="title" required placeholder="System Maintenance..." className="h-11 rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Category</Label>
-                <select name="category" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm outline-none" required>
+                <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Category</Label>
+                <select name="category" className="w-full h-11 bg-white dark:bg-[#232325] border border-[#171717]/[0.12] dark:border-white/[0.12] text-[#171717] dark:text-[#EDEDED] rounded-xl px-4 text-sm outline-none" required>
                   <option value="Update">Update</option>
                   <option value="Maintenance">Maintenance</option>
                   <option value="Alert">Alert</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-black">Brief Content</Label>
-                <Textarea name="content" required placeholder="What's happening?" className="min-h-[100px] bg-gray-50 border-gray-100 rounded-xl" />
+                <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED]">Brief Content</Label>
+                <Textarea name="content" required placeholder="What's happening?" className="min-h-[100px] rounded-xl" />
               </div>
-              <button 
-                type="submit" 
-                className="w-full h-14 bg-black hover:bg-blue-600 text-white font-black text-[12px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-sm rounded-xl transition-colors"
               >
                 Push News
               </button>
@@ -781,42 +800,64 @@ export default function PlatformAdminDashboard() {
 
   // ─── UI ──────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-black">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED]">
+      {statusNotice && (
+        <div
+          role="alert"
+          className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-semibold shadow-lg ${
+            statusNotice.type === "error"
+              ? "bg-[#FEF2F2] dark:bg-[#2A1517] border-[#DC2626]/20 dark:border-[#E5484D]/25 text-[#DC2626] dark:text-[#E5484D]"
+              : "bg-[#ECFDF5] dark:bg-[#102A1E] border-[#16A34A]/20 dark:border-[#4CC38A]/25 text-[#16A34A] dark:text-[#4CC38A]"
+          }`}
+        >
+          <span>{statusNotice.text}</span>
+          <button
+            type="button"
+            onClick={() => setStatusNotice(null)}
+            aria-label="Dismiss notification"
+            className="opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       {/* TOP HEADER - IDENTITY, ACTIONS */}
-      <div className="shrink-0 relative w-full bg-white border-b border-[#E2E8F0] z-30">
+      <div className="shrink-0 relative w-full bg-white dark:bg-[#19191B] border-b border-[#171717]/[0.08] dark:border-white/[0.08] z-30">
          <div className="w-full px-6 lg:px-[100px] py-[18px] lg:py-5">
             <div className="flex items-center justify-between gap-3">
-               {/* Left: logo + shop name */}
+               {/* Left: logo + portal name */}
                <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-                 <div className="w-8 h-8 lg:w-9 lg:h-9 bg-black rounded-lg lg:rounded-[5.57px] flex items-center justify-center shrink-0 shadow-md shadow-black/20">
+                 <div className="w-8 h-8 lg:w-9 lg:h-9 bg-[#FB432C] rounded-lg flex items-center justify-center shrink-0">
                    <Crown className="text-white w-4 h-4" />
                  </div>
                  <div className="flex flex-col">
-                   <h1 className="text-[16px] lg:text-[18px] font-bold text-black leading-none tracking-tight whitespace-nowrap">CEO Portal</h1>
-                   <p className="text-[9px] lg:text-[10px] font-bold text-[#7E8B9E] tracking-[0.12em] uppercase leading-none mt-1.5">Master Command Center</p>
+                   <h1 className="text-[16px] lg:text-[18px] font-semibold text-[#171717] dark:text-[#EDEDED] leading-none tracking-tight whitespace-nowrap">CEO Portal</h1>
+                   <p className="text-[10px] font-semibold text-[#737373] dark:text-[#85858B] tracking-wider uppercase leading-none mt-1.5">Master Command Center</p>
                  </div>
                </div>
 
                {/* Right: action buttons — shifted left to prevent overlap with Windows window controls */}
                <div className="flex items-center gap-2 shrink-0 pr-32 lg:pr-[140px]">
-                  <span className="hidden sm:block text-[11px] font-bold text-auth-slate-50 mr-2">{ceoEmail}</span>
-                  
+                  <span className="hidden sm:block text-[11px] font-semibold text-[#737373] dark:text-[#85858B] mr-2">{ceoEmail}</span>
+
+                  <ThemeToggle compact showLabel={false} />
+
                   <button
                     onClick={() => { setRefreshing(true); fetchData(); }}
                     disabled={refreshing}
-                    className="h-8 w-8 lg:h-[36px] lg:w-[36px] border border-[#E2E8F0] bg-white text-black hover:bg-[#F8FAFC] transition-colors rounded-lg lg:rounded-[5.57px] flex items-center justify-center shadow-sm"
+                    className="h-8 w-8 lg:h-[36px] lg:w-[36px] border border-[#171717]/[0.10] dark:border-white/[0.10] bg-white dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] hover:bg-[#F4F4F5] dark:hover:bg-[#2C2C2E] transition-colors rounded-lg flex items-center justify-center"
                     title="Refresh Data"
                   >
-                    <RefreshCw className={`w-4 h-4 lg:w-[14px] lg:h-[14px] text-auth-slate-50 ${refreshing ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 lg:w-[14px] lg:h-[14px] text-[#525252] dark:text-[#A1A1A6] ${refreshing ? "animate-spin" : ""}`} />
                   </button>
 
                   {/* Separator */}
-                  <div className="h-6 w-[1px] bg-[#E2E8F0] mx-0.5" />
+                  <div className="h-6 w-[1px] bg-[#171717]/[0.08] dark:bg-white/[0.08] mx-0.5" />
 
                   {/* Logout — icon only */}
                   <button
                     onClick={handleLogout}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-[#DC2626] dark:text-[#E5484D] hover:bg-[#DC2626]/10 dark:hover:bg-[#E5484D]/15 transition-colors"
                     title="Logout"
                   >
                     <LogOut className="w-4 h-4" />
@@ -829,7 +870,7 @@ export default function PlatformAdminDashboard() {
       <main className="w-full px-6 lg:px-[100px] py-6 space-y-6">
 
         {/* TABS */}
-        <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-0 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 border-b border-[#171717]/[0.08] dark:border-white/[0.08] pb-0 overflow-x-auto no-scrollbar">
           {([
             { id: "overview", label: "Overview", icon: LayoutDashboard },
             { id: "shops", label: "Shops", icon: Store },
@@ -846,10 +887,10 @@ export default function PlatformAdminDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`px-4 py-2.5 text-[14px] font-bold capitalize tracking-tight transition-all border-b-2 -mb-px flex items-center gap-2 ${
+              className={`px-4 py-2.5 text-[13.5px] font-semibold tracking-tight transition-colors border-b-2 -mb-px flex items-center gap-2 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "text-black border-black"
-                  : "text-[#7E8B9E] border-transparent hover:text-black"
+                  ? "text-[#171717] dark:text-[#EDEDED] border-[#FB432C]"
+                  : "text-[#737373] dark:text-[#85858B] border-transparent hover:text-[#171717] dark:hover:text-[#EDEDED]"
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -867,61 +908,56 @@ export default function PlatformAdminDashboard() {
                 value: platform.totalShops.toString(),
                 sub: `${platform.activeShops} active`,
                 icon: Store,
-                bg: "bg-blue-50",
-                color: "text-blue-600",
-                border: "border-blue-100",
+                bg: "bg-[#007AFF]/10 dark:bg-[#60A5FA]/15",
+                color: "text-[#007AFF] dark:text-[#60A5FA]",
               },
               {
                 label: "Active Shops",
                 value: platform.activeShops.toString(),
                 sub: `${platform.totalShops - platform.activeShops} offline`,
                 icon: Activity,
-                bg: "bg-emerald-50",
-                color: "text-emerald-600",
-                border: "border-emerald-100",
+                bg: "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15",
+                color: "text-[#16A34A] dark:text-[#4CC38A]",
               },
               {
                 label: "Total Files",
                 value: platform.totalFiles.toLocaleString("en-IN"),
                 sub: "All time uploads",
                 icon: FileText,
-                bg: "bg-orange-50",
-                color: "text-orange-600",
-                border: "border-orange-100",
+                bg: "bg-[#FB432C]/10",
+                color: "text-[#FB432C]",
               },
               {
                 label: "Platform Revenue",
                 value: fmt(platform.totalPlatformRevenue),
                 sub: "@ ₹0.50 / file",
                 icon: IndianRupee,
-                bg: "bg-purple-50",
-                color: "text-purple-600",
-                border: "border-purple-100",
+                bg: "bg-purple-500/10 dark:bg-purple-400/15",
+                color: "text-purple-600 dark:text-purple-300",
               },
               {
                 label: "Dues Pending",
                 value: fmt(platform.pendingDues),
                 sub: "To be collected",
                 icon: AlertTriangle,
-                bg: "bg-red-50",
-                color: "text-red-600",
-                border: "border-red-100",
+                bg: "bg-[#DC2626]/10 dark:bg-[#E5484D]/15",
+                color: "text-[#DC2626] dark:text-[#E5484D]",
               },
             ].map((card, i) => (
               <motion.div
                 key={card.label}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] p-5 flex flex-col gap-3`}
+                transition={{ delay: i * 0.04 }}
+                className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl p-5 flex flex-col gap-3"
               >
-                <div className={`w-10 h-10 rounded-[5.57px] ${card.bg} border ${card.border} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
                    <card.icon className={`w-5 h-5 ${card.color}`} />
                 </div>
                 <div>
-                   <p className="text-[24px] font-black tracking-tight text-black leading-none mb-1">{card.value}</p>
-                   <p className="text-[12px] font-bold text-auth-slate-90 tracking-tight">{card.label}</p>
-                   <p className="text-[10px] font-medium text-auth-slate-50 tracking-wides mt-0.5">{card.sub}</p>
+                   <p className="text-[24px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-none mb-1 tabular-nums">{card.value}</p>
+                   <p className="text-[12px] font-semibold text-[#525252] dark:text-[#A1A1A6] tracking-tight">{card.label}</p>
+                   <p className="text-[11px] font-medium text-[#737373] dark:text-[#85858B] mt-0.5">{card.sub}</p>
                 </div>
               </motion.div>
             ))}
@@ -933,47 +969,47 @@ export default function PlatformAdminDashboard() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Shop Submissions */}
-              <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50/50">
-                  <h3 className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                <div className="p-5 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#F4F4F5]/60 dark:bg-[#232325]/60">
+                  <h3 className="text-[13px] font-semibold uppercase tracking-wider flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                     <UserPlus className="w-4 h-4" /> Shop Registrations
                   </h3>
-                  <span className="text-[10px] font-bold bg-black text-white px-2 py-0.5 rounded-full">{submissions.length}</span>
+                  <span className="text-[11px] font-semibold bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] px-2.5 py-0.5 rounded-full">{submissions.length}</span>
                 </div>
-                <div className="divide-y divide-[#E2E8F0]">
+                <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                   {submissions.map((sub) => (
-                    <div key={sub.id} className="p-4 hover:bg-gray-50 transition-colors">
+                    <div key={sub.id} className="p-4 hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <p className="text-[14px] font-bold text-black">{sub.shop_name}</p>
-                          <p className="text-[12px] font-medium text-gray-500">{sub.owner_email}</p>
+                          <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">{sub.shop_name}</p>
+                          <p className="text-[12px] font-medium text-[#525252] dark:text-[#A1A1A6]">{sub.owner_email}</p>
                         </div>
-                        <button onClick={() => handleAction('contact_submissions', sub.id, 'delete')} className="text-red-400 hover:text-red-600 transition-colors">
+                        <button onClick={() => handleAction('contact_submissions', sub.id, 'delete')} className="text-[#DC2626] dark:text-[#E5484D] hover:opacity-75 transition-opacity">
                           <XCircle className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="text-[11px] text-gray-600 bg-gray-100 p-2 rounded-lg italic mt-2">"{sub.message}"</p>
-                      <p className="text-[9px] text-gray-400 mt-2 font-bold uppercase">{new Date(sub.created_at).toLocaleString()}</p>
+                      <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] bg-[#F4F4F5] dark:bg-[#232325] p-2.5 rounded-lg mt-2">&quot;{sub.message}&quot;</p>
+                      <p className="text-[10px] text-[#737373] dark:text-[#85858B] mt-2 font-semibold uppercase">{new Date(sub.created_at).toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Newsletter */}
-              <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50/50">
-                  <h3 className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                <div className="p-5 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#F4F4F5]/60 dark:bg-[#232325]/60">
+                  <h3 className="text-[13px] font-semibold uppercase tracking-wider flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                     <AtSign className="w-4 h-4" /> Newsletter Subs
                   </h3>
-                  <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">{newsletter.length}</span>
+                  <span className="text-[11px] font-semibold bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113] px-2.5 py-0.5 rounded-full">{newsletter.length}</span>
                 </div>
-                <div className="divide-y divide-[#E2E8F0] max-h-[500px] overflow-y-auto">
+                <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06] max-h-[500px] overflow-y-auto">
                   {newsletter.map((sub) => (
-                    <div key={sub.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                      <p className="text-[13px] font-bold text-black">{sub.email}</p>
+                    <div key={sub.id} className="p-4 flex items-center justify-between hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
+                      <p className="text-[13px] font-semibold text-[#171717] dark:text-[#EDEDED]">{sub.email}</p>
                       <div className="flex items-center gap-4">
-                        <span className="text-[9px] text-gray-400 font-bold uppercase">{new Date(sub.created_at).toLocaleDateString()}</span>
-                        <button onClick={() => handleAction('newsletter_subs', sub.id, 'delete')} className="text-red-400 hover:text-red-600">
+                        <span className="text-[10px] text-[#737373] dark:text-[#85858B] font-semibold uppercase">{new Date(sub.created_at).toLocaleDateString()}</span>
+                        <button onClick={() => handleAction('newsletter_subs', sub.id, 'delete')} className="text-[#DC2626] dark:text-[#E5484D] hover:opacity-75">
                           <XCircle className="w-4 h-4" />
                         </button>
                       </div>
@@ -990,25 +1026,25 @@ export default function PlatformAdminDashboard() {
           <div className="space-y-6">
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Blogs Management */}
-                <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                   <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50/50">
-                      <h3 className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                   <div className="p-5 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#F4F4F5]/60 dark:bg-[#232325]/60">
+                      <h3 className="text-[13px] font-semibold uppercase tracking-wider flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                          <FileEdit className="w-4 h-4" /> Blog Articles
                       </h3>
-                      <button onClick={() => setIsAddingBlog(true)} className="text-[10px] font-black bg-black text-white px-3 py-1 rounded-lg uppercase tracking-tighter hover:bg-[#FB432C] transition-all">New Post</button>
+                      <button onClick={() => setIsAddingBlog(true)} className="text-[11px] font-semibold bg-[#FB432C] hover:bg-[#E03923] text-white px-3 py-1 rounded-lg transition-colors">New Post</button>
                    </div>
-                   <div className="divide-y divide-[#E2E8F0]">
+                   <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                       {blogs.map(blog => (
-                        <div key={blog.id} className="p-5 hover:bg-gray-50 group transition-all">
+                        <div key={blog.id} className="p-5 hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                            <div className="flex items-start justify-between gap-4">
                               <div className="space-y-1">
-                                 <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{blog.category}</span>
-                                 <h4 className="text-[14px] font-black text-black leading-tight">{blog.title}</h4>
-                                 <p className="text-[11px] text-gray-500 line-clamp-2">{blog.excerpt}</p>
+                                 <span className="text-[10px] font-semibold text-[#16A34A] dark:text-[#4CC38A] uppercase tracking-wider">{blog.category}</span>
+                                 <h4 className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED] leading-tight">{blog.title}</h4>
+                                 <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] line-clamp-2">{blog.excerpt}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                 <button className="p-2 hover:bg-blue-50 text-blue-500 rounded-lg transition-all"><Eye className="w-4 h-4" /></button>
-                                 <button onClick={() => handleAction('blogs', blog.id, 'delete')} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-all"><XCircle className="w-4 h-4" /></button>
+                                 <button className="p-2 hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
+                                 <button onClick={() => handleAction('blogs', blog.id, 'delete')} className="p-2 hover:bg-[#DC2626]/10 dark:hover:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D] rounded-lg transition-colors"><XCircle className="w-4 h-4" /></button>
                               </div>
                            </div>
                         </div>
@@ -1017,25 +1053,25 @@ export default function PlatformAdminDashboard() {
                 </div>
 
                 {/* News Management */}
-                <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                   <div className="p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50/50">
-                      <h3 className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                   <div className="p-5 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#F4F4F5]/60 dark:bg-[#232325]/60">
+                      <h3 className="text-[13px] font-semibold uppercase tracking-wider flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                          <GlobeIcon className="w-4 h-4" /> Platform News
                       </h3>
-                      <button onClick={() => setIsAddingNews(true)} className="text-[10px] font-black bg-black text-white px-3 py-1 rounded-lg uppercase tracking-tighter hover:bg-blue-600 transition-all">Push Update</button>
+                      <button onClick={() => setIsAddingNews(true)} className="text-[11px] font-semibold bg-[#FB432C] hover:bg-[#E03923] text-white px-3 py-1 rounded-lg transition-colors">Push Update</button>
                    </div>
-                   <div className="divide-y divide-[#E2E8F0]">
+                   <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                       {news.map(item => (
-                        <div key={item.id} className="p-5 flex items-center justify-between hover:bg-gray-50 transition-all">
+                        <div key={item.id} className="p-5 flex items-center justify-between hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                            <div className="space-y-0.5">
-                              <p className="text-[13px] font-black text-black">{item.title}</p>
+                              <p className="text-[13.5px] font-semibold text-[#171717] dark:text-[#EDEDED]">{item.title}</p>
                               <div className="flex items-center gap-3">
-                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(item.published_at).toLocaleDateString()}</span>
-                                 <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                 <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{item.category}</span>
+                                 <span className="text-[10px] font-medium text-[#737373] dark:text-[#85858B] uppercase tracking-wider">{new Date(item.published_at).toLocaleDateString()}</span>
+                                 <span className="w-1 h-1 rounded-full bg-[#737373]/40" />
+                                 <span className="text-[10px] font-semibold text-[#FB432C] uppercase tracking-wider">{item.category}</span>
                               </div>
                            </div>
-                           <button onClick={() => handleAction('platform_news', item.id, 'delete')} className="text-red-400 hover:text-red-600 transition-colors">
+                           <button onClick={() => handleAction('platform_news', item.id, 'delete')} className="text-[#DC2626] dark:text-[#E5484D] hover:opacity-75 transition-opacity">
                              <XCircle className="w-4 h-4" />
                            </button>
                         </div>
@@ -1048,54 +1084,54 @@ export default function PlatformAdminDashboard() {
 
         {/* ── HR TAB ─────────────────────────────────────────────────────────── */}
         {activeTab === "hr" && (
-           <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between">
+           <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between">
                  <div>
-                    <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2">
+                    <h3 className="text-[16px] font-semibold tracking-tight flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                        <Briefcase className="w-5 h-5" /> Talent Acquisition
                     </h3>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">Reviewing candidates for the XeroxQ mesh</p>
+                    <p className="text-[11px] font-medium text-[#737373] dark:text-[#85858B] uppercase tracking-wider mt-1">Reviewing candidates for the XeroxQ mesh</p>
                  </div>
-                 <div className="bg-black text-white px-4 py-1.5 rounded-full text-[12px] font-black">
+                 <div className="bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] px-4 py-1.5 rounded-full text-[11px] font-semibold">
                     {careers.length} ACTIVE APPLICATIONS
                  </div>
               </div>
               <div className="overflow-x-auto">
                  <table className="w-full text-left">
                     <thead>
-                       <tr className="bg-gray-50 border-b border-[#E2E8F0]">
-                          <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Candidate</th>
-                          <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Contact</th>
-                          <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Position</th>
-                          <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-500">LinkedIn / Portfolio</th>
-                          <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Actions</th>
+                       <tr className="bg-[#F4F4F5] dark:bg-[#232325] border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+                          <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Candidate</th>
+                          <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Contact</th>
+                          <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Position</th>
+                          <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">LinkedIn / Portfolio</th>
+                          <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B] text-right">Actions</th>
                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E2E8F0]">
+                    <tbody className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                        {careers.map(app => {
                           const profileUrl = sanitizeExternalHttpUrl(app.portfolio_url || app.resume_url || app.linkedin_url);
                           return (
-                          <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={app.id} className="hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                              <td className="p-4">
-                                <p className="text-[14px] font-black text-black">{app.full_name}</p>
-                                <p className="text-[11px] text-gray-500 italic">"Applied {new Date(app.created_at).toLocaleDateString()}"</p>
+                                <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">{app.full_name}</p>
+                                <p className="text-[11px] text-[#737373] dark:text-[#85858B]">Applied {new Date(app.created_at).toLocaleDateString()}</p>
                              </td>
                              <td className="p-4">
-                                <p className="text-[13px] font-bold text-black">{app.email}</p>
-                                {app.whatsapp && <p className="text-[12px] text-gray-400">{app.whatsapp}</p>}
+                                <p className="text-[13px] font-medium text-[#171717] dark:text-[#EDEDED]">{app.email}</p>
+                                {app.whatsapp && <p className="text-[12px] text-[#737373] dark:text-[#85858B]">{app.whatsapp}</p>}
                              </td>
                              <td className="p-4">
-                                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                                <span className="px-3 py-1 bg-[#FB432C]/10 text-[#FB432C] rounded-lg text-[11px] font-semibold border border-[#FB432C]/20">
                                    {app.job_id || app.position || "Developer"}
                                 </span>
                              </td>
                              <td className="p-4">
                                 {profileUrl ? (
-                                   <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1.5 text-[12px] font-bold">
+                                   <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="text-[#FB432C] hover:underline flex items-center gap-1.5 text-[12px] font-semibold">
                                       <ExternalLink className="w-3 h-3" /> Profile
                                    </a>
                                 ) : (
-                                   <span className="text-[12px] text-gray-400">Not Provided</span>
+                                   <span className="text-[12px] text-[#737373] dark:text-[#85858B]">Not Provided</span>
                                 )}
                              </td>
                              <td className="p-4 text-right">
@@ -1103,11 +1139,11 @@ export default function PlatformAdminDashboard() {
                                    <button
                                      onClick={() => handleAction('job_applications', app.id, 'approve')}
                                      disabled={app.status === 'approved'}
-                                     className="h-8 px-4 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-all"
+                                     className="h-8 px-4 bg-[#16A34A] dark:bg-[#4CC38A] text-white dark:text-[#111113] text-[11px] font-semibold rounded-lg disabled:opacity-50 transition-opacity"
                                    >
                                      {app.status === 'approved' ? 'Confirmed' : 'Confirm'}
                                    </button>
-                                   <button onClick={() => handleAction('job_applications', app.id, 'delete')} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"><XCircle className="w-4 h-4" /></button>
+                                   <button onClick={() => handleAction('job_applications', app.id, 'delete')} className="p-2 text-[#DC2626] dark:text-[#E5484D] hover:bg-[#DC2626]/10 dark:hover:bg-[#E5484D]/15 rounded-lg transition-colors"><XCircle className="w-4 h-4" /></button>
                                 </div>
                              </td>
                           </tr>
@@ -1120,45 +1156,45 @@ export default function PlatformAdminDashboard() {
 
         {/* ── PARTNERS TAB ───────────────────────────────────────────────────── */}
         {activeTab === "partners" && (
-           <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm min-h-[400px] flex flex-col">
-              <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50/50">
-                 <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2">
+           <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden min-h-[400px] flex flex-col">
+              <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#F4F4F5]/60 dark:bg-[#232325]/60">
+                 <h3 className="text-[16px] font-semibold tracking-tight flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                     <Users className="w-5 h-5" /> Partnership Ecosystem
                  </h3>
-                 <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100">
+                 <span className="text-[11px] font-semibold text-[#16A34A] dark:text-[#4CC38A] bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 px-3 py-1 rounded-full border border-[#16A34A]/20 dark:border-[#4CC38A]/25">
                     {partners.filter(p => p.status === 'pending').length} PENDING REVIEW
                  </span>
               </div>
-              
+
               {partners.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-gray-50/30">
-                  <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 mx-auto">
-                    <Users className="w-8 h-8 text-gray-300" />
+                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center mb-4 mx-auto">
+                    <Users className="w-8 h-8 text-[#737373] dark:text-[#85858B]" />
                   </div>
-                  <h4 className="text-[14px] font-black text-black uppercase tracking-tight">No Partnership Applications</h4>
-                  <p className="text-[11px] font-medium text-gray-400 mt-1 uppercase tracking-widest text-center">When developers or owners apply, they will appear here.</p>
+                  <h4 className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">No Partnership Applications</h4>
+                  <p className="text-xs text-[#737373] dark:text-[#85858B] mt-1 text-center">When developers or owners apply, they will appear here.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-x divide-y divide-[#E2E8F0]">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-x divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                    {partners.map(p => (
-                      <div key={p.id} className="p-6 space-y-4 hover:bg-gray-50 transition-all relative group">
+                      <div key={p.id} className="p-6 space-y-4 hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors relative group">
                          <div className="flex justify-between items-start">
-                            <div className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-[0.2em]", p.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600')}>
+                            <div className={cn("px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider", p.status === 'approved' ? 'bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A]' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300')}>
                                {p.status || 'pending'}
                             </div>
-                            <button onClick={() => handleAction('partners', p.id, 'delete')} className="text-red-400 hover:text-red-600 transition-colors">
+                            <button onClick={() => handleAction('partners', p.id, 'delete')} className="text-[#DC2626] dark:text-[#E5484D] hover:opacity-75 transition-opacity">
                                <XCircle className="w-4 h-4" />
                             </button>
                          </div>
                          <div className="space-y-1">
-                            <h4 className="text-[16px] font-black text-black leading-none">{p.name}</h4>
-                            <p className="text-[12px] font-bold text-gray-500 flex items-center gap-1.5"><AtSign className="w-3 h-3" /> {p.email}</p>
+                            <h4 className="text-[16px] font-semibold text-[#171717] dark:text-[#EDEDED] leading-none">{p.name}</h4>
+                            <p className="text-[12px] font-medium text-[#525252] dark:text-[#A1A1A6] flex items-center gap-1.5"><AtSign className="w-3 h-3" /> {p.email}</p>
                          </div>
-                         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                            <p className="text-[11px] text-gray-600 italic leading-relaxed line-clamp-3">"{p.bio || "No biography provided."}"</p>
+                         <div className="bg-[#F4F4F5] dark:bg-[#232325] p-4 rounded-xl border border-[#171717]/[0.06] dark:border-white/[0.06]">
+                            <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] leading-relaxed line-clamp-3">&quot;{p.bio || "No biography provided."}&quot;</p>
                          </div>
                          {p.status === 'pending' && (
-                            <button onClick={() => handleAction('partners', p.id, 'approve')} className="w-full h-10 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-[#FB432C] transition-all">
+                            <button onClick={() => handleAction('partners', p.id, 'approve')} className="w-full h-10 bg-[#FB432C] hover:bg-[#E03923] text-white text-xs font-semibold rounded-xl transition-colors">
                                Onboard as {p.type || 'Partner'}
                             </button>
                          )}
@@ -1172,28 +1208,28 @@ export default function PlatformAdminDashboard() {
         {/* ── SECURITY TAB ───────────────────────────────────────────────────── */}
         {activeTab === "security" && (
            <div className="space-y-6">
-              <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                 <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between bg-red-50/30">
-                    <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2 text-red-600">
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                 <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-[#DC2626]/5 dark:bg-[#E5484D]/10">
+                    <h3 className="text-[16px] font-semibold tracking-tight flex items-center gap-2 text-[#DC2626] dark:text-[#E5484D]">
                        <ShieldAlert className="w-5 h-5" /> Bug Bounty Registry
                     </h3>
                     <div className="flex items-center gap-2">
-                       <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                       <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Live Monitoring</span>
+                       <div className="w-2 h-2 rounded-full bg-[#DC2626] dark:bg-[#E5484D]" />
+                       <span className="text-[11px] font-semibold text-[#DC2626] dark:text-[#E5484D] uppercase tracking-wider">Live Monitoring</span>
                     </div>
                  </div>
-                 <div className="divide-y divide-[#E2E8F0]">
+                 <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
                     {security.map(report => (
-                       <div key={report.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-gray-50 transition-all">
+                       <div key={report.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                           <div className="space-y-3 max-w-2xl">
                              <div className="flex items-center gap-3">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest", report.severity === 'critical' ? 'bg-red-600 text-white' : report.severity === 'high' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600')}>
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider", report.severity === 'critical' ? 'bg-[#DC2626] text-white' : report.severity === 'high' ? 'bg-amber-500 text-white' : 'bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6]')}>
                                    {report.severity}
                                 </span>
-                                <h4 className="text-[15px] font-black text-black uppercase tracking-tighter">{report.type || report.vulnerability_type || "Security"} Disclosed</h4>
+                                <h4 className="text-[15px] font-semibold text-[#171717] dark:text-[#EDEDED]">{report.type || report.vulnerability_type || "Security"} Disclosed</h4>
                              </div>
-                             <p className="text-[12px] text-gray-500 leading-relaxed font-medium italic">"{report.description}"</p>
-                             <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                             <p className="text-[12.5px] text-[#525252] dark:text-[#A1A1A6] leading-relaxed">&quot;{report.description}&quot;</p>
+                             <div className="flex items-center gap-4 text-[11px] font-medium text-[#737373] dark:text-[#85858B]">
                                 <span className="flex items-center gap-1.5"><AtSign className="w-3 h-3" /> {report.email || report.reporter_email}</span>
                                 <span>•</span>
                                 <span>{new Date(report.created_at).toLocaleString()}</span>
@@ -1202,15 +1238,15 @@ export default function PlatformAdminDashboard() {
                              </div>
                           </div>
                           <div className="flex items-center gap-2">
-                             <button onClick={() => handleAction('security_reports', report.id, 'review_poc' as any)} className="h-10 px-6 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-all">
+                             <button onClick={() => handleAction('security_reports', report.id, 'review_poc' as any)} className="h-10 px-5 bg-[#FB432C] hover:bg-[#E03923] text-white text-xs font-semibold rounded-xl transition-colors">
                                {report.status === 'reviewed' ? 'Mark Resolved' : report.status === 'resolved' ? 'Resolved' : 'Review PoC'}
                              </button>
-                             <button onClick={() => handleAction('security_reports', report.id, 'delete')} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"><XCircle className="w-4 h-4" /></button>
+                             <button onClick={() => handleAction('security_reports', report.id, 'delete')} className="p-2 text-[#DC2626] dark:text-[#E5484D] hover:bg-[#DC2626]/10 dark:hover:bg-[#E5484D]/15 rounded-lg transition-colors"><XCircle className="w-4 h-4" /></button>
                           </div>
                        </div>
                     ))}
                     {security.length === 0 && (
-                      <div className="p-12 text-center text-gray-400 font-bold italic uppercase tracking-widest">No vulnerabilities reported yet. Secure Mesh is intact.</div>
+                      <div className="p-12 text-center text-[#737373] dark:text-[#85858B] font-medium">No vulnerabilities reported yet. Secure mesh is intact.</div>
                     )}
                  </div>
               </div>
@@ -1221,34 +1257,34 @@ export default function PlatformAdminDashboard() {
         {activeTab === "feedback" && (
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Global Feedback Toggle */}
-            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-[#E2E8F0]">
-                <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2">
-                  <Star className="w-5 h-5" /> Global Feedback Control
+            <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+                <h3 className="text-[16px] font-semibold tracking-tight flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
+                  <Star className="w-5 h-5 text-[#FB432C]" /> Global Feedback Control
                 </h3>
               </div>
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[14px] font-black text-black">Feedback System</p>
-                    <p className="text-[12px] text-gray-500">Enable/disable feedback collection across all shops</p>
+                    <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">Feedback System</p>
+                    <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">Enable/disable feedback collection across all shops</p>
                   </div>
                   <button
                     onClick={handleToggleGlobalFeedback}
                     className={cn(
-                      "w-14 h-7 rounded-full relative transition-all duration-300",
-                      feedbackGlobalEnabled ? "bg-green-500" : "bg-gray-300"
+                      "w-14 h-7 rounded-full relative transition-colors duration-200",
+                      feedbackGlobalEnabled ? "bg-[#16A34A] dark:bg-[#4CC38A]" : "bg-[#E4E4E7] dark:bg-[#232325]"
                     )}
                   >
                     <div className={cn(
-                      "absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-md",
+                      "absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-200 shadow-xs",
                       feedbackGlobalEnabled ? "right-1" : "left-1"
                     )} />
                   </button>
                 </div>
                 <p className={cn(
-                  "mt-4 text-[12px] font-bold uppercase tracking-wider",
-                  feedbackGlobalEnabled ? "text-green-600" : "text-red-500"
+                  "mt-4 text-[12px] font-semibold uppercase tracking-wider",
+                  feedbackGlobalEnabled ? "text-[#16A34A] dark:text-[#4CC38A]" : "text-[#DC2626] dark:text-[#E5484D]"
                 )}>
                   {feedbackGlobalEnabled ? "✓ Feedback System Active" : "✗ Feedback System Disabled Globally"}
                 </p>
@@ -1256,34 +1292,34 @@ export default function PlatformAdminDashboard() {
             </div>
 
             {/* Default Questions Management */}
-            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-[#E2E8F0]">
-                <h3 className="text-[16px] font-black uppercase tracking-tighter">Default Feedback Questions</h3>
-                <p className="text-[12px] text-gray-500 mt-1">These questions appear for all customers across all shops</p>
+            <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+                <h3 className="text-[16px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">Default Feedback Questions</h3>
+                <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] mt-1">These questions appear for all customers across all shops</p>
               </div>
-              
+
               {/* Add New Question */}
-              <div className="p-6 bg-gray-50 border-b border-[#E2E8F0]">
+              <div className="p-6 bg-[#F4F4F5]/60 dark:bg-[#232325]/60 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <input
                     type="text"
                     value={newDefaultQuestion}
                     onChange={(e) => setNewDefaultQuestion(e.target.value)}
                     placeholder="Enter question text..."
-                    className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10"
+                    className="w-full h-11 px-4 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] rounded-lg text-[14px] outline-none focus:border-[#FB432C]"
                   />
                   <input
                     type="text"
                     value={newDefaultOptions}
                     onChange={(e) => setNewDefaultOptions(e.target.value)}
-                    placeholder="Options: 😠,😐,🙂,😍"
-                    className="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg text-[14px] focus:ring-2 focus:ring-black/10"
+                    placeholder="Options: Poor,Fair,Good,Great"
+                    className="w-full h-11 px-4 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] rounded-lg text-[14px] outline-none focus:border-[#FB432C]"
                   />
                 </div>
                 <button
                   onClick={handleAddDefaultQuestion}
                   disabled={!newDefaultQuestion.trim()}
-                  className="w-full h-12 bg-black text-white font-black text-[14px] uppercase rounded-lg hover:bg-black/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full h-11 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-sm rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
                 >
                   <Plus className="w-4 h-4" /> Add Default Question
                 </button>
@@ -1292,20 +1328,20 @@ export default function PlatformAdminDashboard() {
               {/* Existing Questions */}
               <div className="p-6">
                 {defaultQuestions.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No default questions configured</p>
+                  <p className="text-center text-[#737373] dark:text-[#85858B] py-8">No default questions configured</p>
                 ) : (
                   <div className="space-y-3">
                     {defaultQuestions.map((q, idx) => (
-                      <div key={q.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div key={q.id} className="flex items-center justify-between p-4 bg-[#F4F4F5] dark:bg-[#232325] rounded-lg">
                         <div>
-                          <p className="font-bold text-black">{idx + 1}. {q.question_text}</p>
-                          <p className="text-[12px] text-gray-500">
+                          <p className="font-semibold text-[#171717] dark:text-[#EDEDED]">{idx + 1}. {q.question_text}</p>
+                          <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">
                             {(Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]')).join(', ')}
                           </p>
                         </div>
                         <button
                           onClick={() => handleDeleteDefaultQuestion(q.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-[#DC2626] dark:text-[#E5484D] hover:bg-[#DC2626]/10 dark:hover:bg-[#E5484D]/15 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1317,48 +1353,47 @@ export default function PlatformAdminDashboard() {
             </div>
 
             {/* All Feedback Responses */}
-            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-[#E2E8F0]">
-                <h3 className="text-[16px] font-black uppercase tracking-tighter">Recent Feedback Responses</h3>
-                <p className="text-[12px] text-gray-500 mt-1">Latest {allFeedbackResponses.length} responses from all shops</p>
+            <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+                <h3 className="text-[16px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">Recent Feedback Responses</h3>
+                <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] mt-1">Latest {allFeedbackResponses.length} responses from all shops</p>
               </div>
               <div className="p-6">
                 {allFeedbackResponses.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No feedback responses yet</p>
+                  <p className="text-center text-[#737373] dark:text-[#85858B] py-8">No feedback responses yet</p>
                 ) : (
                   <div className="space-y-4 max-h-[500px] overflow-y-auto">
                     {allFeedbackResponses.map((response) => (
-                      <div key={response.id} className="p-4 bg-gray-50 rounded-lg">
+                      <div key={response.id} className="p-4 bg-[#F4F4F5] dark:bg-[#232325] rounded-lg">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-black">{response.shops?.name || 'Unknown Shop'}</span>
-                          <span className="text-[12px] text-gray-500">
+                          <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">{response.shops?.name || 'Unknown Shop'}</span>
+                          <span className="text-[12px] text-[#737373] dark:text-[#85858B]">
                             {new Date(response.submitted_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-[13px] text-gray-700">{response.customer_name || 'Anonymous'}</p>
+                        <p className="text-[13px] text-[#525252] dark:text-[#A1A1A6]">{response.customer_name || 'Anonymous'}</p>
                         {response.overall_rating && (
                           <div className="flex items-center gap-1 mt-2">
                             {[...Array(5)].map((_, i) => (
-                              <span key={i} className={i < response.overall_rating ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                              <span key={i} className={i < response.overall_rating ? 'text-amber-400' : 'text-[#737373]/40'}>★</span>
                             ))}
                           </div>
                         )}
-                        {/* Individual Question Responses */}
                         {(response.default_responses || response.custom_responses) && (
                           <div className="mt-3 space-y-1">
                             {Object.entries({...(response.default_responses || {}), ...(response.custom_responses || {})})
                               .filter(([key]) => key !== 'overall_rating')
                               .map(([key, value]) => (
                                 <div key={key} className="flex items-center gap-2 text-[12px]">
-                                  <span className="text-gray-500">{key}:</span>
-                                  <span className="font-medium text-black">{String(value)}</span>
+                                  <span className="text-[#737373] dark:text-[#85858B]">{key}:</span>
+                                  <span className="font-medium text-[#171717] dark:text-[#EDEDED]">{String(value)}</span>
                                 </div>
                               ))
                             }
                           </div>
                         )}
                         {response.written_feedback && (
-                          <p className="mt-2 text-[13px] italic text-gray-600">"{response.written_feedback}"</p>
+                          <p className="mt-2 text-[13px] text-[#525252] dark:text-[#A1A1A6]">&quot;{response.written_feedback}&quot;</p>
                         )}
                       </div>
                     ))}
@@ -1372,53 +1407,53 @@ export default function PlatformAdminDashboard() {
         {/* ── SETTINGS TAB ───────────────────────────────────────────────────── */}
         {activeTab === "settings" && (
            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-sm">
-                 <div className="p-6 border-b border-[#E2E8F0]">
-                    <h3 className="text-[16px] font-black uppercase tracking-tighter flex items-center gap-2">
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
+                 <div className="p-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+                    <h3 className="text-[16px] font-semibold tracking-tight flex items-center gap-2 text-[#171717] dark:text-[#EDEDED]">
                        <Settings className="w-5 h-5" /> Global Platform Settings
                     </h3>
                  </div>
-                 <div className="divide-y divide-[#E2E8F0]">
-                    <div className="p-8 flex items-center justify-between hover:bg-gray-50 transition-all group">
+                 <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06]">
+                    <div className="p-7 flex items-center justify-between hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
                        <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                             <div className={cn("w-2 h-2 rounded-full", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-red-500 animate-pulse" : "bg-emerald-500")} />
-                             <p className="text-[14px] font-black text-black uppercase tracking-tighter">Global Maintenance Protocol</p>
+                             <div className={cn("w-2 h-2 rounded-full", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-[#DC2626] dark:bg-[#E5484D]" : "bg-[#16A34A] dark:bg-[#4CC38A]")} />
+                             <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">Global Maintenance Protocol</p>
                           </div>
-                          <p className="text-[11px] font-medium text-gray-500 italic">When active, all customer routes are locked. Only Admin Portal remains live.</p>
+                          <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">When active, all customer routes are locked. Only Admin Portal remains live.</p>
                        </div>
-                       
+
                        <div className="flex items-center gap-4">
-                          <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "text-red-600" : "text-gray-400")}>
+                          <span className={cn("text-[10.5px] font-semibold uppercase tracking-wider", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "text-[#DC2626] dark:text-[#E5484D]" : "text-[#737373] dark:text-[#85858B]")}>
                              { !!settings.find(s => s.key === 'maintenance_mode')?.value ? "LOCKDOWN ACTIVE" : "SYSTEM LIVE" }
                           </span>
-                          
+
                           {/* Custom Toggle Switch */}
-                          <button 
+                          <button
                             onClick={() => handleAction('platform_settings', 'maintenance_mode', 'toggle')}
                             className={cn(
-                               "w-16 h-8 rounded-full relative transition-all duration-300 shadow-inner",
-                               !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-red-600" : "bg-gray-200"
+                               "w-14 h-7 rounded-full relative transition-colors duration-200",
+                               !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-[#DC2626] dark:bg-[#E5484D]" : "bg-[#E4E4E7] dark:bg-[#232325]"
                             )}
                           >
-                             <motion.div 
-                               animate={{ x: !!settings.find(s => s.key === 'maintenance_mode')?.value ? 32 : 4 }}
-                               className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center"
+                             <motion.div
+                               animate={{ x: !!settings.find(s => s.key === 'maintenance_mode')?.value ? 28 : 4 }}
+                               className="absolute top-1 w-5 h-5 bg-white rounded-full flex items-center justify-center"
                              >
-                                <div className={cn("w-1.5 h-1.5 rounded-full", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-red-500" : "bg-gray-300")} />
+                                <div className={cn("w-1.5 h-1.5 rounded-full", !!settings.find(s => s.key === 'maintenance_mode')?.value ? "bg-[#DC2626]" : "bg-[#737373]")} />
                              </motion.div>
                           </button>
                        </div>
                     </div>
-                    
+
                     <div className="p-6 flex items-center justify-between">
                        <div className="space-y-1">
-                          <p className="text-[14px] font-black text-black uppercase tracking-tighter">Platform Fee (@ ₹0.50)</p>
-                          <p className="text-[11px] font-medium text-gray-500 italic">Adjust the global transaction fee for each physicalized file.</p>
+                          <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED]">Platform Fee (@ ₹0.50)</p>
+                          <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">Adjust the global transaction fee for each physicalized file.</p>
                        </div>
                        <div className="flex items-center gap-3">
-                          <Input className="w-24 h-10 text-right font-black" defaultValue="0.50" />
-                          <button className="h-10 px-4 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-xl">Update</button>
+                          <Input className="w-24 h-10 text-right font-semibold" defaultValue="0.50" />
+                          <button className="h-10 px-4 bg-[#FB432C] hover:bg-[#E03923] text-white text-xs font-semibold rounded-xl transition-colors">Update</button>
                        </div>
                     </div>
                  </div>
@@ -1437,69 +1472,69 @@ export default function PlatformAdminDashboard() {
               className="grid grid-cols-1 lg:grid-cols-2 gap-6"
             >
               {/* Top shops by volume */}
-              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] p-6">
-                <h2 className="font-bold text-black text-[16px] mb-6 flex items-center gap-2 tracking-tight">
-                  <TrendingUp className="w-5 h-5 text-[#FF591E]" />
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl p-6">
+                <h2 className="font-semibold text-[#171717] dark:text-[#EDEDED] text-[16px] mb-6 flex items-center gap-2 tracking-tight">
+                  <TrendingUp className="w-5 h-5 text-[#FB432C]" />
                   Top Shops by Volume
                 </h2>
                 <div className="space-y-4">
-                  {[...(platform?.shops || [])].sort((a, b) => b.totalJobs - a.totalJobs).slice(0, 6).map((shop, i) => (
+                  {[...(platform?.shops || [])].sort((a, b) => b.totalJobs - a.totalJobs).slice(0, 6).map((shop) => (
                     <div key={shop.id} className="group">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-black uppercase tracking-tight text-black truncate max-w-[120px]">{shop.name}</span>
-                        <span className="text-[11px] font-black text-black">{shop.totalJobs} <span className="text-[9px] text-[#7E8B9E] font-bold">Files</span></span>
+                        <span className="text-[12px] font-semibold text-[#171717] dark:text-[#EDEDED] truncate max-w-[160px]">{shop.name}</span>
+                        <span className="text-[12px] font-semibold text-[#171717] dark:text-[#EDEDED]">{shop.totalJobs} <span className="text-[10px] text-[#737373] dark:text-[#85858B]">Files</span></span>
                       </div>
-                      <div className="h-1 bg-gray-50 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-[#F4F4F5] dark:bg-[#232325] rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${platform?.shops[0]?.totalJobs ? (shop.totalJobs / platform.shops[0].totalJobs) * 100 : 0}%` }}
-                          className="h-full bg-black group-hover:bg-[#FB432C] transition-colors"
+                          className="h-full bg-[#171717] dark:bg-[#EDEDED] group-hover:bg-[#FB432C] transition-colors"
                         />
                       </div>
                     </div>
                   ))}
                   {(platform?.shops || []).length === 0 && (
-                    <p className="text-[#7E8B9E] text-sm text-center py-8">No shops registered yet.</p>
+                    <p className="text-[#737373] dark:text-[#85858B] text-sm text-center py-8">No shops registered yet.</p>
                   )}
                 </div>
               </div>
 
               {/* Shop status summary */}
-              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] p-6">
-                <h2 className="font-bold text-black text-[16px] mb-6 flex items-center gap-2 tracking-tight">
-                  <Users className="w-5 h-5 text-blue-500" />
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl p-6">
+                <h2 className="font-semibold text-[#171717] dark:text-[#EDEDED] text-[16px] mb-6 flex items-center gap-2 tracking-tight">
+                  <Users className="w-5 h-5 text-[#FB432C]" />
                   Network Health
                 </h2>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-100 rounded-[5.57px]">
+                  <div className="flex items-center justify-between p-4 bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 border border-[#16A34A]/20 dark:border-[#4CC38A]/25 rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-[13px] font-bold text-green-800">Online Shops</span>
+                      <div className="w-2 h-2 rounded-full bg-[#16A34A] dark:bg-[#4CC38A]" />
+                      <span className="text-[13px] font-semibold text-[#16A34A] dark:text-[#4CC38A]">Online Shops</span>
                     </div>
-                    <span className="text-[18px] font-black text-green-700">{platform?.activeShops}</span>
+                    <span className="text-[18px] font-semibold text-[#16A34A] dark:text-[#4CC38A] tabular-nums">{platform?.activeShops}</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-[#E2E8F0] rounded-[5.57px]">
+                  <div className="flex items-center justify-between p-4 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-slate-400" />
-                      <span className="text-[13px] font-bold text-slate-700">Offline Shops</span>
+                      <div className="w-2 h-2 rounded-full bg-[#737373] dark:bg-[#85858B]" />
+                      <span className="text-[13px] font-semibold text-[#525252] dark:text-[#A1A1A6]">Offline Shops</span>
                     </div>
-                    <span className="text-[18px] font-black text-slate-600">{(platform?.totalShops ?? 0) - (platform?.activeShops ?? 0)}</span>
+                    <span className="text-[18px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">{(platform?.totalShops ?? 0) - (platform?.activeShops ?? 0)}</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-[5.57px]">
+                  <div className="flex items-center justify-between p-4 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-xl">
                     <div className="flex items-center gap-3">
-                      <Zap className="w-[14px] h-[14px] text-blue-600" />
-                      <span className="text-[13px] font-bold text-blue-800">Avg. Files / Shop</span>
+                      <Zap className="w-4 h-4 text-[#FB432C]" />
+                      <span className="text-[13px] font-semibold text-[#171717] dark:text-[#EDEDED]">Avg. Files / Shop</span>
                     </div>
-                    <p className="text-[14px] font-black text-black leading-none mb-1">
+                    <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">
                       {platform?.shops?.length ? Math.round((platform?.totalFiles ?? 0) / platform.shops.length) : 0}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-[5.57px]">
+                  <div className="flex items-center justify-between p-4 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-xl">
                     <div className="flex items-center gap-3">
-                      <IndianRupee className="w-[14px] h-[14px] text-purple-600" />
-                      <span className="text-[13px] font-bold text-purple-800">Avg. Due / Shop</span>
+                      <IndianRupee className="w-4 h-4 text-purple-600 dark:text-purple-300" />
+                      <span className="text-[13px] font-semibold text-[#171717] dark:text-[#EDEDED]">Avg. Due / Shop</span>
                     </div>
-                    <p className="text-[14px] font-black text-black leading-none mb-1">
+                    <p className="text-[14px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">
                       {platform?.shops?.length ? fmt((platform?.pendingDues ?? 0) / platform.shops.length) : "₹0.00"}
                     </p>
                   </div>
@@ -1517,7 +1552,7 @@ export default function PlatformAdminDashboard() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-4 border border-[#E2E8F0] rounded-[12px] shadow-sm">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white dark:bg-[#19191B] p-4 border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl">
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {[
                     { id: "all", label: "All Shops", count: platform?.shops?.length || 0 },
@@ -1528,20 +1563,20 @@ export default function PlatformAdminDashboard() {
                       key={filter.id}
                       onClick={() => setApprovalFilter(filter.id as any)}
                       className={cn(
-                        "px-3.5 py-2 rounded-[8px] text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap",
+                        "px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
                         approvalFilter === filter.id
-                          ? "bg-black text-white shadow-md"
-                          : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                          ? "bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113]"
+                          : "bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] border border-[#171717]/[0.06] dark:border-white/[0.06]"
                       )}
                     >
                       <span>{filter.label}</span>
                       <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-extrabold",
+                        "px-2 py-0.5 rounded-full text-[10px] font-semibold",
                         approvalFilter === filter.id
-                          ? "bg-white/20 text-white"
+                          ? "bg-white/20 dark:bg-black/15 text-white dark:text-[#111113]"
                           : filter.isAlert
-                          ? "bg-amber-500 text-white animate-pulse"
-                          : "bg-gray-200 text-gray-700"
+                          ? "bg-amber-500 text-white"
+                          : "bg-[#E4E4E7] dark:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED]"
                       )}>
                         {filter.count}
                       </span>
@@ -1550,22 +1585,32 @@ export default function PlatformAdminDashboard() {
                 </div>
 
                 <div className="relative w-full sm:w-[280px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-auth-slate-50" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[#737373] dark:text-[#85858B]" />
                   <input
                     type="text"
                     placeholder="Search shops..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="auth-input w-full h-[38px] bg-gray-50 border-gray-200 pl-9 text-[12px]"
+                    className="auth-input w-full h-[38px] pl-9 pr-8 text-[12.5px]"
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Table — horizontally scrollable on small screens */}
-              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[12px] overflow-hidden">
+              {/* Table */}
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   {/* Header */}
-                  <div className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC] min-w-[850px] w-full">
+                  <div className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-3 border-b border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#F4F4F5] dark:bg-[#232325] min-w-[850px] w-full">
                     {[
                       { key: "name" as SortKey, label: "Shop" },
                       { key: "totalJobs" as SortKey, label: "Total Files" },
@@ -1577,32 +1622,32 @@ export default function PlatformAdminDashboard() {
                       <button
                         key={col.label}
                         onClick={() => col.key && toggleSort(col.key)}
-                        className={`text-left text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${col.key ? "text-[#7E8B9E] hover:text-black transition-colors" : "text-[#7E8B9E] cursor-default"}`}
+                        className={`text-left text-[10.5px] font-semibold uppercase tracking-wider flex items-center gap-1 ${col.key ? "text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors" : "text-[#737373] dark:text-[#85858B] cursor-default"}`}
                       >
                         {col.label}
                         {col.key && sortKey === col.key && (
-                          sortDir === "asc" ? <ChevronUp className="w-3 h-3 text-black" /> : <ChevronDown className="w-3 h-3 text-black" />
+                          sortDir === "asc" ? <ChevronUp className="w-3 h-3 text-[#171717] dark:text-[#EDEDED]" /> : <ChevronDown className="w-3 h-3 text-[#171717] dark:text-[#EDEDED]" />
                         )}
                       </button>
                     ))}
                   </div>
 
-                  {/* Rows — vertical scroll when many shops */}
-                  <div className="divide-y divide-[#E2E8F0] max-h-[520px] overflow-y-auto min-w-[850px] w-full">
+                  {/* Rows */}
+                  <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06] max-h-[520px] overflow-y-auto min-w-[850px] w-full">
                     {filteredShops.map((shop, i) => (
                       <motion.div
                         key={shop.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                        className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-[14px] hover:bg-[#F8FAFC] transition-colors items-center"
+                        transition={{ delay: Math.min(i * 0.02, 0.25) }}
+                        className="grid grid-cols-[2fr_1fr_1fr_1.4fr_1fr_160px] gap-4 px-6 py-[14px] hover:bg-[#F4F4F5]/60 dark:hover:bg-[#232325]/60 transition-colors items-center"
                       >
                         <div className="min-w-0">
-                          <p className="font-bold text-[14px] text-black tracking-tight truncate">{shop.name}</p>
+                          <p className="font-semibold text-[14px] text-[#171717] dark:text-[#EDEDED] tracking-tight truncate">{shop.name}</p>
                           <a
                             href={`/${shop.slug}`}
                             target="_blank"
-                            className="text-[11px] font-bold text-auth-slate-50 hover:text-[#FF591E] transition-colors flex items-center gap-1 mt-0.5"
+                            className="text-[11px] font-medium text-[#737373] dark:text-[#85858B] hover:text-[#FB432C] transition-colors flex items-center gap-1 mt-0.5"
                           >
                             /{shop.slug}
                             <ExternalLink className="w-3 h-3 shrink-0" />
@@ -1610,37 +1655,37 @@ export default function PlatformAdminDashboard() {
                         </div>
 
                         <div>
-                          <p className="font-black text-[18px] text-black">{shop.totalJobs}</p>
-                          <p className="text-[9px] font-bold text-auth-slate-50 uppercase tracking-wider">all uploads</p>
+                          <p className="font-semibold text-[16px] text-[#171717] dark:text-[#EDEDED] tabular-nums">{shop.totalJobs}</p>
+                          <p className="text-[10px] font-medium text-[#737373] dark:text-[#85858B] uppercase tracking-wider">all uploads</p>
                         </div>
 
                         <div>
-                          <p className="text-[12px] text-auth-slate-90 font-bold">
+                          <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6] font-medium">
                             {new Date(shop.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
                           </p>
                         </div>
 
                         <div>
                           {shop.approval_status === "approved" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A] border border-[#16A34A]/20 dark:border-[#4CC38A]/25 text-[10.5px] font-semibold uppercase tracking-wider">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                               Unlimited
                             </span>
                           ) : shop.approval_status === "rejected" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold uppercase tracking-wider">
-                              <XCircle className="w-3.5 h-3.5 text-red-600" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#DC2626]/10 dark:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D] border border-[#DC2626]/20 dark:border-[#E5484D]/25 text-[10.5px] font-semibold uppercase tracking-wider">
+                              <XCircle className="w-3.5 h-3.5" />
                               Rejected
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider">
-                              <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[10.5px] font-semibold uppercase tracking-wider">
+                              <Clock className="w-3.5 h-3.5" />
                               Trial ({shop.total_files_processed || 0}/3 scans)
                             </span>
                           )}
                         </div>
 
                         <div>
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-[6px] uppercase tracking-wider ${shop.pendingJobs > 0 ? "bg-orange-50 text-orange-600 border border-orange-100" : "bg-slate-50 text-slate-500 border border-slate-200"}`}>
+                          <span className={`text-[10.5px] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wider ${shop.pendingJobs > 0 ? "bg-[#FB432C]/10 text-[#FB432C] border border-[#FB432C]/20" : "bg-[#F4F4F5] dark:bg-[#232325] text-[#737373] dark:text-[#85858B] border border-[#171717]/[0.06] dark:border-white/[0.08]"}`}>
                             {shop.pendingJobs} live
                           </span>
                         </div>
@@ -1651,7 +1696,7 @@ export default function PlatformAdminDashboard() {
                             <button
                               onClick={() => handleApproveShop(shop.id)}
                               disabled={actionShopId === shop.id}
-                              className="h-[34px] px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[8px] flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50"
+                              className="h-[34px] px-2.5 bg-[#16A34A] dark:bg-[#4CC38A] hover:opacity-90 text-white dark:text-[#111113] rounded-lg flex items-center gap-1 text-[10.5px] font-semibold transition-opacity disabled:opacity-50"
                               title="Approve Shop for Unlimited Scans"
                             >
                               {actionShopId === shop.id ? (
@@ -1669,7 +1714,7 @@ export default function PlatformAdminDashboard() {
                             <button
                               onClick={() => handleRejectShop(shop.id)}
                               disabled={actionShopId === shop.id}
-                              className="h-[34px] px-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-[8px] flex items-center justify-center text-[10px] font-bold uppercase transition-all border border-gray-200 disabled:opacity-50"
+                              className="h-[34px] px-2 bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#DC2626]/10 hover:text-[#DC2626] dark:hover:bg-[#E5484D]/15 dark:hover:text-[#E5484D] text-[#737373] dark:text-[#85858B] rounded-lg flex items-center justify-center border border-[#171717]/[0.08] dark:border-white/[0.08] transition-colors disabled:opacity-50"
                               title="Revoke Approval / Reject"
                             >
                               <XCircle className="w-3.5 h-3.5" />
@@ -1679,29 +1724,29 @@ export default function PlatformAdminDashboard() {
                           {/* View Details */}
                           <button
                             onClick={() => setSelectedShop(shop)}
-                            className="h-[34px] w-[34px] rounded-[8px] bg-white hover:bg-indigo-50 border border-[#E2E8F0] hover:border-indigo-200 flex items-center justify-center shadow-sm group transition-colors"
+                            className="h-[34px] w-[34px] rounded-lg bg-white dark:bg-[#19191B] hover:bg-[#F4F4F5] dark:hover:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center transition-colors"
                             title="View Shop Details"
                           >
-                            <Eye className="w-[14px] h-[14px] text-[#94A3B8] group-hover:text-indigo-500 transition-colors" />
+                            <Eye className="w-[14px] h-[14px] text-[#737373] dark:text-[#85858B]" />
                           </button>
 
                           {/* Open / Close Toggle */}
                           <button
                             onClick={() => handleToggleShop(shop)}
                             disabled={actionShopId === shop.id}
-                            className={`h-[34px] w-[34px] rounded-[9px] flex items-center justify-center shadow-sm transition-colors border disabled:opacity-40 disabled:cursor-not-allowed group ${
+                            className={`h-[34px] w-[34px] rounded-lg flex items-center justify-center transition-colors border disabled:opacity-40 disabled:cursor-not-allowed ${
                               shop.is_open
-                                ? "bg-emerald-50 border-emerald-200 hover:bg-red-50 hover:border-red-200"
-                                : "bg-slate-50 border-slate-200 hover:bg-emerald-50 hover:border-emerald-200"
+                                ? "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 border-[#16A34A]/20 dark:border-[#4CC38A]/25"
+                                : "bg-[#F4F4F5] dark:bg-[#232325] border-[#171717]/[0.08] dark:border-white/[0.08]"
                             }`}
                             title={shop.is_open ? "Close this shop" : "Open this shop"}
                           >
                             {actionShopId === shop.id ? (
-                              <Loader2 className="w-[15px] h-[15px] text-slate-400 animate-spin" />
+                              <Loader2 className="w-[15px] h-[15px] text-[#737373] animate-spin" />
                             ) : shop.is_open ? (
-                              <ToggleRight className="w-[20px] h-[20px] text-emerald-500 group-hover:text-red-400 transition-colors duration-150" />
+                              <ToggleRight className="w-[20px] h-[20px] text-[#16A34A] dark:text-[#4CC38A]" />
                             ) : (
-                              <ToggleLeft className="w-[20px] h-[20px] text-slate-400 group-hover:text-emerald-500 transition-colors duration-150" />
+                              <ToggleLeft className="w-[20px] h-[20px] text-[#737373] dark:text-[#85858B]" />
                             )}
                           </button>
                         </div>
@@ -1709,7 +1754,7 @@ export default function PlatformAdminDashboard() {
                     ))}
 
                     {filteredShops.length === 0 && (
-                      <div className="py-16 text-center text-[#7E8B9E] text-[13px] font-bold min-w-[700px] w-full">
+                      <div className="py-16 text-center text-[#737373] dark:text-[#85858B] text-[13px] font-semibold min-w-[700px] w-full">
                         No shops match your search.
                       </div>
                     )}
@@ -1729,74 +1774,74 @@ export default function PlatformAdminDashboard() {
               className="space-y-6"
             >
               {/* Billing policy card */}
-              <div className="bg-purple-50 border border-purple-100 rounded-[5.57px] p-6 flex flex-col md:flex-row items-start md:items-center gap-4">
-                <div className="w-12 h-12 rounded-[5.57px] bg-white border border-purple-100 flex items-center justify-center shrink-0 shadow-sm">
-                  <Printer className="w-5 h-5 text-purple-600" />
+              <div className="bg-purple-500/10 dark:bg-purple-400/10 border border-purple-500/20 dark:border-purple-400/25 rounded-xl p-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#19191B] border border-purple-500/20 dark:border-purple-400/25 flex items-center justify-center shrink-0">
+                  <Printer className="w-5 h-5 text-purple-600 dark:text-purple-300" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-black text-black text-[16px] tracking-tight">Per-Print Ledger Model</h3>
-                  <p className="text-auth-slate-90 text-[13px] mt-1 leading-relaxed max-w-3xl">
-                    XeroxQ charges a platform fee of <strong className="text-purple-700">₹0.50 per file</strong> pushed through the network. This is calculated using an immutable counter that permanently counts every uploaded file, even if it is later deleted, ensuring full revenue synchronization.
+                  <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] text-[16px] tracking-tight">Per-Print Ledger Model</h3>
+                  <p className="text-[#525252] dark:text-[#A1A1A6] text-[13px] mt-1 leading-relaxed max-w-3xl">
+                    XeroxQ charges a platform fee of <strong className="text-purple-700 dark:text-purple-300">₹0.50 per file</strong> pushed through the network. This is calculated using an immutable counter that permanently counts every uploaded file.
                   </p>
                 </div>
               </div>
 
-              {/* Billing table — horizontally + vertically scrollable */}
-              <div className="bg-white border border-[#E2E8F0] shadow-sm rounded-[5.57px] overflow-hidden">
+              {/* Billing table */}
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <div className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC] min-w-[650px] w-full">
+                  <div className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-3 border-b border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#F4F4F5] dark:bg-[#232325] min-w-[650px] w-full">
                     {["Shop", "Total Uploads", "Est. Shop Revenue", "Status", "Platform Fee Due"].map((h) => (
-                      <span key={h} className="text-[10px] font-bold uppercase tracking-widest text-[#7E8B9E]">{h}</span>
+                      <span key={h} className="text-[10.5px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">{h}</span>
                     ))}
                   </div>
 
-                  <div className="divide-y divide-[#E2E8F0] max-h-[520px] overflow-y-auto min-w-[650px] w-full">
+                  <div className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06] max-h-[520px] overflow-y-auto min-w-[650px] w-full">
                     {[...(platform?.shops || [])].sort((a, b) => b.platformFee - a.platformFee).map((shop, i) => (
                       <motion.div
                         key={shop.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                        className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-[14px] items-center hover:bg-[#F8FAFC] transition-colors"
+                        transition={{ delay: Math.min(i * 0.02, 0.25) }}
+                        className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-[14px] items-center hover:bg-[#F4F4F5]/60 dark:hover:bg-[#232325]/60 transition-colors"
                       >
                         <div className="min-w-0">
-                          <p className="font-bold text-[14px] text-black tracking-tight truncate">{shop.name}</p>
-                          <p className="text-[11px] font-bold text-auth-slate-50">/{shop.slug}</p>
+                          <p className="font-semibold text-[14px] text-[#171717] dark:text-[#EDEDED] tracking-tight truncate">{shop.name}</p>
+                          <p className="text-[11px] font-medium text-[#737373] dark:text-[#85858B]">/{shop.slug}</p>
                         </div>
                         <div>
-                          <p className="font-black text-[18px] text-black">{shop.totalJobs}</p>
-                          <p className="text-[9px] font-bold text-auth-slate-50 uppercase tracking-wider">all statuses</p>
+                          <p className="font-semibold text-[16px] text-[#171717] dark:text-[#EDEDED] tabular-nums">{shop.totalJobs}</p>
+                          <p className="text-[10px] font-medium text-[#737373] dark:text-[#85858B] uppercase tracking-wider">all statuses</p>
                         </div>
-                        <p className="font-black text-[14px] text-green-600">{fmt(shop.revenueGenerated)}</p>
+                        <p className="font-semibold text-[14px] text-[#16A34A] dark:text-[#4CC38A] tabular-nums">{fmt(shop.revenueGenerated)}</p>
                         <div>
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-[4px] uppercase tracking-wider ${
+                          <span className={`text-[10.5px] font-semibold px-2 py-1 rounded uppercase tracking-wider ${
                             shop.feeStatus === "due"
-                              ? "bg-red-50 text-red-600 border border-red-100"
-                              : "bg-green-50 text-green-600 border border-green-100"
+                              ? "bg-[#DC2626]/10 dark:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D] border border-[#DC2626]/20 dark:border-[#E5484D]/25"
+                              : "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A] border border-[#16A34A]/20 dark:border-[#4CC38A]/25"
                           }`}>
                             {shop.feeStatus}
                           </span>
                         </div>
-                        <p className="font-black text-[18px] text-[#FF591E]">{fmt(shop.platformFee)}</p>
+                        <p className="font-semibold text-[16px] text-[#FB432C] tabular-nums">{fmt(shop.platformFee)}</p>
                       </motion.div>
                     ))}
 
                     {(platform?.shops || []).length === 0 && (
-                      <div className="py-16 text-center text-[#7E8B9E] text-[13px] font-bold">
+                      <div className="py-16 text-center text-[#737373] dark:text-[#85858B] text-[13px] font-semibold">
                         No shop data available.
                       </div>
                     )}
                   </div>
 
-                  {/* Totals row — pinned outside scroll area */}
-                  <div className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-[18px] border-t-2 border-[#E2E8F0] bg-slate-50 min-w-[650px] w-full">
-                    <span className="text-[14px] font-black tracking-tight text-black uppercase">Platform Total</span>
-                    <span className="text-[18px] font-black text-black">{platform?.totalFiles.toLocaleString("en-IN") ?? "0"}</span>
-                    <span className="text-[15px] font-black text-green-700">
+                  {/* Totals row */}
+                  <div className="grid grid-cols-[2fr_1fr_1.5fr_0.8fr_1.2fr] gap-4 px-6 py-[16px] border-t border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] min-w-[650px] w-full">
+                    <span className="text-[13px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] uppercase">Platform Total</span>
+                    <span className="text-[16px] font-semibold text-[#171717] dark:text-[#EDEDED] tabular-nums">{platform?.totalFiles.toLocaleString("en-IN") ?? "0"}</span>
+                    <span className="text-[15px] font-semibold text-[#16A34A] dark:text-[#4CC38A] tabular-nums">
                       {platform?.shops?.length ? fmt(platform.shops.reduce((s, sh) => s + sh.revenueGenerated, 0)) : "₹0.00"}
                     </span>
                     <span />
-                    <span className="text-[20px] font-black text-[#FF591E]">{fmt(platform?.totalPlatformRevenue ?? 0)}</span>
+                    <span className="text-[18px] font-semibold text-[#FB432C] tabular-nums">{fmt(platform?.totalPlatformRevenue ?? 0)}</span>
                   </div>
                 </div>
               </div>
@@ -1810,16 +1855,16 @@ export default function PlatformAdminDashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-8"
+              className="space-y-6"
             >
               {/* HEADER BAR & MANUAL PURGE TRIGGER */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E2E8F0] shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#19191B] p-6 rounded-2xl border border-[#171717]/[0.08] dark:border-white/[0.08]">
                 <div>
                   <div className="flex items-center gap-2">
-                    <HardDrive className="w-6 h-6 text-black" />
-                    <h2 className="text-xl font-black uppercase tracking-tight text-black">Live Storage & Bucket Logs</h2>
+                    <HardDrive className="w-5 h-5 text-[#171717] dark:text-[#EDEDED]" />
+                    <h2 className="text-lg font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">Live Storage &amp; Bucket Logs</h2>
                   </div>
-                  <p className="text-[12px] font-medium text-auth-slate-50 mt-1">
+                  <p className="text-[12.5px] text-[#525252] dark:text-[#A1A1A6] mt-1">
                     Monitor Supabase cloud storage bucket usage, database capacity, peak usage records, and automated 5-minute privacy purge logs.
                   </p>
                 </div>
@@ -1840,16 +1885,13 @@ export default function PlatformAdminDashboard() {
                         });
                         if (res.ok) {
                           await fetchData();
-                          alert("Storage deletion completed successfully!");
                         }
-                      } catch (err) {
-                        alert("Deletion failed.");
                       } finally {
                         setIsPurgingStorage(false);
                       }
                     }}
                     disabled={isPurgingStorage}
-                    className="h-11 px-5 bg-red-600 hover:bg-red-700 text-white font-black text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                    className="h-10 px-4 bg-[#DC2626] dark:bg-[#E5484D] hover:opacity-90 text-white font-semibold text-xs rounded-xl transition-opacity flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     <Trash2 className={`w-4 h-4 ${isPurgingStorage ? "animate-spin" : ""}`} />
                     <span>{isPurgingStorage ? "Purging..." : "Force Delete Storage Now"}</span>
@@ -1860,122 +1902,122 @@ export default function PlatformAdminDashboard() {
               {/* METRICS CARDS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* 1. Current Storage Bucket Usage */}
-                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-6 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Bucket Storage Used</span>
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-                        <HardDrive className="w-4 h-4 text-blue-600" />
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Bucket Storage Used</span>
+                      <div className="w-8 h-8 rounded-xl bg-[#007AFF]/10 dark:bg-[#60A5FA]/15 flex items-center justify-center">
+                        <HardDrive className="w-4 h-4 text-[#007AFF] dark:text-[#60A5FA]" />
                       </div>
                     </div>
-                    <p className="text-3xl font-black text-black tracking-tight leading-none mb-2">
+                    <p className="text-3xl font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none mb-2 tabular-nums">
                       {formatBytes(storageAnalytics?.current_bytes || 0)}
                     </p>
-                    <p className="text-[12px] font-bold text-blue-700 flex items-center gap-1">
-                      <span>{storageAnalytics?.current_files || 0} active files in 'documents' bucket</span>
+                    <p className="text-[12px] font-medium text-[#525252] dark:text-[#A1A1A6]">
+                      {storageAnalytics?.current_files || 0} active files in &apos;documents&apos; bucket
                     </p>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-[#F1F5F9]">
-                    <div className="flex justify-between text-[10px] font-bold text-[#7E8B9E] mb-1">
-                      <span>Capacity (Default 1GB Free Tier)</span>
+                  <div className="mt-4 pt-4 border-t border-[#171717]/[0.06] dark:border-white/[0.06]">
+                    <div className="flex justify-between text-[10.5px] font-medium text-[#737373] dark:text-[#85858B] mb-1">
+                      <span>Capacity (1GB Free Tier)</span>
                       <span>{(((storageAnalytics?.current_bytes || 0) / (1024 * 1024 * 1024)) * 100).toFixed(2)}%</span>
                     </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-600 rounded-full transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.max(1, (((storageAnalytics?.current_bytes || 0) / (1024 * 1024 * 1024)) * 100)))}%` }} 
+                    <div className="w-full h-2 bg-[#F4F4F5] dark:bg-[#232325] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#FB432C] rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(1, (((storageAnalytics?.current_bytes || 0) / (1024 * 1024 * 1024)) * 100)))}%` }}
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Peak Storage Usage Record */}
-                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-6 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Highest Recorded Usage</span>
-                      <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-orange-600" />
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Highest Recorded Usage</span>
+                      <div className="w-8 h-8 rounded-xl bg-[#FB432C]/10 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-[#FB432C]" />
                       </div>
                     </div>
-                    <p className="text-3xl font-black text-black tracking-tight leading-none mb-2">
+                    <p className="text-3xl font-semibold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none mb-2 tabular-nums">
                       {formatBytes(storageAnalytics?.peak_bytes || 0)}
                     </p>
-                    <p className="text-[11px] font-medium text-auth-slate-50 leading-snug">
+                    <p className="text-[11.5px] text-[#525252] dark:text-[#A1A1A6] leading-snug">
                       {storageAnalytics?.peak_time ? (
-                        <>Peak on <span className="font-bold text-black">{new Date(storageAnalytics.peak_time).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span> at <span className="font-bold text-black">{new Date(storageAnalytics.peak_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></>
+                        <>Peak on <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">{new Date(storageAnalytics.peak_time).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span> at <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">{new Date(storageAnalytics.peak_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></>
                       ) : "No peak recorded yet"}
                     </p>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#7E8B9E]">Files at Peak:</span>
-                    <span className="font-black text-black">{storageAnalytics?.peak_files || 0} Files</span>
+                  <div className="mt-4 pt-4 border-t border-[#171717]/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[11px]">
+                    <span className="font-medium text-[#737373] dark:text-[#85858B]">Files at Peak:</span>
+                    <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">{storageAnalytics?.peak_files || 0} Files</span>
                   </div>
                 </div>
 
                 {/* 3. Auto-Purged Files Count */}
-                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-6 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">5-Min Privacy Deleted</span>
-                      <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center">
-                        <ShieldAlert className="w-4 h-4 text-purple-600" />
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">5-Min Privacy Deleted</span>
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-400/15 flex items-center justify-center">
+                        <ShieldAlert className="w-4 h-4 text-purple-600 dark:text-purple-300" />
                       </div>
                     </div>
-                    <p className="text-3xl font-black text-purple-600 tracking-tight leading-none mb-2">
+                    <p className="text-3xl font-semibold text-purple-600 dark:text-purple-300 tracking-tight leading-none mb-2 tabular-nums">
                       {storageAnalytics?.auto_deleted_jobs || 0}
                     </p>
-                    <p className="text-[11px] font-medium text-purple-800/80">
+                    <p className="text-[11.5px] text-[#525252] dark:text-[#A1A1A6]">
                       Files auto-deleted after 5 minutes per software privacy policy
                     </p>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#7E8B9E]">System Janitor:</span>
-                    <span className="font-black text-emerald-600 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active (pg_cron)
+                  <div className="mt-4 pt-4 border-t border-[#171717]/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[11px]">
+                    <span className="font-medium text-[#737373] dark:text-[#85858B]">System Janitor:</span>
+                    <span className="font-semibold text-[#16A34A] dark:text-[#4CC38A] flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#16A34A] dark:bg-[#4CC38A]" /> Active (pg_cron)
                     </span>
                   </div>
                 </div>
 
                 {/* 4. User Deleted Files Count */}
-                <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-6 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#7E8B9E]">Manually Deleted by Users</span>
-                      <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B]">Manually Deleted</span>
+                      <div className="w-8 h-8 rounded-xl bg-[#DC2626]/10 dark:bg-[#E5484D]/15 flex items-center justify-center">
+                        <Trash2 className="w-4 h-4 text-[#DC2626] dark:text-[#E5484D]" />
                       </div>
                     </div>
-                    <p className="text-3xl font-black text-red-600 tracking-tight leading-none mb-2">
+                    <p className="text-3xl font-semibold text-[#DC2626] dark:text-[#E5484D] tracking-tight leading-none mb-2 tabular-nums">
                       {storageAnalytics?.user_deleted_jobs || 0}
                     </p>
-                    <p className="text-[11px] font-medium text-red-800/80">
+                    <p className="text-[11.5px] text-[#525252] dark:text-[#A1A1A6]">
                       Files manually deleted by customers from status screen
                     </p>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#7E8B9E]">Total Job Records:</span>
-                    <span className="font-black text-black">{storageAnalytics?.total_jobs || 0} Records</span>
+                  <div className="mt-4 pt-4 border-t border-[#171717]/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[11px]">
+                    <span className="font-medium text-[#737373] dark:text-[#85858B]">Total Job Records:</span>
+                    <span className="font-semibold text-[#171717] dark:text-[#EDEDED]">{storageAnalytics?.total_jobs || 0} Records</span>
                   </div>
                 </div>
               </div>
 
               {/* RECENT STORAGE PURGE LOGS TABLE */}
-              <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F5F9]">
+              <div className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
                   <div>
-                    <h3 className="text-base font-black text-black uppercase tracking-tight">Recent Storage Activity & Deletion Logs</h3>
-                    <p className="text-[12px] font-medium text-auth-slate-50">Real-time database records and file storage status across all print queues</p>
+                    <h3 className="text-base font-semibold text-[#171717] dark:text-[#EDEDED]">Recent Storage Activity &amp; Deletion Logs</h3>
+                    <p className="text-[12px] text-[#525252] dark:text-[#A1A1A6]">Real-time database records and file storage status across all print queues</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-auth-slate-50">Total Log Entries: {storageLogs.length}</span>
+                    <span className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B]">Total Log Entries: {storageLogs.length}</span>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-[#F1F5F9] text-[10px] font-black text-[#7E8B9E] uppercase tracking-wider">
+                      <tr className="border-b border-[#171717]/[0.08] dark:border-white/[0.08] text-[10.5px] font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider">
                         <th className="py-3 px-4">Token / ID</th>
                         <th className="py-3 px-4">Customer Name</th>
                         <th className="py-3 px-4">File Name</th>
@@ -1984,24 +2026,24 @@ export default function PlatformAdminDashboard() {
                         <th className="py-3 px-4 text-right">Deletion Reason</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#F1F5F9] text-[13px]">
+                    <tbody className="divide-y divide-[#171717]/[0.06] dark:divide-white/[0.06] text-[13px]">
                       {storageLogs.map((log) => {
                         const isUserDeleted = log.is_deleted_by_user;
                         const isAutoDeleted = log.is_auto_deleted || (log.file_path === null && !log.is_deleted_by_user);
                         const isActiveFile = log.file_path !== null && !isUserDeleted && !isAutoDeleted;
 
                         return (
-                          <tr key={log.id} className="hover:bg-[#F8FAFC] transition-colors">
-                            <td className="py-3.5 px-4 font-mono font-bold text-black">
+                          <tr key={log.id} className="hover:bg-[#F4F4F5]/50 dark:hover:bg-[#232325]/50 transition-colors">
+                            <td className="py-3.5 px-4 font-mono font-semibold text-[#171717] dark:text-[#EDEDED]">
                               #{log.token || log.id.slice(0, 6)}
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-black">
+                            <td className="py-3.5 px-4 font-semibold text-[#171717] dark:text-[#EDEDED]">
                               {log.customer_name || 'Guest'}
                             </td>
-                            <td className="py-3.5 px-4 font-medium text-auth-slate-70 max-w-[220px] truncate" title={log.file_name}>
+                            <td className="py-3.5 px-4 font-medium text-[#525252] dark:text-[#A1A1A6] max-w-[220px] truncate" title={log.file_name}>
                               {log.file_name}
                             </td>
-                            <td className="py-3.5 px-4 text-[12px] font-medium text-auth-slate-50">
+                            <td className="py-3.5 px-4 text-[12px] text-[#737373] dark:text-[#85858B]">
                               {new Date(log.created_at).toLocaleString("en-US", {
                                 month: "short",
                                 day: "numeric",
@@ -2012,26 +2054,26 @@ export default function PlatformAdminDashboard() {
                             </td>
                             <td className="py-3.5 px-4">
                               {isActiveFile ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active in Storage
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A]">
+                                  Active in Storage
                                 </span>
                               ) : isUserDeleted ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#DC2626]/10 dark:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D]">
                                   <Trash2 className="w-3 h-3" /> Deleted
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/10 dark:bg-purple-400/15 text-purple-600 dark:text-purple-300">
                                   <ShieldAlert className="w-3 h-3" /> Deleted (5-Min)
                                 </span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-right text-[12px] font-bold">
+                            <td className="py-3.5 px-4 text-right text-[12px] font-semibold">
                               {isActiveFile ? (
-                                <span className="text-emerald-600">Available in Bucket</span>
+                                <span className="text-[#16A34A] dark:text-[#4CC38A]">Available in Bucket</span>
                               ) : isUserDeleted ? (
-                                <span className="text-red-600 font-bold">Customer Manual Delete</span>
+                                <span className="text-[#DC2626] dark:text-[#E5484D]">Customer Manual Delete</span>
                               ) : (
-                                <span className="text-purple-600 font-bold">5-Min Software Privacy Policy</span>
+                                <span className="text-purple-600 dark:text-purple-300">5-Min Software Privacy Policy</span>
                               )}
                             </td>
                           </tr>
@@ -2061,33 +2103,33 @@ export default function PlatformAdminDashboard() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white border border-[#E2E8F0] rounded-[16px] p-8 max-w-lg w-full shadow-2xl"
+              className="bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-2xl p-8 max-w-lg w-full shadow-2xl"
             >
-              <div className="flex items-start justify-between mb-6 border-b border-[#E2E8F0] pb-4">
+              <div className="flex items-start justify-between mb-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08] pb-4">
                 <div>
-                  <h2 className="text-[20px] font-black tracking-tight text-black">{selectedShop.name}</h2>
-                  <a href={`/${selectedShop.slug}`} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1">
+                  <h2 className="text-[20px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">{selectedShop.name}</h2>
+                  <a href={`/${selectedShop.slug}`} target="_blank" rel="noopener noreferrer" className="text-[12px] font-semibold text-[#FB432C] hover:underline flex items-center gap-1 mt-1">
                     {formatDisplayUrl(buildShopPortalUrl(selectedShop.slug))}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-                <button onClick={() => setSelectedShop(null)} className="w-[36px] h-[36px] rounded-[5.57px] bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] flex items-center justify-center shadow-sm">
+                <button onClick={() => setSelectedShop(null)} className="w-[34px] h-[34px] rounded-lg bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] text-[#171717] dark:text-[#EDEDED] flex items-center justify-center">
                   <XCircle className="w-[18px] h-[18px]" />
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {[
-                  { label: "Lifetime Files", value: selectedShop.totalJobs.toString(), color: "text-black" },
-                  { label: "Live Queue", value: selectedShop.pendingJobs.toString(), color: "text-orange-600" },
-                  { label: "Platform Fee", value: fmt(selectedShop.platformFee), color: "text-[#FF591E]" },
-                  { label: "Est. Shop Revenue", value: fmt(selectedShop.revenueGenerated), color: "text-green-600" },
-                  { label: "UPI ID", value: selectedShop.upi_id ?? "Not Linked", color: "text-auth-slate-90" },
-                  { label: "Current Status", value: selectedShop.is_open ? "OPEN" : "CLOSED", color: selectedShop.is_open ? "text-green-600" : "text-slate-500" },
+                  { label: "Lifetime Files", value: selectedShop.totalJobs.toString(), color: "text-[#171717] dark:text-[#EDEDED]" },
+                  { label: "Live Queue", value: selectedShop.pendingJobs.toString(), color: "text-[#FB432C]" },
+                  { label: "Platform Fee", value: fmt(selectedShop.platformFee), color: "text-[#FB432C]" },
+                  { label: "Est. Shop Revenue", value: fmt(selectedShop.revenueGenerated), color: "text-[#16A34A] dark:text-[#4CC38A]" },
+                  { label: "UPI ID", value: selectedShop.upi_id ?? "Not Linked", color: "text-[#171717] dark:text-[#EDEDED]" },
+                  { label: "Current Status", value: selectedShop.is_open ? "OPEN" : "CLOSED", color: selectedShop.is_open ? "text-[#16A34A] dark:text-[#4CC38A]" : "text-[#737373] dark:text-[#85858B]" },
                 ].map((item) => (
-                  <div key={item.label} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[5.57px] p-4 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#7E8B9E] mb-1.5">{item.label}</p>
-                    <p className={`text-[18px] font-black ${item.color} truncate leading-none`}>{item.value}</p>
+                  <div key={item.label} className="bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.06] dark:border-white/[0.08] rounded-xl p-4 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#737373] dark:text-[#85858B] mb-1.5">{item.label}</p>
+                    <p className={`text-[17px] font-semibold ${item.color} truncate leading-none tabular-nums`}>{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -2098,7 +2140,7 @@ export default function PlatformAdminDashboard() {
                     <button
                       onClick={() => handleApproveShop(selectedShop.id)}
                       disabled={actionShopId === selectedShop.id}
-                      className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center justify-center gap-2 shadow-md uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                      className="flex-1 h-[40px] rounded-xl text-xs font-semibold bg-[#16A34A] dark:bg-[#4CC38A] hover:opacity-90 text-white dark:text-[#111113] transition-opacity flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {actionShopId === selectedShop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Approve Shop for Unlimited Scans</>}
                     </button>
@@ -2106,7 +2148,7 @@ export default function PlatformAdminDashboard() {
                     <button
                       onClick={() => handleRejectShop(selectedShop.id)}
                       disabled={actionShopId === selectedShop.id}
-                      className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                      className="flex-1 h-[40px] rounded-xl text-xs font-semibold bg-amber-500/15 border border-amber-500/25 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {actionShopId === selectedShop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4" /> Revoke Unlimited Approval</>}
                     </button>
@@ -2116,10 +2158,10 @@ export default function PlatformAdminDashboard() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => { handleToggleShop(selectedShop); setSelectedShop(null); }}
-                    className={`flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold border transition-all flex items-center justify-center gap-2 shadow-sm ${
+                    className={`flex-1 h-[40px] rounded-xl text-xs font-semibold border transition-colors flex items-center justify-center gap-2 ${
                       selectedShop.is_open
-                        ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                        : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                        ? "bg-[#DC2626]/10 dark:bg-[#E5484D]/15 border-[#DC2626]/20 dark:border-[#E5484D]/25 text-[#DC2626] dark:text-[#E5484D]"
+                        : "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 border-[#16A34A]/20 dark:border-[#4CC38A]/25 text-[#16A34A] dark:text-[#4CC38A]"
                     }`}
                   >
                     {selectedShop.is_open ? <><Ban className="w-4 h-4" /> Close Shop Down</> : <><CheckCircle2 className="w-4 h-4" /> Reopen Shop</>}
@@ -2127,7 +2169,7 @@ export default function PlatformAdminDashboard() {
                   <a
                     href={`/${selectedShop.slug}`}
                     target="_blank"
-                    className="flex-1 h-[40px] rounded-[5.57px] text-[12px] font-bold bg-white border border-[#E2E8F0] text-black hover:bg-[#F8FAFC] transition-all flex items-center justify-center gap-2 shadow-sm"
+                    className="flex-1 h-[40px] rounded-xl text-xs font-semibold bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] text-[#171717] dark:text-[#EDEDED] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] transition-colors flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" /> Go to Shop
                   </a>
@@ -2137,29 +2179,29 @@ export default function PlatformAdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* ── CUSTOM CONFIRMATION MODAL ─────────────────────────────────────────── */}
       <Dialog open={confirmModal.open} onOpenChange={(o) => setConfirmModal(p => ({ ...p, open: o }))}>
-        <DialogContent className="sm:max-w-[400px] bg-white rounded-3xl p-8 border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl p-8">
           <DialogHeader className="mb-6">
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 rounded-full bg-[#DC2626]/10 dark:bg-[#E5484D]/15 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-[#DC2626] dark:text-[#E5484D]" />
             </div>
-            <DialogTitle className="text-xl font-black uppercase tracking-tighter text-black">{confirmModal.title}</DialogTitle>
-            <DialogDescription className="text-[14px] font-medium text-gray-500 italic mt-2">
+            <DialogTitle className="text-xl font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED]">{confirmModal.title}</DialogTitle>
+            <DialogDescription className="text-[14px] text-[#525252] dark:text-[#A1A1A6] mt-2">
               {confirmModal.description}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={() => setConfirmModal(p => ({ ...p, open: false }))}
-              className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black text-[11px] uppercase tracking-widest rounded-xl transition-all"
+              className="flex-1 h-11 bg-[#F4F4F5] dark:bg-[#232325] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] text-[#171717] dark:text-[#EDEDED] font-semibold text-xs rounded-xl transition-colors"
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={confirmModal.onConfirm}
-              className="flex-1 h-12 bg-black hover:bg-red-600 text-white font-black text-[11px] uppercase tracking-widest rounded-xl shadow-lg transition-all"
+              className="flex-1 h-11 bg-[#DC2626] dark:bg-[#E5484D] hover:opacity-90 text-white font-semibold text-xs rounded-xl transition-opacity"
             >
               {confirmModal.confirmText}
             </button>

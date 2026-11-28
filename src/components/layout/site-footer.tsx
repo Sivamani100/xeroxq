@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 
 export function SiteFooter() {
   const router = useRouter();
+  const [subMessage, setSubMessage] = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const footerLinks = {
     Platform: [
@@ -75,155 +76,125 @@ export function SiteFooter() {
   ];
 
   return (
-    <motion.footer 
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-50px" }}
-      variants={{
-        visible: {
-          transition: {
-            staggerChildren: 0.1
-          }
-        }
-      }}
-      className="py-24 bg-black border-t border-zinc-900 relative z-[100] overflow-hidden"
-    >
-      {/* Background Decorative Mesh Fade */}
-      <div className="absolute inset-0 z-0 opacity-[0.1] pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(circle at 100% 100%, #FB432C 0%, transparent 40%)' }} />
-      
-      <div className="max-w-[1280px] mx-auto px-6 relative z-10 text-white">
-        
-        {/* Top: Newsletter / Subscription High-Fidelity */}
-        <motion.div 
-          variants={{
-            hidden: { opacity: 0, y: 20 },
-            visible: { opacity: 1, y: 0, transition: { duration: 0.8 } }
-          }}
-          className="flex flex-col lg:flex-row items-center justify-between gap-12 pb-16 mb-16 border-b border-zinc-900"
-        >
-           <div className="space-y-5 max-w-lg text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/5 rounded-full">
-                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                 <span className="text-sm font-semibold text-white tracking-tight leading-none">For Xerox Shop Owners</span>
-              </div>
-              <h3 className="text-3xl font-bold text-white tracking-tighter uppercase leading-[1.1]">Join the XeroxQ <br /> Network in AP today.</h3>
-           </div>
-           
-           <div className="w-full max-w-md space-y-6">
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
-                  try {
-                    const { error } = await supabase.from("newsletter_subs").insert({ email });
-                    if (error) throw error;
-                    alert("XeroxQ: Registration successful! Welcome to the network.");
-                    (e.target as HTMLFormElement).reset();
-                  } catch (err) {
-                    console.error("Newsletter Failure:", err);
-                    alert("System Alert: Registration failed. You might already be in our network!");
-                  }
-                }}
-                className="flex flex-col sm:flex-row p-1.5 bg-zinc-950 border border-zinc-800 rounded-[2rem] sm:rounded-full focus-within:border-white/20 focus-within:ring-4 focus-within:ring-white/[0.02] transition-all gap-2 sm:gap-0"
+    <footer className="py-16 bg-[#FAFAFA] dark:bg-[#111113] border-t border-[#171717]/[0.08] dark:border-white/[0.08] relative z-20">
+      <div className="max-w-6xl mx-auto px-6 text-[#171717] dark:text-[#EDEDED]">
+        {/* Top: Newsletter */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 pb-12 mb-12 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+          <div className="space-y-2 max-w-md">
+            <span className="text-[12px] font-medium text-[#FB432C]">For Xerox shop owners</span>
+            <h3 className="text-[24px] font-semibold tracking-tight leading-snug">
+              Join the XeroxQ print shop network.
+            </h3>
+          </div>
+
+          <div className="w-full max-w-md space-y-2">
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSubMessage(null);
+                const form = e.currentTarget;
+                const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+                try {
+                  const { error } = await supabase.from("newsletter_subs").insert({ email });
+                  if (error) throw error;
+                  setSubMessage({ type: "ok", text: "Registered. We will keep you updated." });
+                  form.reset();
+                } catch (err) {
+                  console.error("Newsletter Failure:", err);
+                  setSubMessage({ type: "err", text: "Could not register this email. It may already be registered." });
+                }
+              }}
+              className="flex flex-col sm:flex-row p-1.5 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-xl gap-2"
+            >
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="Enter your email"
+                className="flex-1 bg-transparent border-none outline-none px-3.5 py-2 text-[13px] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B]"
+              />
+              <button
+                type="submit"
+                className="h-9 px-4 bg-[#FB432C] hover:bg-[#E03923] text-white rounded-lg font-medium text-[13px] transition-colors whitespace-nowrap cursor-pointer"
               >
-                 <input 
-                   name="email"
-                   type="email" 
-                   required
-                   placeholder="Enter your email" 
-                   className="flex-1 bg-transparent border-none outline-none px-6 py-4 sm:py-0 text-sm font-medium text-white tracking-tight placeholder:text-zinc-700"
-                 />
-                  <button type="submit" className="h-12 sm:h-10 px-8 bg-[#FB432C] text-white rounded-full font-bold text-sm transition-all duration-300 shadow-xl shadow-brand-primary/20 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap">
-                     Register Shop
-                  </button>
-              </form>
-              <p className="text-sm font-normal text-zinc-400 tracking-tight text-center lg:text-left px-6">
-                 Join 1,200+ shop owners. No joining fees. Grow your business safely.
+                Register shop
+              </button>
+            </form>
+            {subMessage ? (
+              <p className={cn("text-[12px] font-medium px-1", subMessage.type === "ok" ? "text-[#16A34A] dark:text-[#4CC38A]" : "text-[#DC2626] dark:text-[#E5484D]")}>
+                {subMessage.text}
               </p>
-           </div>
-        </motion.div>
+            ) : (
+              <p className="text-[12px] text-[#737373] dark:text-[#85858B] px-1">
+                No joining fees. Instant counter QR setup.
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Middle: Brand & Links Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-16">
-          <motion.div 
-            variants={{
-              hidden: { opacity: 0, x: -20 },
-              visible: { opacity: 1, x: 0, transition: { duration: 0.8 } }
-            }}
-            className="lg:col-span-4 space-y-8 text-left"
-          >
-            <div 
-              className="flex items-center group cursor-pointer w-fit invert brightness-0" 
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-12">
+          <div className="lg:col-span-4 space-y-5 text-left">
+            <button
+              type="button"
+              className="flex items-center gap-2.5 cursor-pointer w-fit"
               onClick={() => router.push('/')}
             >
-              <img 
-                src="/xeroxqlogo.svg" 
-                alt="XeroxQ" 
-                className="h-12 w-auto transition-transform duration-500 group-hover:scale-110"
+              <img
+                src="/logo_color.png"
+                alt="XeroxQ"
+                className="h-8 w-8 rounded-md object-contain"
               />
-            </div>
-            <p className="text-base font-medium text-zinc-400 leading-relaxed max-w-sm">
-              "Empowering Xerox Shop Owners across Andhra Pradesh with modern printing technology."
+              <span className="text-[17px] font-semibold tracking-tight">XeroxQ</span>
+            </button>
+            <p className="text-[14px] text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-xs">
+              Privacy-first document sending and queue management built for local print shops.
             </p>
-            
-            {/* Social Grid */}
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2">
               {socials.map((social, i) => (
-                <a 
+                <a
                   key={i}
-                  href={social.href} 
+                  href={social.href}
                   title={social.name}
-                  className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center hover:bg-[#FB432C] hover:text-white hover:shadow-xl hover:shadow-brand-primary/20 transition-all duration-500 group text-white"
+                  className="w-9 h-9 rounded-lg bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] flex items-center justify-center hover:border-[#FB432C] hover:text-[#FB432C] transition-colors text-[#525252] dark:text-[#A1A1A6]"
                 >
                   {social.icon}
                 </a>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-12 text-left pt-2">
+          <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-left">
             {Object.entries(footerLinks).map(([category, links]) => (
-              <motion.div 
-                key={category} 
-                variants={{
-                  hidden: { opacity: 0, y: 10 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-                }}
-                className="flex flex-col"
-              >
-                <span className="text-base font-bold text-white tracking-[0.2em] mb-[10px]">{category}</span>
-                <ul className="space-y-[8px]">
+              <div key={category} className="flex flex-col">
+                <span className="text-[13px] font-semibold text-[#171717] dark:text-[#EDEDED] mb-3">{category}</span>
+                <ul className="space-y-2">
                   {links.map(link => (
                     <li key={link.name}>
-                      <button 
+                      <button
+                        type="button"
                         onClick={() => router.push(link.href)}
-                        className="group flex items-center gap-2 text-base font-medium text-zinc-400 hover:text-white transition-all tracking-tight whitespace-nowrap"
+                        className="group inline-flex items-center gap-1 text-[13px] text-[#525252] dark:text-[#A1A1A6] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors whitespace-nowrap cursor-pointer"
                       >
-                        {link.name} 
-                        <ArrowUpRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all text-brand-primary" strokeWidth={2} />
+                        <span>{link.name}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#FB432C]" strokeWidth={1.75} />
                       </button>
                     </li>
                   ))}
                 </ul>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom: Legal & Status Bar */}
-        <motion.div 
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { opacity: 1, transition: { duration: 0.8, delay: 0.4 } }
-          }}
-          className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8"
-        >
-          <div className="space-y-2 text-center md:text-left order-2 md:order-1">
-            <p className="text-base font-medium text-zinc-500 tracking-tight leading-none">© 2026 XeroxQ Labs. Empowering Shop Owners in AP.</p>
-          </div>
-        </motion.div>
+        {/* Bottom */}
+        <div className="pt-8 border-t border-[#171717]/[0.08] dark:border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[12px] text-[#737373] dark:text-[#85858B]">
+            © 2026 XeroxQ Labs. Privacy-first printing.
+          </p>
+        </div>
       </div>
-    </motion.footer>
+    </footer>
   );
 }

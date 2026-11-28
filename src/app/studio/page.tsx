@@ -54,8 +54,8 @@ function StudioContent() {
 
   if (!documentPath) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8FAFC] text-black font-sans">
-        <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] font-sans">
+        <p className="text-sm font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-widest">
           {rawDocumentPath ? 'Blocked untrusted document source' : 'No document path provided'}
         </p>
       </div>
@@ -63,7 +63,7 @@ function StudioContent() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-black font-sans">
+    <div className="h-screen w-screen overflow-hidden bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] font-sans">
       <XeroxQPrintDialog
         documentPath={documentPath}
         jobId={jobId}
@@ -76,7 +76,7 @@ function StudioContent() {
 
 export default function StudioPage() {
   return (
-    <Suspense fallback={<div className="h-screen w-screen bg-[#F8FAFC]" />}>
+    <Suspense fallback={<div className="h-screen w-screen bg-[#FAFAFA] dark:bg-[#111113]" />}>
       <StudioContent />
     </Suspense>
   );

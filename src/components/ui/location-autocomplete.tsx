@@ -22,6 +22,7 @@ interface LocationAutocompleteProps {
   className?: string;
   disabled?: boolean;
   required?: boolean;
+  isDark?: boolean;
 }
 
 export function LocationAutocomplete({
@@ -30,13 +31,15 @@ export function LocationAutocomplete({
   placeholder = "e.g., Rajamundry, Andhra Pradesh",
   className = "",
   disabled = false,
-  required = false
+  required = false,
+  isDark = false
 }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const isAutoSelecting = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -129,6 +132,7 @@ export function LocationAutocomplete({
 
   const handleUseCurrentLocation = async () => {
     setGeoLoading(true);
+    setGeoError(null);
 
     const tryBrowserGeo = (): Promise<{ latitude: number; longitude: number }> => {
       return new Promise((resolve, reject) => {
@@ -187,10 +191,10 @@ export function LocationAutocomplete({
       } catch (_) {}
 
       // ── ONLY IF BOTH BROWSER GPS AND SERVER IP GEOLOCATION FAILED: ────────
-      alert("Could not auto-detect location. Please type your shop location in the search box.");
+      setGeoError("Could not auto-detect location. Please type your shop location in the search box.");
     } catch (err) {
       console.error("[LocationAutocomplete] Failed to auto-detect location:", err);
-      alert("Could not auto-detect location. Please type your shop location in the search box.");
+      setGeoError("Could not auto-detect location. Please type your shop location in the search box.");
     } finally {
       setGeoLoading(false);
     }
@@ -220,13 +224,17 @@ export function LocationAutocomplete({
           placeholder={placeholder}
           disabled={disabled}
           required={required}
-          className={`auth-input w-full px-3 pr-10 text-[13px] font-bold text-black border border-[#E2E8F0] rounded-[5.57px] outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all bg-white ${className}`}
+          className={`w-full px-3 pr-10 text-[13px] font-medium border rounded-lg outline-none transition-colors ${
+            isDark
+              ? "bg-[#232325] text-[#EDEDED] placeholder:text-[#85858B] border-white/[0.10] focus:border-white/30"
+              : "bg-white dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.10] focus:border-[#171717]/40 dark:focus:border-white/30"
+          } ${className}`}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading ? (
-            <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+            <div className={`w-4 h-4 border-2 rounded-full animate-spin ${isDark ? "border-white/20 border-t-white" : "border-black/20 dark:border-white/20 border-t-black dark:border-t-white"}`} />
           ) : (
-            <MapPin className="w-4 h-4 text-auth-slate-50" />
+            <MapPin className={`w-4 h-4 ${isDark ? "text-[#85858B]" : "text-[#737373] dark:text-[#85858B]"}`} strokeWidth={1.75} />
           )}
         </div>
       </div>
@@ -234,26 +242,30 @@ export function LocationAutocomplete({
       {isOpen && (
         <ul
           ref={listRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-[#E2E8F0] rounded-[5.57px] shadow-lg max-h-60 overflow-y-auto"
+          className={`absolute z-50 w-full mt-1 border rounded-xl shadow-lg max-h-60 overflow-y-auto ${
+            isDark
+              ? "bg-[#19191B] border-white/[0.10]"
+              : "bg-white dark:bg-[#19191B] border-[#171717]/[0.10] dark:border-white/[0.10]"
+          }`}
         >
           {suggestions.map((suggestion, index) => (
             <li
               key={suggestion.id}
               onClick={() => selectSuggestion(suggestion)}
-              className={`px-3 py-2 cursor-pointer border-b border-[#F1F5F9] last:border-b-0 transition-colors ${
-                index === selectedIndex
-                  ? "bg-[#F8FAFC] text-black"
-                  : "hover:bg-[#F8FAFC] text-black"
+              className={`px-3 py-2 cursor-pointer border-b last:border-b-0 transition-colors ${
+                isDark
+                  ? `border-white/[0.06] ${index === selectedIndex ? "bg-[#232325] text-[#EDEDED]" : "hover:bg-[#232325] text-[#EDEDED]"}`
+                  : `border-[#171717]/[0.06] dark:border-white/[0.06] ${index === selectedIndex ? "bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED]" : "hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#171717] dark:text-[#EDEDED]"}`
               }`}
             >
               <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-auth-slate-50 mt-0.5 shrink-0" />
+                <MapPin className={`w-4 h-4 mt-0.5 shrink-0 ${isDark ? "text-[#85858B]" : "text-[#737373] dark:text-[#85858B]"}`} strokeWidth={1.75} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-[13px]">{suggestion.name}</div>
-                  <div className="text-[11px] text-auth-slate-50">
+                  <div className="font-medium text-[13px]">{suggestion.name}</div>
+                  <div className={`text-[11px] ${isDark ? "text-[#A1A1A6]" : "text-[#525252] dark:text-[#A1A1A6]"}`}>
                     {suggestion.district}, {suggestion.state}
                   </div>
-                  <div className="text-[10px] text-[#94A3B8] capitalize mt-0.5">
+                  <div className={`text-[10px] capitalize mt-0.5 ${isDark ? "text-[#85858B]" : "text-[#737373] dark:text-[#85858B]"}`}>
                     {suggestion.type}
                   </div>
                 </div>
@@ -277,6 +289,9 @@ export function LocationAutocomplete({
         )}
         {geoLoading ? "Detecting location..." : "Use current location"}
       </button>
+      {geoError && (
+        <p className="mt-1 text-[11px] text-[#DC2626] dark:text-[#E5484D]">{geoError}</p>
+      )}
     </div>
   );
 }

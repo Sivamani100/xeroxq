@@ -10,7 +10,8 @@ import {
   Navigation,
   Compass,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -48,6 +49,7 @@ export default function MapsPage() {
   });
   const [mapZoom, setMapZoom] = useState(8);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchShops() {
@@ -81,11 +83,12 @@ export default function MapsPage() {
   }, []);
 
   const handleLocateUser = () => {
+    setLocationError(null);
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      setLocationError("Geolocation is not supported by your browser.");
       return;
     }
-    
+
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -96,7 +99,7 @@ export default function MapsPage() {
       },
       (error) => {
         console.error("Error getting location:", error);
-        alert("Could not access your location. Please check your browser permissions.");
+        setLocationError("Could not access your location. Please check your browser permissions.");
         setIsLocating(false);
       }
     );
@@ -109,7 +112,7 @@ export default function MapsPage() {
         lng: Number(shop.shop_lng)
       });
       setMapZoom(16);
-      
+
       // Scroll smoothly to map container on mobile
       const mapElem = document.getElementById("shops-leaflet-map");
       if (mapElem) {
@@ -118,116 +121,132 @@ export default function MapsPage() {
     }
   };
 
-  const filteredShops = shops.filter(shop => 
+  const filteredShops = shops.filter(shop =>
     shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (shop.shop_location?.toLowerCase() || "").includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] selection:bg-[#FB432C] selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white flex flex-col font-sans">
       <SiteHeader />
-      
-      <main className="flex-1 pt-32 pb-16">
+
+      <main className="flex-1 pt-28 pb-16">
         <div className="max-w-[1280px] mx-auto px-6">
-          
+
           {/* Header block */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
             <div>
-              <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-4">
-                <Compass className="w-4 h-4 text-black animate-spin-slow" />
-                <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Interactive Finder</span>
+              <div className="inline-flex items-center gap-2 px-3.5 h-7 rounded-full bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] mb-3">
+                <Compass className="w-3.5 h-3.5 text-[#FB432C]" />
+                <span className="text-[11px] font-semibold text-[#525252] dark:text-[#A1A1A6]">Interactive Finder</span>
               </div>
-              <h2 className="text-[36px] md:text-[46px] font-extrabold tracking-tighter text-black leading-none">
+              <h1 className="text-[32px] md:text-[42px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-tight">
                 XeroxQ Network Map
-              </h2>
+              </h1>
             </div>
-            
+
             <button
               onClick={handleLocateUser}
               disabled={isLocating}
-              className="inline-flex items-center justify-center gap-2 h-12 px-6 bg-black hover:bg-black/90 text-white rounded-xl text-xs font-bold uppercase tracking-widest cursor-pointer shadow-lg hover:shadow-black/10 transition-all active:scale-[0.98] disabled:opacity-50 shrink-0"
+              className="inline-flex items-center justify-center gap-2 h-11 px-5 bg-[#FB432C] hover:bg-[#E03923] text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 shrink-0"
             >
-              <Navigation className={cn("w-4 h-4", isLocating && "animate-pulse")} />
+              <Navigation className="w-4 h-4" />
               {isLocating ? "Locating..." : "Find Nodes Near Me"}
             </button>
           </div>
 
+          {locationError && (
+            <div className="mb-6 rounded-xl border border-[#DC2626]/20 dark:border-[#E5484D]/25 bg-[#DC2626]/10 dark:bg-[#E5484D]/15 px-4 py-2.5 text-xs font-medium text-[#DC2626] dark:text-[#E5484D]">
+              {locationError}
+            </div>
+          )}
+
           {/* Search bar */}
-          <div className="relative group max-w-xl mb-10">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-hover:text-[#FB432C] transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search active print nodes by shop name or location..." 
+          <div className="relative group max-w-xl mb-8">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#737373] dark:text-[#85858B] group-focus-within:text-[#FB432C] transition-colors" />
+            <input
+              type="text"
+              placeholder="Search active print nodes by shop name or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-14 pl-12 pr-6 bg-white border border-gray-200 rounded-2xl text-[14px] font-bold text-black placeholder:text-gray-400 focus:border-[#FB432C]/30 focus:ring-4 focus:ring-[#FB432C]/10 transition-all outline-none shadow-sm" 
+              className="w-full h-12 pl-11 pr-10 bg-white dark:bg-[#19191B] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-xl text-[14px] font-medium text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] focus:border-[#FB432C] transition-colors outline-none"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#737373] dark:text-[#85858B] hover:text-[#171717] dark:hover:text-[#EDEDED] hover:bg-[#F4F4F5] dark:hover:bg-[#232325]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Layout Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
             {/* Sidebar List */}
-            <div className="lg:col-span-1 flex flex-col max-h-[600px] overflow-y-auto pr-2 space-y-4">
-              <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+            <div className="lg:col-span-1 flex flex-col max-h-[600px] overflow-y-auto pr-1 space-y-3">
+              <h2 className="text-[11px] font-semibold text-[#737373] dark:text-[#85858B] uppercase tracking-wider mb-1 pl-1">
                 Active Nodes ({filteredShops.length})
-              </h3>
-              
+              </h2>
+
               {loading ? (
                 [...Array(3)].map((_, i) => (
-                  <div key={i} className="p-5 border border-black/5 bg-white rounded-2xl space-y-3">
+                  <div key={i} className="p-5 border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] rounded-2xl space-y-3">
                     <Skeleton className="w-10 h-10 rounded-xl" />
                     <Skeleton className="w-2/3 h-5" />
                     <Skeleton className="w-full h-4" />
                   </div>
                 ))
               ) : filteredShops.length === 0 ? (
-                <div className="p-8 text-center border border-dashed border-gray-200 bg-gray-50/50 rounded-2xl">
-                  <p className="text-sm font-bold text-gray-500 mb-2">No active map nodes found</p>
-                  <p className="text-xs text-gray-400">Try searching for other keywords or clear the search.</p>
+                <div className="p-8 text-center border border-dashed border-[#171717]/[0.12] dark:border-white/[0.12] bg-white dark:bg-[#19191B] rounded-2xl">
+                  <p className="text-sm font-semibold text-[#525252] dark:text-[#A1A1A6] mb-1.5">No active map nodes found</p>
+                  <p className="text-xs text-[#737373] dark:text-[#85858B]">Try searching for other keywords or clear the search.</p>
                 </div>
               ) : (
                 filteredShops.map((node) => (
                   <div
                     key={node.id}
                     onClick={() => handleFocusShop(node)}
-                    className="p-5 border border-black/5 bg-white rounded-[20px] transition-all hover:shadow-[0_12px_24px_rgba(0,0,0,0.04)] hover:border-black/10 group cursor-pointer text-left flex flex-col justify-between"
+                    className="p-5 border border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] rounded-[16px] transition-colors hover:border-[#FB432C]/40 group cursor-pointer text-left flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex justify-between items-start mb-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white group-hover:bg-[#FB432C] transition-colors duration-300">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] group-hover:bg-[#FB432C] group-hover:text-white transition-colors">
                           <Printer className="h-5 w-5" />
                         </div>
-                        <div className="px-2.5 py-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-full flex items-center gap-1.5">
-                          <span className={cn("w-1.5 h-1.5 rounded-full", node.is_open ? "bg-emerald-500 animate-pulse" : "bg-red-500")} />
-                          <span className="text-[8px] font-black text-black uppercase tracking-widest">
+                        <div className="px-2.5 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-full flex items-center gap-1.5">
+                          <span className={cn("w-1.5 h-1.5 rounded-full", node.is_open ? "bg-[#16A34A] dark:bg-[#4CC38A]" : "bg-[#DC2626] dark:bg-[#E5484D]")} />
+                          <span className="text-[10px] font-semibold text-[#171717] dark:text-[#EDEDED]">
                             {node.is_open ? "Open" : "Closed"}
                           </span>
                         </div>
                       </div>
-                      
-                      <h4 className="text-lg font-black tracking-tight uppercase group-hover:text-[#FB432C] transition-colors duration-300 mb-1">
+
+                      <h3 className="text-base font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] group-hover:text-[#FB432C] transition-colors mb-1">
                         {node.name}
-                      </h4>
-                      <p className="text-xs font-semibold text-gray-400 italic mb-4 flex items-start gap-1">
-                        <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" />
+                      </h3>
+                      <p className="text-xs text-[#525252] dark:text-[#A1A1A6] mb-4 flex items-start gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#737373] dark:text-[#85858B]" />
                         {node.shop_location || "Verified print node location"}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-2 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 mt-2 pt-3 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/${node.slug}`);
                         }}
-                        className="flex-1 h-10 bg-black text-white hover:bg-black/90 font-bold text-[11px] rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 h-9 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" /> Direct Print
                       </button>
                       <button
                         onClick={() => handleFocusShop(node)}
-                        className="px-3 h-10 border border-gray-200 text-black hover:bg-gray-50 rounded-xl transition-all text-[11px] font-bold uppercase tracking-wider flex items-center justify-center shrink-0 cursor-pointer"
+                        className="px-3 h-9 border border-[#171717]/[0.10] dark:border-white/[0.10] bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] hover:bg-[#E4E4E7] dark:hover:bg-[#2C2C2E] rounded-xl transition-colors text-xs font-semibold flex items-center justify-center shrink-0 cursor-pointer"
                         title="Locate on Map"
                       >
                         Show <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
@@ -243,8 +262,8 @@ export default function MapsPage() {
               {loading ? (
                 <Skeleton className="w-full h-[500px] rounded-2xl" />
               ) : (
-                <AllShopsMap 
-                  shops={filteredShops} 
+                <AllShopsMap
+                  shops={filteredShops}
                   centerLat={mapCenter.lat}
                   centerLng={mapCenter.lng}
                   zoom={mapZoom}
@@ -256,7 +275,7 @@ export default function MapsPage() {
 
         </div>
       </main>
-      
+
       <SiteFooter />
     </div>
   );

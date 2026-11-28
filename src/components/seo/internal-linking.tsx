@@ -63,8 +63,8 @@ export function InternalLinkingHub() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-black mb-4">Explore XeroxQ Services</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">
+        <h2 className="text-3xl font-bold text-[#171717] dark:text-[#EDEDED] mb-4">Explore XeroxQ Services</h2>
+        <p className="text-[#525252] dark:text-[#A1A1A6] max-w-2xl mx-auto">
           Discover our comprehensive printing solutions across India. Find the perfect service for your needs.
         </p>
       </div>
@@ -77,8 +77,8 @@ export function InternalLinkingHub() {
             onClick={() => setActiveCategory(category.id)}
             className={`px-4 py-2 rounded-full font-medium transition-all ${
               activeCategory === category.id
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113]'
+                : 'bg-[#F4F4F5] dark:bg-[#232325] text-[#525252] dark:text-[#A1A1A6] hover:bg-[#E5E5E5] dark:hover:bg-[#2C2C30]'
             }`}
           >
             <category.icon className="w-4 h-4 inline mr-2" />
@@ -95,15 +95,15 @@ export function InternalLinkingHub() {
             <Link
               key={index}
               href={link.href}
-              className="group p-6 bg-white border border-gray-200 rounded-lg hover:border-black hover:shadow-lg transition-all duration-300"
+              className="group p-6 bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-lg hover:border-[#171717] dark:hover:border-white/30 hover:shadow-lg transition-all duration-300"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-black mb-2 group-hover:text-[#FB432C] transition-colors">
+                  <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-2 group-hover:text-[#FB432C] transition-colors">
                     {link.text}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-3">{link.description}</p>
-                  <div className="flex items-center text-black group-hover:text-[#FB432C] transition-colors">
+                  <p className="text-sm text-[#525252] dark:text-[#A1A1A6] mb-3">{link.description}</p>
+                  <div className="flex items-center text-[#171717] dark:text-[#EDEDED] group-hover:text-[#FB432C] transition-colors">
                     <span className="text-sm font-medium">Learn more</span>
                     <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -119,16 +119,16 @@ export function InternalLinkingHub() {
 // Breadcrumb navigation component
 export function BreadcrumbNavigation({ items }: { items: Array<{ name: string; href?: string }> }) {
   return (
-    <nav className="flex items-center space-x-2 text-sm text-gray-600 py-4" aria-label="Breadcrumb">
+    <nav className="flex items-center space-x-2 text-sm text-[#525252] dark:text-[#A1A1A6] py-4" aria-label="Breadcrumb">
       {items.map((item, index) => (
         <div key={index} className="flex items-center">
           {index > 0 && <ChevronRight className="w-4 h-4 mx-2" />}
           {item.href ? (
-            <Link href={item.href} className="hover:text-black transition-colors">
+            <Link href={item.href} className="hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors">
               {item.name}
             </Link>
           ) : (
-            <span className="text-black font-medium">{item.name}</span>
+            <span className="text-[#171717] dark:text-[#EDEDED] font-medium">{item.name}</span>
           )}
         </div>
       ))}
@@ -178,25 +178,25 @@ export function RelatedPosts({ currentSlug, category }: { currentSlug: string; c
   if (filteredPosts.length === 0) return null;
 
   return (
-    <div className="mt-12 pt-8 border-t border-gray-200">
-      <h3 className="text-xl font-bold text-black mb-6">Related Articles</h3>
+    <div className="mt-12 pt-8 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+      <h3 className="text-xl font-bold text-[#171717] dark:text-[#EDEDED] mb-6">Related Articles</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {filteredPosts.map((post, index) => (
           <Link
             key={index}
             href={`/blog/${post.slug}`}
-            className="group block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            className="group block p-4 bg-[#F4F4F5] dark:bg-[#232325] rounded-lg hover:bg-[#E5E5E5] dark:hover:bg-[#2C2C30] transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#FB432C] uppercase tracking-wider">
                 {post.category}
               </span>
-              <span className="text-xs text-gray-500">{post.readTime}</span>
+              <span className="text-xs text-[#737373] dark:text-[#85858B]">{post.readTime}</span>
             </div>
-            <h4 className="font-semibold text-black mb-2 group-hover:text-[#FB432C] transition-colors">
+            <h4 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-2 group-hover:text-[#FB432C] transition-colors">
               {post.title}
             </h4>
-            <p className="text-sm text-gray-600 line-clamp-2">{post.excerpt}</p>
+            <p className="text-sm text-[#525252] dark:text-[#A1A1A6] line-clamp-2">{post.excerpt}</p>
           </Link>
         ))}
       </div>
@@ -249,13 +249,13 @@ export function QuickLinks() {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
       {quickLinks.map((section, index) => (
         <div key={index}>
-          <h3 className="font-semibold text-black mb-4">{section.title}</h3>
+          <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-4">{section.title}</h3>
           <ul className="space-y-2">
             {section.links.map((link, linkIndex) => (
               <li key={linkIndex}>
                 <Link
                   href={link.href}
-                  className="text-gray-600 hover:text-black transition-colors"
+                  className="text-[#525252] dark:text-[#A1A1A6] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors"
                 >
                   {link.text}
                 </Link>
@@ -301,7 +301,7 @@ export function ContextualLinks({ context }: { context: 'printing' | 'security' 
         <Link
           key={index}
           href={link.href}
-          className="inline-flex items-center text-sm text-[#FB432C] hover:text-black transition-colors"
+          className="inline-flex items-center text-sm text-[#FB432C] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors"
         >
           {link.anchor}
           <ChevronRight className="w-3 h-3 ml-1" />

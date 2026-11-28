@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List, debugPrint;
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +14,7 @@ import '../../data/models.dart';
 import '../../data/shop_repository.dart';
 import '../../data/vault_repository.dart';
 import '../../data/job_repository.dart';
+import 'image_adjust_page.dart';
 import 'job_tracking_page.dart';
 
 const Color _emeraldGreen = Color(0xFF10B981);
@@ -149,10 +153,37 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
     }
   }
 
+  static bool _isImageName(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp');
+  }
+
+  Future<File?> _writeTempFile(Uint8List bytes, String fileName) async {
+    if (kIsWeb) return null;
+    try {
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}${Platform.pathSeparator}xq_${DateTime.now().microsecondsSinceEpoch}_$fileName');
+      await f.writeAsBytes(bytes, flush: true);
+      return f;
+    } catch (e) {
+      debugPrint('Temp file write failed: $e');
+      return null;
+    }
+  }
+
   Future<void> _addFileToList(File file) async {
     final name = file.path.split('/').last.split('\\').last;
     final size = await file.length();
     int pages = 1;
+    Uint8List? originalBytes;
+    Uint8List? finalBytes;
+    File? finalFile = file;
+    bool wasAutoCropped = false;
+    String finalName = name;
+
     if (name.toLowerCase().endsWith('.pdf')) {
       try {
         final bytes = await file.readAsBytes();
@@ -160,32 +191,71 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
       } catch (e) {
         debugPrint('Failed to read PDF bytes for page count: $e');
       }
+    } else if (_isImageName(name)) {
+      try {
+        originalBytes = await file.readAsBytes();
+        final res = await autoCropBytesIfDocument(originalBytes);
+        finalBytes = res.bytes;
+        wasAutoCropped = res.autoOrManualCropped;
+        if (wasAutoCropped) {
+          final base = name.replaceAll(RegExp(r'\.[^/.]+$'), '');
+          finalName = '$base.png';
+          finalFile = await _writeTempFile(finalBytes, finalName) ?? file;
+        }
+      } catch (e) {
+        debugPrint('Auto-crop image read error: $e');
+      }
     }
+
+    if (!mounted) return;
     setState(() {
-      final id = '${DateTime.now().microsecondsSinceEpoch}_$name';
+      final id = '${DateTime.now().microsecondsSinceEpoch}_$finalName';
       _selectedFiles.add(PrintFile(
         id: id,
-        name: name,
-        file: file,
-        sizeBytes: size,
+        name: finalName,
+        file: finalFile,
+        bytes: finalBytes,
+        originalBytes: originalBytes,
+        autoCropped: wasAutoCropped,
+        sizeBytes: finalBytes?.length ?? size,
         totalPages: pages,
       ));
       _expandedFiles[id] = true;
     });
   }
 
-  void _addBytesToList(Uint8List bytes, String name) {
+  Future<void> _addBytesToList(Uint8List bytes, String name) async {
     int pages = 1;
+    Uint8List finalBytes = bytes;
+    Uint8List? originalBytes;
+    bool wasAutoCropped = false;
+    String finalName = name;
+
     if (name.toLowerCase().endsWith('.pdf')) {
       pages = _extractPdfPageCount(bytes);
+    } else if (_isImageName(name)) {
+      originalBytes = bytes;
+      final res = await autoCropBytesIfDocument(bytes);
+      finalBytes = res.bytes;
+      wasAutoCropped = res.autoOrManualCropped;
+      if (wasAutoCropped) {
+        final base = name.replaceAll(RegExp(r'\.[^/.]+$'), '');
+        finalName = '$base.png';
+      }
     }
+
+    final File? mobileFile = await _writeTempFile(finalBytes, finalName);
+    if (!mounted) return;
     setState(() {
-      final id = '${DateTime.now().microsecondsSinceEpoch}_$name';
+      final id = '${DateTime.now().microsecondsSinceEpoch}_$finalName';
       _selectedFiles.add(PrintFile(
         id: id,
-        name: name,
-        bytes: bytes,
-        sizeBytes: bytes.length,
+        name: finalName,
+        file: mobileFile,
+        bytes: finalBytes,
+        originalBytes: originalBytes,
+        autoCropped: wasAutoCropped,
+        sizeBytes: finalBytes.length,
         totalPages: pages,
       ));
       _expandedFiles[id] = true;
@@ -203,7 +273,7 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
       for (final pickedFile in result.files) {
         if (kIsWeb) {
           if (pickedFile.bytes != null) {
-            _addBytesToList(pickedFile.bytes!, pickedFile.name);
+            await _addBytesToList(pickedFile.bytes!, pickedFile.name);
           }
         } else {
           if (pickedFile.path != null) {
@@ -214,18 +284,21 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
     }
   }
 
-  Future<void> _pickMultipleImages() async {
+  Future<void> _pickMultipleImages({ImageSource source = ImageSource.gallery}) async {
     final ImagePicker picker = ImagePicker();
     try {
-      final List<XFile> images = await picker.pickMultiImage(imageQuality: 90);
+      if (source == ImageSource.camera) {
+        final XFile? shot = await picker.pickImage(source: ImageSource.camera, imageQuality: 92);
+        if (shot == null) return;
+        final bytes = await shot.readAsBytes();
+        await _addBytesToList(bytes, shot.name);
+        return;
+      }
+      final List<XFile> images = await picker.pickMultiImage(imageQuality: 92);
       if (images.isNotEmpty) {
         for (final img in images) {
           final bytes = await img.readAsBytes();
-          if (kIsWeb) {
-            _addBytesToList(bytes, img.name);
-          } else {
-            await _addFileToList(File(img.path));
-          }
+          await _addBytesToList(bytes, img.name);
         }
       }
     } catch (e) {
@@ -233,10 +306,113 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
     }
   }
 
+  Future<void> _openImageAdjuster(int index) async {
+    final pf = _selectedFiles[index];
+    Uint8List? sourceBytes = pf.originalBytes ?? pf.bytes;
+    if (sourceBytes == null && pf.file != null) {
+      sourceBytes = await pf.file!.readAsBytes();
+    }
+    if (sourceBytes == null || !mounted) return;
+
+    final result = await Navigator.push<ImageAdjustResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImageAdjustPage(
+          imageBytes: sourceBytes!,
+          fileName: pf.name,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    final base = pf.name.replaceAll(RegExp(r'\.[^/.]+$'), '');
+    final updatedName = '$base.png';
+    final updatedFile = await _writeTempFile(result.bytes, updatedName) ?? pf.file;
+    if (!mounted) return;
+
+    setState(() {
+      _selectedFiles[index] = PrintFile(
+        id: pf.id,
+        name: updatedName,
+        file: updatedFile,
+        bytes: result.bytes,
+        originalBytes: sourceBytes,
+        autoCropped: result.autoOrManualCropped,
+        sizeBytes: result.bytes.length,
+        totalPages: 1,
+        color: pf.color,
+        doubleSided: pf.doubleSided,
+        copies: pf.copies,
+      );
+    });
+  }
+
+  Future<void> _combineImagesToA4IdSheet() async {
+    final imageItems = _selectedFiles.where((f) => _isImageName(f.name)).toList();
+    if (imageItems.length < 2) return;
+
+    try {
+      final doc = pw.Document();
+      for (int i = 0; i < imageItems.length; i += 2) {
+        final pair = imageItems.skip(i).take(2).toList();
+        final widgets = <pw.Widget>[];
+        for (final item in pair) {
+          final bytes = item.bytes ?? (item.file != null ? await item.file!.readAsBytes() : null);
+          if (bytes == null) continue;
+          widgets.add(
+            pw.Expanded(
+              child: pw.Container(
+                margin: const pw.EdgeInsets.symmetric(vertical: 10),
+                padding: const pw.EdgeInsets.all(6),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300, width: 0.7),
+                ),
+                child: pw.Center(
+                  child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
+                ),
+              ),
+            ),
+          );
+        }
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (_) => pw.Column(children: widgets),
+          ),
+        );
+      }
+
+      final pdfBytes = Uint8List.fromList(await doc.save());
+      final name = 'ID_Sheet_A4_${DateTime.now().millisecondsSinceEpoch % 10000}.pdf';
+      final mobileFile = await _writeTempFile(pdfBytes, name);
+      if (!mounted) return;
+
+      setState(() {
+        _selectedFiles.removeWhere((f) => _isImageName(f.name));
+        final id = '${DateTime.now().microsecondsSinceEpoch}_$name';
+        _selectedFiles.add(PrintFile(
+          id: id,
+          name: name,
+          file: mobileFile,
+          bytes: pdfBytes,
+          sizeBytes: pdfBytes.length,
+          totalPages: (imageItems.length / 2).ceil(),
+        ));
+        _expandedFiles[id] = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not combine ID images: $e')),
+      );
+    }
+  }
+
   void _selectVaultFile(VaultDocument doc) async {
     final vaultRepo = context.read<VaultRepository>();
     final bytes = await vaultRepo.getDocumentBytes(doc);
-    _addBytesToList(bytes, doc.name);
+    await _addBytesToList(bytes, doc.name);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -573,29 +749,59 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
           ),
           
           const SizedBox(height: 16),
-          // Multiple Images Button
-          GestureDetector(
-            onTap: _pickMultipleImages,
-            child: Container(
-              height: 100,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2), style: BorderStyle.values[1]),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.photo_library_outlined, size: 30, color: AppColors.primary),
-                  SizedBox(height: 8),
-                  Text(
-                    'Add Multiple Images from Gallery',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+          // Camera Scan & Multiple Images Row
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _pickMultipleImages(source: ImageSource.camera),
+                  child: Container(
+                    height: 98,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3568FF).withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF3568FF).withValues(alpha: 0.25)),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.document_scanner_outlined, size: 28, color: Color(0xFF3568FF)),
+                        SizedBox(height: 6),
+                        Text(
+                          'Scan ID / Doc',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF3568FF)),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: _pickMultipleImages,
+                  child: Container(
+                    height: 98,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.photo_library_outlined, size: 28, color: AppColors.primary),
+                        SizedBox(height: 6),
+                        Text(
+                          'Gallery Photos',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           
           const SizedBox(height: 32),
@@ -682,12 +888,12 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pickMultipleImages,
                 icon: const Icon(Icons.image_outlined, size: 18, color: AppColors.primary),
-                label: const Text('Add Images', style: TextStyle(color: AppColors.primary)),
+                label: const Text('Gallery', style: TextStyle(color: AppColors.primary)),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   side: const BorderSide(color: AppColors.primary),
@@ -695,8 +901,42 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
                 ),
               ),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickMultipleImages(source: ImageSource.camera),
+                icon: const Icon(Icons.document_scanner_outlined, size: 18, color: Color(0xFF3568FF)),
+                label: const Text('Scan', style: TextStyle(color: Color(0xFF3568FF))),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: Color(0xFF3568FF)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
           ],
         ),
+
+        if (_selectedFiles.where((f) => _isImageName(f.name)).length >= 2) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _combineImagesToA4IdSheet,
+              icon: const Icon(Icons.grid_view_rounded, size: 18),
+              label: const Text(
+                'Combine IDs / Photos into 1 A4 Sheet (PDF)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3568FF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 32),
         const Text(
@@ -766,7 +1006,7 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
   Widget _buildPrintFileCard(PrintFile printFile, int fileIndex, bool isDark) {
     final isExpanded = _expandedFiles[printFile.id] ?? true;
     final isPdf = printFile.name.toLowerCase().endsWith('.pdf');
-    final isImage = ['jpg', 'jpeg', 'png'].contains(printFile.extension);
+    final isImage = _isImageName(printFile.name);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -793,12 +1033,22 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              '${printFile.formattedSize} • ${printFile.totalPages} page(s)',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              '${printFile.formattedSize} • ${printFile.totalPages} page(s)${printFile.autoCropped ? " • Auto-cropped" : ""}',
+              style: TextStyle(
+                fontSize: 12,
+                color: printFile.autoCropped ? _emeraldGreen : Colors.grey,
+                fontWeight: printFile.autoCropped ? FontWeight.w600 : FontWeight.normal,
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isImage)
+                  IconButton(
+                    icon: const Icon(Icons.crop, color: Color(0xFF3568FF), size: 20),
+                    tooltip: 'Crop & Adjust',
+                    onPressed: () => _openImageAdjuster(fileIndex),
+                  ),
                 IconButton(
                   icon: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 20),
                   onPressed: () {
@@ -828,10 +1078,12 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Preview box
+                  // Preview box (tapping image opens Crop & Adjust studio)
                   GestureDetector(
                     onTap: () {
-                      if (kIsWeb) {
+                      if (isImage) {
+                        _openImageAdjuster(fileIndex);
+                      } else if (kIsWeb) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Document viewing not supported on web preview')),
                         );
@@ -878,9 +1130,9 @@ class _PrintWizardPageState extends State<PrintWizardPage> {
                             child: Container(
                               color: Colors.black.withValues(alpha: 0.5),
                               padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: const Text(
-                                'VIEW',
-                                style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              child: Text(
+                                isImage ? 'ADJUST' : 'VIEW',
+                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
                                 textAlign: TextAlign.center,
                               ),
                             ),

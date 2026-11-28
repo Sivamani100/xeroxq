@@ -7,7 +7,7 @@ import { ContactCard } from "@/components/ui/contact-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MailIcon, PhoneIcon, MapPinIcon, X, LifeBuoy } from "lucide-react";
+import { MailIcon, PhoneIcon, MapPinIcon, X, LifeBuoy, CheckCircle2, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -17,22 +17,24 @@ const FAQItem = ({ question, answer }: { question?: string, answer?: string }) =
   const [isOpen, setIsOpen] = useState(false);
   
   return (
-    <div className="border-b border-gray-200 py-6 last:border-0 border-t-0">
+    <div className="border-b border-[#171717]/[0.08] dark:border-white/[0.08] py-6 last:border-0 border-t-0">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between text-left group"
       >
         <span className={cn(
           "text-lg font-bold transition-colors duration-300",
-          isOpen ? "text-black" : "text-black/60 group-hover:text-black"
+          isOpen ? "text-[#171717] dark:text-[#EDEDED]" : "text-[#525252] dark:text-[#A1A1A6] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED]"
         )}>
           {question}
         </span>
         <div className={cn(
-          "w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center transition-all duration-300 shadow-sm shrink-0 ml-4",
-          isOpen ? "bg-[#FB432C] border-[#FB432C] rotate-45" : "bg-white group-hover:bg-gray-50"
+          "w-8 h-8 rounded-lg border flex items-center justify-center transition-all duration-300 shadow-sm shrink-0 ml-4",
+          isOpen
+            ? "bg-[#FB432C] border-[#FB432C] rotate-45"
+            : "bg-white dark:bg-[#232325] border-[#171717]/[0.10] dark:border-white/[0.10] group-hover:bg-[#F4F4F5] dark:group-hover:bg-[#2E2E32]"
         )}>
-          <X className={cn("w-4 h-4", isOpen ? "text-white" : "text-gray-400 rotate-45")} />
+          <X className={cn("w-4 h-4", isOpen ? "text-white" : "text-[#737373] dark:text-[#85858B] rotate-45")} />
         </div>
       </button>
       <AnimatePresence>
@@ -44,7 +46,7 @@ const FAQItem = ({ question, answer }: { question?: string, answer?: string }) =
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="pt-4 text-base font-medium text-gray-500 leading-relaxed pr-8">
+            <p className="pt-4 text-base font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed pr-8">
               {answer}
             </p>
           </motion.div>
@@ -55,6 +57,9 @@ const FAQItem = ({ question, answer }: { question?: string, answer?: string }) =
 };
 
 export default function SupportPage() {
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
   const supportFaqs = [
     {
       question: "I lost my Print Code, what should I do?",
@@ -75,7 +80,7 @@ export default function SupportPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] flex flex-col font-sans selection:bg-[#FB432C] selection:text-white">
       <SiteHeader />
       
       <main className="flex-1 pt-32 pb-0">
@@ -92,15 +97,15 @@ export default function SupportPage() {
                animate="visible"
                className="mx-auto max-w-2xl text-center"
              >
-               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-black/5 border border-black/5 mb-8 mx-auto">
-                 <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
-                 <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Command Center</span>
+               <div className="inline-flex items-center gap-2.5 px-4 h-8 rounded-full bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] mb-8 mx-auto">
+                 <div className="w-2 h-2 rounded-full bg-[#171717] dark:bg-[#EDEDED]" />
+                 <span className="text-[10px] font-bold text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em] leading-none">Command Center</span>
                </div>
                
-               <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
+               <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] leading-none mb-6">
                  Support Hub
                </h2>
-               <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+               <p className="text-lg font-medium text-[#525252] dark:text-[#A1A1A6] leading-relaxed italic max-w-2xl mx-auto">
                  We're here to help you navigate XeroxQ. Whether you're a shop owner struggling with the terminal or a user with a corrupted file, find your answers here.
                </p>
              </motion.div>
@@ -108,7 +113,7 @@ export default function SupportPage() {
         </section>
 
         {/* Global Contact Form Section - Reusing ContactCard */}
-        <section className="py-16 bg-white overflow-visible relative z-20">
+        <section className="py-16 bg-white dark:bg-[#111113] overflow-visible relative z-20">
           <div className="max-w-7xl mx-auto px-6">
             <ContactCard
               title="Reach Out Intelligently."
@@ -134,7 +139,10 @@ export default function SupportPage() {
             >
               <form onSubmit={async (e) => {
                 e.preventDefault();
-                const formData = new FormData(e.currentTarget);
+                const form = e.currentTarget;
+                setSubmitting(true);
+                setFeedback(null);
+                const formData = new FormData(form);
                 try {
                   const { error } = await supabase.from("contact_submissions").insert({
                     shop_name: formData.get("name"),
@@ -142,29 +150,56 @@ export default function SupportPage() {
                     message: formData.get("message")
                   });
                   if (error) throw error;
-                  alert("Support Request Dispatched. Our regional team will contact you securely.");
-                  (e.target as HTMLFormElement).reset();
+                  setFeedback({
+                    type: "success",
+                    message: "Support Request Dispatched. Our regional team will contact you securely."
+                  });
+                  form.reset();
                 } catch (err) {
-                  alert("Dispatch failed. System connection error.");
+                  setFeedback({
+                    type: "error",
+                    message: "Dispatch failed. System connection error."
+                  });
+                } finally {
+                  setSubmitting(false);
                 }
               }} className="w-full space-y-5">
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Full Name</Label>
-                  <Input name="name" type="text" placeholder="Your name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" required />
+                  <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Full Name</Label>
+                  <Input name="name" type="text" placeholder="Your name" className="h-12 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/40 transition-all rounded-lg" required />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Contact Email</Label>
-                  <Input name="email" type="email" placeholder="email@example.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" required />
+                  <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">Contact Email</Label>
+                  <Input name="email" type="email" placeholder="email@example.com" className="h-12 bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/40 transition-all rounded-lg" required />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">How can we help?</Label>
-                  <Textarea name="message" placeholder="Please describe your issue in detail..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" required />
+                  <Label className="text-[10px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-widest pl-1">How can we help?</Label>
+                  <Textarea name="message" placeholder="Please describe your issue in detail..." className="min-h-[120px] bg-[#F4F4F5] dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border-[#171717]/[0.12] dark:border-white/[0.12] focus:border-[#171717] dark:focus:border-white/40 transition-all rounded-lg p-4" required />
                 </div>
+                {feedback && (
+                  <div
+                    role="status"
+                    className={cn(
+                      "p-3.5 rounded-xl border text-xs font-semibold flex items-start gap-2.5",
+                      feedback.type === "success"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                        : "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400"
+                    )}
+                  >
+                    {feedback.type === "success" ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    )}
+                    <span>{feedback.message}</span>
+                  </div>
+                )}
                 <button 
                   type="submit" 
-                  className="w-full h-12 bg-black hover:bg-[#FB432C] text-white font-bold text-[12px] uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-black/10 mt-2"
+                  disabled={submitting}
+                  className="w-full h-12 bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] hover:bg-[#FB432C] dark:hover:bg-[#FB432C] dark:hover:text-white disabled:opacity-60 font-bold text-[12px] uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-black/10 mt-2"
                 >
-                  Submit Ticket
+                  {submitting ? "Submitting Ticket..." : "Submit Ticket"}
                 </button>
               </form>
             </ContactCard>
@@ -172,7 +207,7 @@ export default function SupportPage() {
         </section>
 
         {/* FAQs Section - Landing Page UI Clone */}
-        <section className="py-24 bg-[#F8FAFC] border-t border-gray-100">
+        <section className="py-24 bg-[#F4F4F5]/70 dark:bg-[#151518] border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
            <div className="max-w-[800px] mx-auto px-6">
               <motion.div 
                  initial={{ opacity: 0, y: 20 }}
@@ -180,16 +215,16 @@ export default function SupportPage() {
                  viewport={{ once: true }}
                  className="text-center mb-16"
               >
-                 <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                    <LifeBuoy className="w-8 h-8 text-black" />
+                 <div className="w-16 h-16 bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                    <LifeBuoy className="w-8 h-8 text-[#171717] dark:text-[#EDEDED]" />
                  </div>
-                 <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-black uppercase mb-4">
+                 <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-[#171717] dark:text-[#EDEDED] uppercase mb-4">
                     Troubleshooting
                  </h2>
-                 <p className="text-gray-500 font-medium">Common questions about the network.</p>
+                 <p className="text-[#525252] dark:text-[#A1A1A6] font-medium">Common questions about the network.</p>
               </motion.div>
 
-              <div className="divide-y divide-gray-200 border-t border-gray-200">
+              <div className="divide-y divide-[#171717]/[0.08] dark:divide-white/[0.08] border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
                  {supportFaqs.map((faq, i) => (
                    <motion.div
                      key={i}

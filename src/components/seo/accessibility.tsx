@@ -117,19 +117,19 @@ export function AccessibilityControls({
     <div className="fixed bottom-4 right-4 z-50">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-black text-white rounded-full p-3 shadow-lg hover:bg-gray-800 transition-colors"
+        className="bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] rounded-full p-3 shadow-lg hover:bg-[#FB432C] dark:hover:bg-[#FB432C] dark:hover:text-white transition-colors"
         aria-label="Accessibility options"
       >
         <Keyboard className="w-5 h-5" />
       </Button>
 
       {isOpen && (
-        <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-64">
-          <h3 className="font-semibold text-black mb-4">Accessibility Options</h3>
+        <div className="absolute bottom-16 right-0 bg-white dark:bg-[#19191B] rounded-lg shadow-xl border border-[#171717]/[0.10] dark:border-white/[0.10] p-4 w-64">
+          <h3 className="font-semibold text-[#171717] dark:text-[#EDEDED] mb-4">Accessibility Options</h3>
           
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">High Contrast</span>
+              <span className="text-sm text-[#525252] dark:text-[#A1A1A6]">High Contrast</span>
               <Button
                 variant={highContrast ? "default" : "outline"}
                 size="sm"
@@ -141,7 +141,7 @@ export function AccessibilityControls({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Large Text</span>
+              <span className="text-sm text-[#525252] dark:text-[#A1A1A6]">Large Text</span>
               <Button
                 variant={largeText ? "default" : "outline"}
                 size="sm"
@@ -153,7 +153,7 @@ export function AccessibilityControls({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Reduced Motion</span>
+              <span className="text-sm text-[#525252] dark:text-[#A1A1A6]">Reduced Motion</span>
               <Button
                 variant={reducedMotion ? "default" : "outline"}
                 size="sm"
@@ -165,7 +165,7 @@ export function AccessibilityControls({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Screen Reader</span>
+              <span className="text-sm text-[#525252] dark:text-[#A1A1A6]">Screen Reader</span>
               <Button
                 variant={screenReaderMode ? "default" : "outline"}
                 size="sm"
@@ -177,8 +177,8 @@ export function AccessibilityControls({
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
+          <div className="mt-4 pt-4 border-t border-[#171717]/[0.08] dark:border-white/[0.08]">
+            <p className="text-xs text-[#737373] dark:text-[#85858B]">
               Press Tab to navigate, Enter to select
             </p>
           </div>
@@ -193,7 +193,7 @@ export function SkipToContent() {
   return (
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-black text-white px-4 py-2 rounded-md z-50"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] px-4 py-2 rounded-md z-50"
     >
       Skip to main content
     </a>
@@ -395,10 +395,10 @@ export function AccessibleInput({
     <div className={className}>
       <label 
         htmlFor={inputId}
-        className="block text-sm font-medium text-gray-700 mb-1"
+        className="block text-sm font-medium text-[#171717] dark:text-[#EDEDED] mb-1"
       >
         {label}
-        {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+        {required && <span className="text-[#DC2626] dark:text-[#E5484D] ml-1" aria-label="required">*</span>}
       </label>
       <input
         id={inputId}
@@ -409,11 +409,11 @@ export function AccessibleInput({
         required={required}
         aria-invalid={!!error}
         aria-describedby={error ? errorId : undefined}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FB432C] focus:border-transparent"
+        className="w-full px-3 py-2 bg-white dark:bg-[#232325] text-[#171717] dark:text-[#EDEDED] placeholder:text-[#737373] dark:placeholder:text-[#85858B] border border-[#171717]/[0.15] dark:border-white/[0.12] rounded-md focus:outline-none focus:ring-2 focus:ring-[#FB432C] focus:border-transparent"
         {...props}
       />
       {error && (
-        <div id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+        <div id={errorId} className="mt-1 text-sm text-[#DC2626] dark:text-[#E5484D]" role="alert">
           {error}
         </div>
       )}
@@ -445,7 +445,7 @@ export function AccessibleButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
-      className={`px-4 py-2 bg-[#FB432C] text-white rounded-md hover:bg-[#FB432C]/90 focus:outline-none focus:ring-2 focus:ring-[#FB432C] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${className}`}
+      className={`px-4 py-2 bg-[#FB432C] text-white rounded-md hover:bg-[#E03923] focus:outline-none focus:ring-2 focus:ring-[#FB432C] focus:ring-offset-2 dark:focus:ring-offset-[#111113] disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${className}`}
       {...props}
     >
       {children}
@@ -506,7 +506,7 @@ export function AccessibleLink({
       aria-label={ariaLabel}
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}
-      className={`text-[#FB432C] hover:text-black transition-colors ${className}`}
+      className={`text-[#FB432C] hover:text-[#171717] dark:hover:text-[#EDEDED] transition-colors ${className}`}
       {...props}
     >
       {children}
@@ -537,7 +537,7 @@ export function AccessibleProgress({
         {label}: {Math.round(percentage)}%
       </div>
       <div
-        className="w-full bg-gray-200 rounded-full h-2"
+        className="w-full bg-[#E5E5E5] dark:bg-[#232325] rounded-full h-2"
         role="progressbar"
         aria-valuenow={value}
         aria-valuemin={0}
@@ -579,10 +579,10 @@ export function AccessibleToast({
   if (!isVisible) return null;
 
   const typeStyles = {
-    info: 'bg-blue-100 text-blue-800 border-blue-200',
-    success: 'bg-green-100 text-green-800 border-green-200',
-    warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    error: 'bg-red-100 text-red-800 border-red-200',
+    info: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/70 dark:text-blue-200 dark:border-blue-500/30',
+    success: 'bg-[#ECFDF5] text-[#16A34A] border-[#16A34A]/20 dark:bg-[#102A1E] dark:text-[#4CC38A] dark:border-[#4CC38A]/25',
+    warning: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-500/30',
+    error: 'bg-[#FEF2F2] text-[#DC2626] border-[#DC2626]/20 dark:bg-[#2A1517] dark:text-[#E5484D] dark:border-[#E5484D]/25',
   };
 
   return (

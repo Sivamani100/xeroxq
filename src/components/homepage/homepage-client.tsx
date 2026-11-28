@@ -29,31 +29,31 @@ const FAQItem = ({ question, answer, isLoading }: { question?: string, answer?: 
   
   if (isLoading) {
     return (
-      <div className="py-6 border-b border-[#E2E8F0]">
+      <div className="py-6 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="flex items-center justify-between">
            <SkeletonLoader type="text" />
-           <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse" />
+           <div className="w-8 h-8 rounded-lg bg-[#F4F4F5] dark:bg-[#232325] animate-pulse" />
         </div>
       </div>
     );
   }
   return (
-    <div className="border-b border-[#E2E8F0] py-6 last:border-0 border-t-0">
-      <button 
+    <div className="border-b border-[#171717]/[0.08] dark:border-white/[0.08] py-6 last:border-0 border-t-0">
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between text-left group"
       >
         <span className={cn(
-          "text-lg font-bold transition-colors duration-300",
-          isOpen ? "text-black" : "text-black/60 group-hover:text-black"
+          "text-lg font-semibold transition-colors duration-200",
+          isOpen ? "text-[#171717] dark:text-[#EDEDED]" : "text-[#525252] dark:text-[#A1A1A6] group-hover:text-[#171717] dark:group-hover:text-[#EDEDED]"
         )}>
           {question}
         </span>
         <div className={cn(
-          "w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center transition-all duration-300 shadow-sm",
-          isOpen ? "bg-[#FB432C] border-[#FB432C] rotate-45" : "bg-white group-hover:bg-[#F8FAFC]"
+          "w-8 h-8 rounded-lg border border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-center transition-all duration-200",
+          isOpen ? "bg-[#FB432C] border-[#FB432C] rotate-45" : "bg-white dark:bg-[#19191B] group-hover:bg-[#F4F4F5] dark:group-hover:bg-[#232325]"
         )}>
-          <X className={cn("w-4 h-4", isOpen ? "text-white" : "text-[#94A3B8] rotate-45")} />
+          <X className={cn("w-4 h-4", isOpen ? "text-white" : "text-[#737373] dark:text-[#85858B] rotate-45")} />
         </div>
       </button>
       <AnimatePresence>
@@ -62,10 +62,10 @@ const FAQItem = ({ question, answer, isLoading }: { question?: string, answer?: 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="pt-4 text-[#64748B] leading-relaxed max-w-2xl font-medium italic">
+            <p className="pt-4 text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-2xl font-normal">
               {answer}
             </p>
           </motion.div>
@@ -78,15 +78,16 @@ const FAQItem = ({ question, answer, isLoading }: { question?: string, answer?: 
 export default function HomePageClient() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [contactStatus, setContactStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1500);
+    const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, []);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 space-y-12">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] flex flex-col items-center justify-center p-6 space-y-12">
         <SkeletonLoader type="hero" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
           <SkeletonLoader type="card" />
@@ -98,56 +99,56 @@ export default function HomePageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-white selection:bg-black selection:text-white overflow-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white overflow-hidden">
       <main className="space-y-0">
         <HeroSection />
 
         {/* FAQ Section */}
-        <motion.section 
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
           variants={{
             visible: {
               transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2
+                staggerChildren: 0.08,
+                delayChildren: 0.1
               }
             }
           }}
-          id="faq" 
-          className="pt-20 pb-0 bg-white border-t border-[#E2E8F0]"
+          id="faq"
+          className="pt-20 pb-0 bg-[#FAFAFA] dark:bg-[#111113] border-t border-[#171717]/[0.08] dark:border-white/[0.08]"
         >
           <div className="max-w-[1280px] mx-auto px-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-              <motion.div 
+              <motion.div
                 variants={{
                   hidden: { opacity: 0, x: -20 },
-                  visible: { opacity: 1, x: 0, transition: { duration: 0.8 } }
+                  visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
                 }}
                 className="lg:col-span-5 space-y-8 text-left"
               >
                 <div className="space-y-4">
-                   <div className="inline-flex items-center gap-2.5 px-4 h-8 bg-brand-primary/5 border border-brand-primary/10 rounded-full mb-8">
-                      <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                      <span className="text-[10px] font-bold text-black uppercase tracking-[0.2em] leading-none">Common Questions</span>
+                   <div className="inline-flex items-center gap-2 px-3.5 h-7 bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] rounded-full mb-6">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#FB432C]" />
+                      <span className="text-[11px] font-semibold text-[#525252] dark:text-[#A1A1A6] uppercase tracking-wider leading-none">Common Questions</span>
                    </div>
-                  <h2 className="text-[40px] md:text-[54px] font-extrabold tracking-tighter text-black leading-none mb-6">
+                  <h2 className="text-[36px] md:text-[48px] font-semibold tracking-tight text-[#171717] dark:text-[#EDEDED] leading-tight mb-4">
                     Frequently Asked Questions
                   </h2>
-                  <p className="text-lg font-medium text-gray-500 leading-relaxed italic max-w-2xl mx-auto">
+                  <p className="text-base font-normal text-[#525252] dark:text-[#A1A1A6] leading-relaxed max-w-xl">
                     Got a question about our service in Andhra Pradesh? Here are the answers to the most common things people ask.
                   </p>
                 </div>
-                <Button 
-                  onClick={() => router.push('/help-center')} 
-                  className="h-12 px-8 bg-black text-white hover:bg-[#FB432C] font-medium text-sm rounded-full transition-all duration-300 shadow-xl shadow-black/20"
+                <Button
+                  onClick={() => router.push('/help-center')}
+                  className="h-11 px-7 bg-[#171717] dark:bg-[#EDEDED] text-white dark:text-[#111113] hover:bg-[#FB432C] dark:hover:bg-[#FB432C] dark:hover:text-white font-semibold text-sm rounded-full transition-colors"
                 >
                   Full Help Center
                 </Button>
               </motion.div>
               <div className="lg:col-span-7">
-                 <div className="divide-y divide-[#E2E8F0] border-t border-[#E2E8F0] text-left">
+                 <div className="divide-y divide-[#171717]/[0.08] dark:divide-white/[0.08] border-t border-[#171717]/[0.08] dark:border-white/[0.08] text-left">
                     {[
                       {
                         question: "How much does it cost to join XeroxQ?",
@@ -174,12 +175,12 @@ export default function HomePageClient() {
                         key={i}
                         variants={{
                           hidden: { opacity: 0, y: 10 },
-                          visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+                          visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
                         }}
                       >
-                        <FAQItem 
-                          question={faq.question} 
-                          answer={faq.answer} 
+                        <FAQItem
+                          question={faq.question}
+                          answer={faq.answer}
                         />
                       </motion.div>
                     ))}
@@ -188,11 +189,11 @@ export default function HomePageClient() {
             </div>
           </div>
         </motion.section>
-        
+
         <CTAWithVerticalMarquee />
 
         {/* Global Inquiries / Support Section */}
-        <section className="pt-[100px] pb-24 bg-white">
+        <section className="pt-[100px] pb-24 bg-[#FAFAFA] dark:bg-[#111113]">
           <div className="max-w-7xl mx-auto px-6">
             <ContactCard
               title="Add Your Shop"
@@ -216,9 +217,10 @@ export default function HomePageClient() {
                 }
               ]}
             >
-              <form 
+              <form
                 onSubmit={async (e) => {
                   e.preventDefault();
+                  setContactStatus(null);
                   const formData = new FormData(e.currentTarget);
                   const shopName = formData.get("shopName") as string;
                   const email = formData.get("email") as string;
@@ -232,30 +234,48 @@ export default function HomePageClient() {
                     });
 
                     if (error) throw error;
-                    alert("XeroxQ: Shop registration request dispatched successfully! Our team will reach out soon.");
+                    setContactStatus({
+                      type: "success",
+                      text: "Shop registration request sent. Our team will reach out soon.",
+                    });
                     (e.target as HTMLFormElement).reset();
                   } catch (err) {
                     console.error("Submission Failure:", err);
-                    alert("System Alert: Failed to dispatch registration request. Please check your connection.");
+                    setContactStatus({
+                      type: "error",
+                      text: "Failed to dispatch registration request. Please check your connection.",
+                    });
                   }
-                }} 
+                }}
                 className="w-full space-y-5"
               >
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Shop Name</Label>
-                  <Input name="shopName" required type="text" placeholder="Enter your xerox shop name" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED] pl-1">Shop Name</Label>
+                  <Input name="shopName" required type="text" placeholder="Enter your xerox shop name" className="h-11 rounded-lg" />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Owner Email</Label>
-                  <Input name="email" required type="email" placeholder="owner@email.com" className="h-12 bg-white border-gray-200 focus:border-black transition-all rounded-lg" />
+                  <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED] pl-1">Owner Email</Label>
+                  <Input name="email" required type="email" placeholder="owner@email.com" className="h-11 rounded-lg" />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] font-black text-black uppercase tracking-widest pl-1">Your Message</Label>
-                  <Textarea name="message" placeholder="Tell us more about your shop and location..." className="min-h-[120px] bg-white border-gray-200 focus:border-black transition-all rounded-lg p-4" />
+                  <Label className="text-xs font-semibold text-[#171717] dark:text-[#EDEDED] pl-1">Your Message</Label>
+                  <Textarea name="message" placeholder="Tell us more about your shop and location..." className="min-h-[120px] rounded-lg p-3.5" />
                 </div>
-                <button 
-                  type="submit" 
-                  className="w-full h-12 bg-[#FB432C] hover:bg-black text-white font-medium text-sm rounded-full hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-xl shadow-brand-primary/20 mt-2"
+                {contactStatus && (
+                  <p
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-xs font-medium",
+                      contactStatus.type === "error"
+                        ? "bg-[#DC2626]/10 dark:bg-[#E5484D]/15 text-[#DC2626] dark:text-[#E5484D]"
+                        : "bg-[#16A34A]/10 dark:bg-[#4CC38A]/15 text-[#16A34A] dark:text-[#4CC38A]"
+                    )}
+                  >
+                    {contactStatus.text}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  className="w-full h-11 bg-[#FB432C] hover:bg-[#E03923] text-white font-semibold text-sm rounded-full transition-colors cursor-pointer"
                 >
                   Join the Network
                 </button>

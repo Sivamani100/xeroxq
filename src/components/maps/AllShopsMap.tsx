@@ -138,8 +138,8 @@ export default function AllShopsMap({
   return (
     <div
       ref={mapRef}
-      style={{ height, width: "100%", borderRadius: "12px", overflow: "hidden", border: "1px solid #E2E8F0" }}
-      className="shadow-xl"
+      style={{ height, width: "100%" }}
+      className="rounded-2xl overflow-hidden border border-[#171717]/[0.10] dark:border-white/[0.10]"
     />
   );
 }

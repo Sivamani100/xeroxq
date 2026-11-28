@@ -60,7 +60,7 @@ const securityHeaders = [
 const isDesktopBuild = process.env.BUILD_DESKTOP === "true";
 
 const nextConfig: NextConfig = {
-  ...(isDesktopBuild ? { output: "export" } : {}),
+  ...(isDesktopBuild ? { distDir: ".next-desktop", output: "export" } : {}),
 
   // ── Desktop-build: skip Next.js's own generated type-validator ──────────────
   // When api/ routes are stashed for the static export, Next.js re-generates

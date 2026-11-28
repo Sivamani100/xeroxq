@@ -43,7 +43,7 @@ export default function CaseStudies() {
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-brand-primary selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] selection:bg-[#FB432C] selection:text-white">
       <SiteHeader />
       
       <main className="pt-32 pb-16">
@@ -54,10 +54,10 @@ export default function CaseStudies() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md shadow-sm mb-6"
+              className="inline-flex items-center gap-2 px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-md shadow-sm mb-6"
             >
-              <TrendingUp className="w-3.5 h-3.5 text-black" />
-              <span className="text-[10px] font-black tracking-[0.2em] text-black uppercase">Customer Success Stories</span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#171717] dark:text-[#EDEDED]" />
+              <span className="text-[10px] font-black tracking-[0.2em] text-[#171717] dark:text-[#EDEDED] uppercase">Customer Success Stories</span>
             </motion.div>
             
             <div className="space-y-6 max-w-4xl mx-auto">
@@ -65,7 +65,7 @@ export default function CaseStudies() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="text-[64px] lg:text-[100px] font-bold text-black tracking-tighter leading-[0.85] uppercase"
+                className="text-[64px] lg:text-[100px] font-bold text-[#171717] dark:text-[#EDEDED] tracking-tighter leading-[0.85] uppercase"
               >
                 Physical Results. <br /> Global Scale.
               </motion.h1>
@@ -73,7 +73,7 @@ export default function CaseStudies() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-2xl text-[#64748B] font-medium max-w-3xl mx-auto leading-relaxed"
+                className="text-2xl text-[#525252] dark:text-[#A1A1A6] font-medium max-w-3xl mx-auto leading-relaxed"
               >
                 Discover how organizations worldwide are leveraging the XeroxQ protocol to secure their document infrastructure.
               </motion.p>
@@ -87,7 +87,7 @@ export default function CaseStudies() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="py-16 border-y border-[#E2E8F0] bg-[#F8FAFC]"
+          className="py-16 border-y border-[#171717]/[0.08] dark:border-white/[0.08] bg-[#F4F4F5]/60 dark:bg-[#111113]"
         >
            <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
               {studies.map((study, i) => (
@@ -97,29 +97,29 @@ export default function CaseStudies() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.15 }}
-                  className="group bg-white p-8 rounded-xl border border-[#E2E8F0] hover:shadow-xl transition-all relative overflow-hidden"
+                  className="group bg-white dark:bg-[#19191B] p-8 rounded-xl border border-[#171717]/[0.08] dark:border-white/[0.08] hover:shadow-xl transition-all relative overflow-hidden"
                 >
                   <div className="space-y-6 relative z-10">
                      <div className="flex items-center justify-between">
-                        <span className="px-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[9px] font-black text-black uppercase tracking-[0.2em]">
+                        <span className="px-3 py-1 bg-[#F4F4F5] dark:bg-[#232325] border border-[#171717]/[0.10] dark:border-white/[0.10] rounded-md text-[9px] font-black text-[#171717] dark:text-[#EDEDED] uppercase tracking-[0.2em]">
                            {study.tag}
                         </span>
-                        <div className="flex items-center gap-2 text-black font-black text-[9px] tracking-widest uppercase">
-                           <CheckCircle2 className="w-3 h-3" /> VERIFIED CASE
+                        <div className="flex items-center gap-2 text-[#171717] dark:text-[#EDEDED] font-black text-[9px] tracking-widest uppercase">
+                           <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> VERIFIED CASE
                         </div>
                      </div>
                      
                      <div className="space-y-3">
-                        <h3 className="text-2xl font-bold text-black tracking-tight leading-none uppercase">{study.title}</h3>
-                        <p className="text-sm text-[#64748B] font-medium leading-relaxed italic opacity-80">"{study.desc}"</p>
+                        <h3 className="text-2xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-none uppercase">{study.title}</h3>
+                        <p className="text-sm text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed italic opacity-90">"{study.desc}"</p>
                      </div>
 
-                     <div className="p-6 bg-black rounded-lg text-white flex flex-col md:flex-row items-center justify-between gap-6 group-hover:scale-[1.01] transition-transform shadow-xl">
+                     <div className="p-6 bg-[#171717] dark:bg-[#232325] border border-white/[0.08] rounded-lg text-white flex flex-col md:flex-row items-center justify-between gap-6 group-hover:scale-[1.01] transition-transform shadow-xl">
                         <div className="text-left">
                            <div className="text-xl font-black tracking-tighter uppercase">{study.metric}</div>
-                           <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">{study.client}</div>
+                           <div className="text-[9px] font-black text-[#A1A1A6] uppercase tracking-widest italic">{study.client}</div>
                         </div>
-                        <button className="h-9 px-4 bg-white text-black font-black text-[9px] uppercase tracking-widest rounded-md transition-all flex items-center gap-2 hover:bg-white/90 active:scale-95">
+                        <button className="h-9 px-4 bg-white text-[#171717] font-black text-[9px] uppercase tracking-widest rounded-md transition-all flex items-center gap-2 hover:bg-[#FB432C] hover:text-white active:scale-95">
                            FULL REPORT <ArrowRight className="w-3 h-3" />
                         </button>
                      </div>
@@ -138,15 +138,15 @@ export default function CaseStudies() {
           className="py-24"
         >
            <div className="max-w-[700px] mx-auto text-center space-y-8 px-6">
-              <h2 className="text-4xl lg:text-5xl font-bold text-black tracking-tight leading-loose uppercase">Protocol Success.</h2>
-              <p className="text-sm text-[#64748B] font-medium leading-relaxed max-w-lg mx-auto italic opacity-70">
+              <h2 className="text-4xl lg:text-5xl font-bold text-[#171717] dark:text-[#EDEDED] tracking-tight leading-loose uppercase">Protocol Success.</h2>
+              <p className="text-sm text-[#525252] dark:text-[#A1A1A6] font-medium leading-relaxed max-w-lg mx-auto italic opacity-85">
                  "Our decentralized infrastructure scales from local campus hubs to global enterprise networks without compromise."
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                 <button className="h-11 px-8 bg-black text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-xl transition-all active:scale-95">
+                 <button className="h-11 px-8 bg-[#171717] dark:bg-[#FB432C] hover:bg-[#FB432C] dark:hover:bg-[#E03923] text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-xl transition-all active:scale-95">
                     INITIATE INTEGRATION
                  </button>
-                 <button className="h-11 px-8 border border-[#E2E8F0] hover:bg-[#F8FAFC] text-black font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                 <button className="h-11 px-8 bg-white dark:bg-[#19191B] border border-[#171717]/[0.12] dark:border-white/[0.12] hover:bg-[#F4F4F5] dark:hover:bg-[#232325] text-[#171717] dark:text-[#EDEDED] font-black text-[10px] uppercase tracking-widest rounded-lg transition-all">
                     TALK TO SOLUTIONS
                  </button>
               </div>

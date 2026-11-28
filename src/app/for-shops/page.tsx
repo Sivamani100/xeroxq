@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/lib/theme";
 import {
   QrCode,
   Printer,
@@ -79,16 +80,16 @@ function StepCard({ step, icon: Icon, title, desc, delay = 0 }: StepCardProps) {
       initial={{ opacity: 0, y: 30 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative bg-white rounded-2xl border border-[#E8ECF0] p-7 hover:border-[#FB432C]/30 hover:shadow-xl hover:shadow-[#FB432C]/5 transition-all duration-500"
+      className="group relative bg-white dark:bg-[#19191B] rounded-2xl border border-[#171717]/[0.08] dark:border-white/[0.08] p-7 hover:border-[#FB432C]/40 hover:shadow-xl hover:shadow-[#FB432C]/5 transition-all duration-500"
     >
-      <div className="absolute top-7 right-7 text-5xl font-black text-[#F1F5F9] select-none group-hover:text-[#FB432C]/10 transition-colors duration-300">
+      <div className="absolute top-7 right-7 text-5xl font-black text-[#F4F4F5] dark:text-[#232325] select-none group-hover:text-[#FB432C]/15 transition-colors duration-300">
         {step}
       </div>
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FB432C]/10 to-[#FF6B4A]/5 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+      <div className="w-12 h-12 rounded-xl bg-[#FB432C]/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
         <Icon className="w-6 h-6 text-[#FB432C]" />
       </div>
-      <h3 className="text-lg font-bold text-[#1A1A2E] mb-2">{title}</h3>
-      <p className="text-sm text-[#64748B] leading-relaxed">{desc}</p>
+      <h3 className="text-lg font-bold text-[#171717] dark:text-[#EDEDED] mb-2">{title}</h3>
+      <p className="text-sm text-[#525252] dark:text-[#A1A1A6] leading-relaxed">{desc}</p>
     </motion.div>
   );
 }
@@ -100,7 +101,7 @@ interface FeaturePillProps {
 }
 function FeaturePill({ icon: Icon, label }: FeaturePillProps) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E8ECF0] text-sm font-semibold text-[#475569] shadow-sm hover:border-[#FB432C]/40 hover:text-[#FB432C] transition-all duration-300 cursor-default">
+    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08] text-sm font-semibold text-[#525252] dark:text-[#A1A1A6] shadow-sm hover:border-[#FB432C]/40 hover:text-[#FB432C] transition-all duration-300 cursor-default">
       <Icon className="w-4 h-4" />
       {label}
     </div>
@@ -125,21 +126,21 @@ function TestimonialCard({ name, shop, location, quote, rating, delay = 0 }: Tes
       initial={{ opacity: 0, scale: 0.95 }}
       animate={inView ? { opacity: 1, scale: 1 } : {}}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-white rounded-2xl border border-[#E8ECF0] p-6 flex flex-col gap-4 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-1 transition-all duration-500"
+      className="bg-[#FAFAFA] dark:bg-[#111113] rounded-2xl border border-[#171717]/[0.08] dark:border-white/[0.08] p-6 flex flex-col gap-4 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/40 hover:-translate-y-1 transition-all duration-500"
     >
       <div className="flex gap-1">
         {Array.from({ length: rating }).map((_, i) => (
           <Star key={i} className="w-4 h-4 fill-[#FB432C] text-[#FB432C]" />
         ))}
       </div>
-      <p className="text-[#334155] text-sm leading-relaxed italic">"{quote}"</p>
-      <div className="flex items-center gap-3 pt-2 border-t border-[#F1F5F9]">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FB432C] to-[#FF6B4A] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+      <p className="text-[#525252] dark:text-[#A1A1A6] text-sm leading-relaxed italic">"{quote}"</p>
+      <div className="flex items-center gap-3 pt-2 border-t border-[#171717]/[0.06] dark:border-white/[0.06]">
+        <div className="w-9 h-9 rounded-full bg-[#FB432C] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
           {name[0]}
         </div>
         <div>
-          <div className="text-sm font-bold text-[#1A1A2E]">{name}</div>
-          <div className="text-xs text-[#94A3B8]">{shop} · {location}</div>
+          <div className="text-sm font-bold text-[#171717] dark:text-[#EDEDED]">{name}</div>
+          <div className="text-xs text-[#737373] dark:text-[#85858B]">{shop} · {location}</div>
         </div>
       </div>
     </motion.div>
@@ -160,7 +161,7 @@ function StatCounter({ value, suffix, label, trigger }: StatCounterProps) {
       <div className="text-4xl md:text-5xl font-black text-[#FB432C] tabular-nums">
         {count.toLocaleString("en-IN")}{suffix}
       </div>
-      <div className="text-sm font-medium text-[#94A3B8] uppercase tracking-widest">{label}</div>
+      <div className="text-sm font-medium text-white/60 uppercase tracking-widest">{label}</div>
     </div>
   );
 }
@@ -199,10 +200,10 @@ export default function ForShopsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFBFC] font-sans selection:bg-[#FB432C] selection:text-white">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111113] text-[#171717] dark:text-[#EDEDED] font-sans selection:bg-[#FB432C] selection:text-white">
 
       {/* ═══════════ NAV ═══════════ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[#E8ECF0] flex items-center justify-between px-6 md:px-12 h-16">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 dark:bg-[#19191B]/85 backdrop-blur-xl border-b border-[#171717]/[0.08] dark:border-white/[0.08] flex items-center justify-between px-6 md:px-12 h-16">
         <div
           onClick={() => router.push("/")}
           className="flex items-center gap-2.5 cursor-pointer group"
@@ -210,14 +211,17 @@ export default function ForShopsPage() {
           <div className="w-8 h-8 bg-[#FB432C] rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
             <Printer className="w-4 h-4 text-white" />
           </div>
-          <span className="text-lg font-black text-[#1A1A2E] tracking-tight">XeroxQ</span>
+          <span className="text-lg font-black text-[#171717] dark:text-[#EDEDED] tracking-tight">XeroxQ</span>
         </div>
-        <button
-          onClick={() => router.push("/register")}
-          className="h-9 px-5 bg-[#FB432C] text-white text-sm font-semibold rounded-full hover:bg-[#E03520] hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-[#FB432C]/30"
-        >
-          Register Free →
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle compact />
+          <button
+            onClick={() => router.push("/register")}
+            className="h-9 px-5 bg-[#FB432C] text-white text-sm font-semibold rounded-full hover:bg-[#E03923] hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-[#FB432C]/30"
+          >
+            Register Free →
+          </button>
+        </div>
       </nav>
 
       {/* ═══════════ HERO ═══════════ */}
@@ -225,13 +229,13 @@ export default function ForShopsPage() {
         {/* BG decoration */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-radial from-[#FB432C]/8 to-transparent rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#FB432C]/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-20 right-0 w-72 h-72 bg-orange-100/60 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-20 right-0 w-72 h-72 bg-orange-100/60 dark:bg-[#FB432C]/5 rounded-full blur-3xl pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FB432C]/8 border border-[#FB432C]/15 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-8"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FB432C]/8 dark:bg-[#FB432C]/15 border border-[#FB432C]/15 dark:border-[#FB432C]/25 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-8"
         >
           <Sparkles className="w-3.5 h-3.5" />
           XeroxQ for Shop Owners — Andhra Pradesh
@@ -241,7 +245,7 @@ export default function ForShopsPage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-black text-[#1A1A2E] tracking-tighter leading-[1.02] max-w-4xl mx-auto mb-6"
+          className="text-4xl md:text-6xl lg:text-7xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tighter leading-[1.02] max-w-4xl mx-auto mb-6"
         >
           Apne Xerox Shop Ka{" "}
           <span className="relative inline-block">
@@ -255,11 +259,11 @@ export default function ForShopsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25 }}
-          className="text-lg md:text-xl text-[#64748B] max-w-2xl mx-auto leading-relaxed font-medium mb-10"
+          className="text-lg md:text-xl text-[#525252] dark:text-[#A1A1A6] max-w-2xl mx-auto leading-relaxed font-medium mb-10"
         >
           XeroxQ ek{" "}
-          <strong className="text-[#1A1A2E]">Free Digital System</strong> hai jo aapke xerox shop mein customers ko{" "}
-          <strong className="text-[#1A1A2E]">QR code scan karke</strong> directly file print karwane deta hai —
+          <strong className="text-[#171717] dark:text-[#EDEDED]">Free Digital System</strong> hai jo aapke xerox shop mein customers ko{" "}
+          <strong className="text-[#171717] dark:text-[#EDEDED]">QR code scan karke</strong> directly file print karwane deta hai —
           no WhatsApp, no USB, no confusion.
         </motion.p>
 
@@ -271,14 +275,14 @@ export default function ForShopsPage() {
         >
           <button
             onClick={() => router.push("/register")}
-            className="group h-14 px-8 bg-[#FB432C] text-white font-bold text-base rounded-full hover:bg-[#E03520] hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-[#FB432C]/40 flex items-center gap-2.5"
+            className="group h-14 px-8 bg-[#FB432C] text-white font-bold text-base rounded-full hover:bg-[#E03923] hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-[#FB432C]/40 flex items-center gap-2.5"
           >
             Shop Register Karo — Free Mein
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
           </button>
           <button
             onClick={() => router.push("/#faq")}
-            className="h-14 px-8 bg-white text-[#1A1A2E] font-bold text-base rounded-full border-2 border-[#E8ECF0] hover:border-[#FB432C] hover:text-[#FB432C] hover:scale-105 active:scale-95 transition-all duration-300"
+            className="h-14 px-8 bg-white dark:bg-[#19191B] text-[#171717] dark:text-[#EDEDED] font-bold text-base rounded-full border-2 border-[#171717]/[0.10] dark:border-white/[0.10] hover:border-[#FB432C] dark:hover:border-[#FB432C] hover:text-[#FB432C] hover:scale-105 active:scale-95 transition-all duration-300"
           >
             Aur Jaano ↓
           </button>
@@ -303,16 +307,16 @@ export default function ForShopsPage() {
       </section>
 
       {/* ═══════════ PROBLEM STATEMENT ═══════════ */}
-      <Section className="py-20 px-6 bg-white border-y border-[#E8ECF0]">
+      <Section className="py-20 px-6 bg-white dark:bg-[#19191B] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 border border-red-100 text-red-600 text-xs font-bold uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FEF2F2] dark:bg-[#2A1517] border border-[#DC2626]/20 dark:border-[#E5484D]/25 text-[#DC2626] dark:text-[#E5484D] text-xs font-bold uppercase tracking-widest mb-4">
               😤 Ab Tak Ki Problem
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A2E] tracking-tight mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4">
               Aapke Shop Mein Yeh Problems Hain Na?
             </h2>
-            <p className="text-[#64748B] max-w-xl mx-auto font-medium">
+            <p className="text-[#525252] dark:text-[#A1A1A6] max-w-xl mx-auto font-medium">
               Hum jaante hain. Isliye XeroxQ banaya.
             </p>
           </div>
@@ -346,12 +350,12 @@ export default function ForShopsPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                className="flex items-start gap-4 p-5 rounded-xl bg-red-50/50 border border-red-100"
+                className="flex items-start gap-4 p-5 rounded-xl bg-[#FEF2F2] dark:bg-[#2A1517] border border-[#DC2626]/20 dark:border-[#E5484D]/25"
               >
                 <div className="text-3xl flex-shrink-0">{item.emoji}</div>
                 <div>
-                  <div className="font-bold text-[#1A1A2E] mb-1">{item.problem}</div>
-                  <div className="text-sm text-[#64748B] leading-relaxed">{item.desc}</div>
+                  <div className="font-bold text-[#171717] dark:text-[#EDEDED] mb-1">{item.problem}</div>
+                  <div className="text-sm text-[#525252] dark:text-[#A1A1A6] leading-relaxed">{item.desc}</div>
                 </div>
               </motion.div>
             ))}
@@ -363,13 +367,13 @@ export default function ForShopsPage() {
       <Section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 border border-green-100 text-green-700 text-xs font-bold uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ECFDF5] dark:bg-[#102A1E] border border-[#16A34A]/20 dark:border-[#4CC38A]/25 text-[#16A34A] dark:text-[#4CC38A] text-xs font-bold uppercase tracking-widest mb-4">
               ✅ XeroxQ ka Solution
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-[#1A1A2E] tracking-tight mb-4">
+            <h2 className="text-3xl md:text-5xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4">
               Kaise Kaam Karta Hai?
             </h2>
-            <p className="text-[#64748B] max-w-xl mx-auto font-medium text-lg">
+            <p className="text-[#525252] dark:text-[#A1A1A6] max-w-xl mx-auto font-medium text-lg">
               Sirf 3 simple steps — aap aur aapka customer dono khush!
             </p>
           </div>
@@ -399,7 +403,7 @@ export default function ForShopsPage() {
           </div>
 
           {/* Flow visualization */}
-          <div className="mt-12 p-8 rounded-2xl bg-gradient-to-br from-[#FB432C]/5 to-orange-50 border border-[#FB432C]/15">
+          <div className="mt-12 p-8 rounded-2xl bg-[#F4F4F5] dark:bg-[#19191B] border border-[#171717]/[0.08] dark:border-white/[0.08]">
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
               {[
                 { icon: "📱", label: "Customer scans QR" },
@@ -415,7 +419,7 @@ export default function ForShopsPage() {
                 ) : (
                   <div key={i} className="flex flex-col items-center gap-2 text-center">
                     <div className="text-3xl">{item.icon}</div>
-                    <div className="text-xs font-bold text-[#475569] max-w-[100px]">{item.label}</div>
+                    <div className="text-xs font-bold text-[#525252] dark:text-[#A1A1A6] max-w-[100px]">{item.label}</div>
                   </div>
                 )
               )}
@@ -427,14 +431,14 @@ export default function ForShopsPage() {
       {/* ═══════════ STATS ═══════════ */}
       <section
         ref={statsRef}
-        className="py-20 px-6 bg-[#1A1A2E]"
+        className="py-20 px-6 bg-[#171717] dark:bg-[#19191B] border-y border-white/[0.08]"
       >
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
               XeroxQ Ka Real Impact
             </h2>
-            <p className="text-[#94A3B8] font-medium">Andhra Pradesh ke shops ka data</p>
+            <p className="text-white/70 font-medium">Andhra Pradesh ke shops ka data</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <StatCounter value={500} suffix="+" label="Happy Shops" trigger={statsInView} />
@@ -446,13 +450,13 @@ export default function ForShopsPage() {
       </section>
 
       {/* ═══════════ BENEFITS ═══════════ */}
-      <Section className="py-24 px-6 bg-white border-y border-[#E8ECF0]">
+      <Section className="py-24 px-6 bg-white dark:bg-[#19191B] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FB432C]/8 border border-[#FB432C]/15 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FB432C]/8 dark:bg-[#FB432C]/15 border border-[#FB432C]/15 dark:border-[#FB432C]/25 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-4">
               💰 Business Benefits
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-[#1A1A2E] tracking-tight mb-4">
+            <h2 className="text-3xl md:text-5xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4">
               Aapke Shop Ko Kya Milega?
             </h2>
           </div>
@@ -460,43 +464,43 @@ export default function ForShopsPage() {
             {[
               {
                 icon: TrendingUp,
-                color: "from-green-50 to-emerald-50",
-                iconColor: "text-green-600",
+                color: "bg-[#ECFDF5] dark:bg-[#102A1E]",
+                iconColor: "text-[#16A34A] dark:text-[#4CC38A]",
                 title: "Zyada Customers",
                 desc: "Digital system dekh ke naye customers aate hain. Modern shop = zyada trust = zyada business.",
               },
               {
                 icon: Clock,
-                color: "from-blue-50 to-indigo-50",
-                iconColor: "text-blue-600",
+                color: "bg-blue-50 dark:bg-blue-950/40",
+                iconColor: "text-blue-600 dark:text-blue-400",
                 title: "Time Bachao",
                 desc: "No more WhatsApp forwarding, no USB issues. Customer file upload karta hai, aap directly print karo.",
               },
               {
                 icon: IndianRupee,
-                color: "from-yellow-50 to-amber-50",
-                iconColor: "text-amber-600",
+                color: "bg-amber-50 dark:bg-amber-950/40",
+                iconColor: "text-amber-600 dark:text-amber-400",
                 title: "Zyada Revenue",
                 desc: "Queue system se zyada jobs handle kar sako. Efficient workflow = zyada printing = zyada earning.",
               },
               {
                 icon: ShieldCheck,
-                color: "from-purple-50 to-violet-50",
-                iconColor: "text-purple-600",
+                color: "bg-purple-50 dark:bg-purple-950/40",
+                iconColor: "text-purple-600 dark:text-purple-400",
                 title: "Privacy Guarantee",
                 desc: "Customer ki files print hone ke baad automatically delete hoti hain. Legal aur ethical way to operate.",
               },
               {
                 icon: Bell,
-                color: "from-orange-50 to-red-50",
+                color: "bg-[#FB432C]/10 dark:bg-[#FB432C]/15",
                 iconColor: "text-[#FB432C]",
                 title: "Real-Time Notifications",
                 desc: "Nayi job aate hi aapke screen pe notification aata hai — sound ke saath! Koi order miss nahi hoga.",
               },
               {
                 icon: BarChart3,
-                color: "from-teal-50 to-cyan-50",
-                iconColor: "text-teal-600",
+                color: "bg-teal-50 dark:bg-teal-950/40",
+                iconColor: "text-teal-600 dark:text-teal-400",
                 title: "Dashboard & Analytics",
                 desc: "Kitne jobs complete hue, kitne pending hain — sab ek jagah dekhne milega. Smart business decisions lo.",
               },
@@ -507,11 +511,11 @@ export default function ForShopsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.6, delay: i * 0.08 }}
-                className={`p-6 rounded-2xl bg-gradient-to-br ${b.color} border border-white hover:-translate-y-1 hover:shadow-lg transition-all duration-400`}
+                className={`p-6 rounded-2xl ${b.color} border border-[#171717]/[0.08] dark:border-white/[0.08] hover:-translate-y-1 hover:shadow-lg transition-all duration-400`}
               >
                 <b.icon className={`w-8 h-8 ${b.iconColor} mb-4`} />
-                <h3 className="font-bold text-[#1A1A2E] text-base mb-2">{b.title}</h3>
-                <p className="text-sm text-[#64748B] leading-relaxed">{b.desc}</p>
+                <h3 className="font-bold text-[#171717] dark:text-[#EDEDED] text-base mb-2">{b.title}</h3>
+                <p className="text-sm text-[#525252] dark:text-[#A1A1A6] leading-relaxed">{b.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -522,21 +526,21 @@ export default function ForShopsPage() {
       <Section className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A2E] tracking-tight mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4">
               XeroxQ vs WhatsApp
             </h2>
-            <p className="text-[#64748B] font-medium">Khud decide karo — kaunsa better hai?</p>
+            <p className="text-[#525252] dark:text-[#A1A1A6] font-medium">Khud decide karo — kaunsa better hai?</p>
           </div>
-          <div className="rounded-2xl overflow-hidden border border-[#E8ECF0] shadow-xl">
-            <div className="grid grid-cols-3 bg-[#F8FAFC] text-sm font-bold text-center py-4 border-b border-[#E8ECF0]">
-              <div className="text-[#94A3B8]">Feature</div>
+          <div className="rounded-2xl overflow-hidden border border-[#171717]/[0.08] dark:border-white/[0.08] shadow-xl">
+            <div className="grid grid-cols-3 bg-[#F4F4F5] dark:bg-[#232325] text-sm font-bold text-center py-4 border-b border-[#171717]/[0.08] dark:border-white/[0.08]">
+              <div className="text-[#737373] dark:text-[#85858B]">Feature</div>
               <div className="text-[#FB432C] flex items-center justify-center gap-2">
                 <div className="w-5 h-5 bg-[#FB432C] rounded-md flex items-center justify-center">
                   <Printer className="w-3 h-3 text-white" />
                 </div>
                 XeroxQ
               </div>
-              <div className="text-[#64748B] flex items-center justify-center gap-1.5">
+              <div className="text-[#525252] dark:text-[#A1A1A6] flex items-center justify-center gap-1.5">
                 💬 WhatsApp
               </div>
             </div>
@@ -552,11 +556,11 @@ export default function ForShopsPage() {
             ].map(([feature, xeroxq, whatsapp], i) => (
               <div
                 key={i}
-                className={`grid grid-cols-3 text-sm py-3.5 px-4 border-b border-[#F1F5F9] ${i % 2 === 0 ? "bg-white" : "bg-[#FAFBFC]"}`}
+                className={`grid grid-cols-3 text-sm py-3.5 px-4 border-b border-[#171717]/[0.06] dark:border-white/[0.06] last:border-b-0 ${i % 2 === 0 ? "bg-white dark:bg-[#19191B]" : "bg-[#FAFAFA] dark:bg-[#151517]"}`}
               >
-                <div className="font-medium text-[#475569]">{feature}</div>
-                <div className="text-center font-medium text-[#1A1A2E]">{xeroxq}</div>
-                <div className="text-center font-medium text-[#94A3B8]">{whatsapp}</div>
+                <div className="font-medium text-[#525252] dark:text-[#A1A1A6]">{feature}</div>
+                <div className="text-center font-medium text-[#171717] dark:text-[#EDEDED]">{xeroxq}</div>
+                <div className="text-center font-medium text-[#737373] dark:text-[#85858B]">{whatsapp}</div>
               </div>
             ))}
           </div>
@@ -564,13 +568,13 @@ export default function ForShopsPage() {
       </Section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <Section className="py-24 px-6 bg-white border-y border-[#E8ECF0]">
+      <Section className="py-24 px-6 bg-white dark:bg-[#19191B] border-y border-[#171717]/[0.08] dark:border-white/[0.08]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FB432C]/8 border border-[#FB432C]/15 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FB432C]/8 dark:bg-[#FB432C]/15 border border-[#FB432C]/15 dark:border-[#FB432C]/25 text-[#FB432C] text-xs font-bold uppercase tracking-widest mb-4">
               ⭐ Real Shop Owners
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A2E] tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight">
               Unke Shops Ne Kya Kaha
             </h2>
           </div>
@@ -607,10 +611,10 @@ export default function ForShopsPage() {
       <Section className="py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A2E] tracking-tight mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-[#171717] dark:text-[#EDEDED] tracking-tight mb-4">
               Questions & Answers
             </h2>
-            <p className="text-[#64748B] font-medium">Aapke mind mein jo bhi sawaal hai — yahan milega jawab</p>
+            <p className="text-[#525252] dark:text-[#A1A1A6] font-medium">Aapke mind mein jo bhi sawaal hai — yahan milega jawab</p>
           </div>
           <div className="space-y-3">
             {faqs.map((faq, i) => (
@@ -618,18 +622,18 @@ export default function ForShopsPage() {
                 key={i}
                 className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
                   openFaq === i
-                    ? "border-[#FB432C]/30 bg-[#FB432C]/3"
-                    : "border-[#E8ECF0] bg-white hover:border-[#FB432C]/20"
+                    ? "border-[#FB432C]/40 bg-[#FB432C]/5 dark:bg-[#FB432C]/10"
+                    : "border-[#171717]/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#19191B] hover:border-[#FB432C]/30"
                 }`}
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   className="w-full flex items-center justify-between p-5 text-left group"
                 >
-                  <span className={`font-semibold text-sm md:text-base transition-colors ${openFaq === i ? "text-[#FB432C]" : "text-[#1A1A2E]"}`}>
+                  <span className={`font-semibold text-sm md:text-base transition-colors ${openFaq === i ? "text-[#FB432C]" : "text-[#171717] dark:text-[#EDEDED]"}`}>
                     {faq.q}
                   </span>
-                  <span className={`ml-4 flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-sm font-black transition-all duration-300 ${openFaq === i ? "bg-[#FB432C] border-[#FB432C] text-white rotate-45" : "border-[#E8ECF0] text-[#94A3B8]"}`}>
+                  <span className={`ml-4 flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-sm font-black transition-all duration-300 ${openFaq === i ? "bg-[#FB432C] border-[#FB432C] text-white rotate-45" : "border-[#171717]/[0.12] dark:border-white/[0.12] text-[#737373] dark:text-[#85858B]"}`}>
                     +
                   </span>
                 </button>
@@ -642,7 +646,7 @@ export default function ForShopsPage() {
                       transition={{ duration: 0.3 }}
                       className="overflow-hidden"
                     >
-                      <p className="px-5 pb-5 text-[#64748B] leading-relaxed text-sm">{faq.a}</p>
+                      <p className="px-5 pb-5 text-[#525252] dark:text-[#A1A1A6] leading-relaxed text-sm">{faq.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -653,7 +657,7 @@ export default function ForShopsPage() {
       </Section>
 
       {/* ═══════════ FINAL CTA ═══════════ */}
-      <Section className="py-24 px-6 bg-[#1A1A2E]">
+      <Section className="py-24 px-6 bg-[#171717] dark:bg-[#19191B] border-t border-white/[0.08]">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -667,7 +671,7 @@ export default function ForShopsPage() {
           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-5">
             Ready Ho? Chalo Start Karte Hain!
           </h2>
-          <p className="text-[#94A3B8] text-lg mb-10 leading-relaxed">
+          <p className="text-white/70 text-lg mb-10 leading-relaxed">
             Andhra Pradesh ke{" "}
             <span className="text-white font-bold">500+ shops</span> already XeroxQ use kar rahe hain.
             <br />
@@ -677,7 +681,7 @@ export default function ForShopsPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
             <button
               onClick={() => router.push("/register")}
-              className="group h-14 px-10 bg-[#FB432C] text-white font-bold text-base rounded-full hover:bg-white hover:text-[#FB432C] transition-all duration-300 shadow-2xl shadow-[#FB432C]/50 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95"
+              className="group h-14 px-10 bg-[#FB432C] text-white font-bold text-base rounded-full hover:bg-[#E03923] transition-all duration-300 shadow-2xl shadow-[#FB432C]/50 flex items-center justify-center gap-2.5 hover:scale-105 active:scale-95"
             >
               Shop Register Karo — Free!
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -697,14 +701,14 @@ export default function ForShopsPage() {
               "✅ 2-Minute Setup",
               "✅ 24/7 Support",
             ].map((item) => (
-              <span key={item} className="text-sm text-[#64748B] font-medium">{item}</span>
+              <span key={item} className="text-sm text-white/60 font-medium">{item}</span>
             ))}
           </div>
         </div>
       </Section>
 
       {/* ═══════════ FOOTER ═══════════ */}
-      <footer className="py-8 px-6 bg-[#111827] text-center text-[#4B5563] text-sm">
+      <footer className="py-8 px-6 bg-[#171717] dark:bg-[#0D0D0F] border-t border-white/[0.08] text-center text-white/60 text-sm">
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="w-6 h-6 bg-[#FB432C] rounded-md flex items-center justify-center">
             <Printer className="w-3 h-3 text-white" />
