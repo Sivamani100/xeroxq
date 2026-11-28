@@ -49,6 +49,7 @@ export const RESERVED_SHOP_SLUGS = new Set<string>([
   "maps",
   "news",
   "opengraph-image",
+  "papers",
   "partners",
   "platform-admin",
   "privacy",

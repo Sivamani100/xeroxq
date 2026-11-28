@@ -126,6 +126,13 @@ function main() {
     } catch (_) { /* already gone – fine */ }
     // 2. Export static frontend for Electron (`out/`)
     run("npx next build", { ...process.env, BUILD_DESKTOP: "true" });
+
+    // Remove Next-copied public/downloads installers from out/ so we never pack
+    // previous installers recursively inside the new desktop app bundle.
+    const outDownloadsDir = path.join(rootDir, "out", "downloads");
+    if (fs.existsSync(outDownloadsDir)) {
+      fs.rmSync(outDownloadsDir, { recursive: true, force: true });
+    }
   } finally {
     restoreServerRoutes();
   }
@@ -142,7 +149,9 @@ function main() {
   } catch (_) { /* already gone – fine */ }
   fs.mkdirSync(buildTmpDir, { recursive: true });
 
-  run(`npx electron-builder --win --config.directories.output="${buildTmpDir}"`);
+  // Build NSIS and Portable sequentially so both targets never race on `win-unpacked`.
+  run(`npx electron-builder --win nsis --x64 --config.directories.output="${buildTmpDir}"`);
+  run(`npx electron-builder --win portable --x64 --config.directories.output="${buildTmpDir}"`);
 
   // 4. Copy only the final installer/portable .exe files back into release_build/
   //    (not the multi-hundred-MB win-unpacked/ directory)
